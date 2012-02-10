@@ -59,18 +59,22 @@ public:
 	static PoseEstimation *Instance();
 
 	void setSystemModel(SystemModel *system_model);
-	SystemModel *getSystemModel() const;
+	const SystemModel *getSystemModel() const;
 
 	bool init();
+	void cleanup();
+	void reset();
+
 	void update(const InputVector& input, ros::Time timestamp);
 	void update(double dt);
-	void cleanup();
-	bool reset();
 
-	void addMeasurement(Measurement *measurement);
-	template <class ConcreteMeasurementModel> void addMeasurement(const std::string& name, ConcreteMeasurementModel *model) {
-		addMeasurement(new Measurement_<ConcreteMeasurementModel>(model, name));
+	Measurement *addMeasurement(Measurement *measurement);
+	Measurement *addMeasurement(const std::string& name, Measurement *measurement);
+	template <class ConcreteMeasurementModel>
+	Measurement *addMeasurement(const std::string& name, ConcreteMeasurementModel *model) {
+		return addMeasurement(new Measurement_<ConcreteMeasurementModel>(model, name));
 	}
+
 	Measurement *getMeasurement(const std::string &name) const;
 	System *getSystem() const;
 
@@ -80,10 +84,13 @@ public:
 	void setCovariance(const StateCovariance& covariance);
 
 	SystemStatus getSystemStatus() const;
-	bool updateSystemStatus(SystemStatus set, SystemStatus clear);
+	SystemStatus getMeasurementStatus() const;
 	bool setSystemStatus(SystemStatus new_status);
+	bool setMeasurementStatus(SystemStatus new_status);
+	bool updateSystemStatus(SystemStatus set, SystemStatus clear);
+	bool updateMeasurementStatus(SystemStatus set, SystemStatus clear);
 
-	typedef boost::function<bool(SystemStatus)> SystemStatusCallback;
+	typedef boost::function<bool(SystemStatus&)> SystemStatusCallback;
 	void setSystemStatusCallback(SystemStatusCallback callback);
 
 	ros::Time getTimestamp() const;
@@ -107,6 +114,11 @@ public:
 	ParameterList& parameters() { return parameters_; }
 	const ParameterList& parameters() const { return parameters_; }
 
+	BFL::KalmanFilter *filter() { return filter_; }
+	const BFL::KalmanFilter *filter() const { return filter_; }
+
+	void updated();
+
 private:
 	System *system_;
 	typedef std::vector<Measurement *> Measurements;
@@ -119,6 +131,7 @@ private:
 	bool covariance_is_dirty_;
 
 	SystemStatus status_;
+	SystemStatus measurement_status_;
 	ParameterList parameters_;
 
 	GlobalReference global_reference_;

@@ -30,20 +30,20 @@
 
 namespace hector_pose_estimation {
 
-SystemModel::SystemModel(unsigned int dimension)
-  : BFL::AnalyticConditionalGaussianAdditiveNoise(dimension, 2)
+SystemModel::SystemModel()
+  : BFL::AnalyticConditionalGaussianAdditiveNoise(StateDimension, 2)
   , BFL::AnalyticSystemModelGaussianUncertainty(this)
   , dt_(0.0)
-  , system_status_(0)
-  , x_(ConditionalArgumentGet(0))
-  , u_(ConditionalArgumentGet(1))
-  , x_pred_(dimension)
-  , A_(dimension,dimension)
+  , x_(static_cast<const StateVector&>(ConditionalArgumentGet(0)))
+  , u_(static_cast<const InputVector&>(ConditionalArgumentGet(1)))
+  , x_pred_(StateDimension)
+  , A_(StateDimension,StateDimension)
+  , measurement_status_(0)
 {
   A_ = 0.0;
-  for(unsigned int i = 1; i <= dimension; i++) A_(i,i) = 1.0;
-  AdditiveNoiseMuSet(StateVector(dimension, 0.0));
-  AdditiveNoiseSigmaSet(SymmetricMatrix(dimension) = 0.0);
+  for(unsigned int i = 1; i <= StateDimension; i++) A_(i,i) = 1.0;
+  AdditiveNoiseMuSet(StateVector(0.0));
+  AdditiveNoiseSigmaSet(SymmetricMatrix_<StateDimension>(0.0));
 }
 
 SystemModel::~SystemModel()
@@ -51,12 +51,9 @@ SystemModel::~SystemModel()
 }
 
 void SystemModel::getPrior(BFL::Gaussian &prior) const {
-  StateVector mu(StateDimension);
-  StateCovariance cov(StateDimension);
-
-  mu = 0;
+  StateVector mu = 0;
   mu(QUATERNION_W) = 1.0;
-  cov = 0;
+  StateCovariance cov = 0;
   cov(QUATERNION_W,QUATERNION_W) = 0.25 * 1.0;
   cov(QUATERNION_X,QUATERNION_X) = 0.25 * 1.0;
   cov(QUATERNION_Y,QUATERNION_Y) = 0.25 * 1.0;

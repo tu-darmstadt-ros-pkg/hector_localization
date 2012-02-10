@@ -29,7 +29,6 @@
 #ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
 #include <bfl/model/analyticmeasurementmodel_gaussianuncertainty.h>
 #include <bfl/pdf/analyticconditionalgaussian_additivenoise.h>
 
@@ -40,12 +39,15 @@
 
 namespace hector_pose_estimation {
 
-class SystemModel;
-
 class MeasurementModel : public BFL::AnalyticConditionalGaussianAdditiveNoise, public BFL::AnalyticMeasurementModelGaussianUncertainty {
 public:
   MeasurementModel(unsigned int dimension, unsigned int conditional_arguments = 0);
   virtual ~MeasurementModel();
+
+  virtual bool init() { return true; }
+  virtual void cleanup() { }
+  virtual void reset() { }
+  virtual void reset(const StateVector& state) { reset(); }
 
   virtual SystemStatus getStatusFlags() const { return SystemStatus(0); }
   virtual bool applyStatusMask(const SystemStatus& status) { return true; }

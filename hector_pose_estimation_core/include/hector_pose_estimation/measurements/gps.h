@@ -26,68 +26,65 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/gravity.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#ifndef HECTOR_POSE_ESTIMATION_GPS_H
+#define HECTOR_POSE_ESTIMATION_GPS_H
+
+#include <hector_pose_estimation/measurement.h>
+#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 
-GravityModel::GravityModel()
-  : MeasurementModel(3)
-  , gravity_(9.8065)
+class GPSModel : public MeasurementModel {
+public:
+  typedef ColumnVector MeasurementVector;
+  typedef SymmetricMatrix NoiseCovariance;
+
+  GPSModel();
+  virtual ~GPSModel();
+
+  virtual SystemStatus getStatusFlags() const;
+
+	virtual ColumnVector ExpectedValueGet() const;
+	virtual Matrix dfGet(unsigned int i) const;
+
+private:
+	double position_stddev_;
+	double velocity_stddev_;
+};
+
+struct GPSUpdate : public MeasurementUpdate {
+  double latitude;
+  double longitude;
+  double velocity_north;
+  double velocity_east;
+};
+
+class GPS : public Measurement_<GPSModel,GPSUpdate>
 {
-  SymmetricMatrix noise(3);
-  parameters().add("stddev", stddev_, 98.065);
-  noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-}
+public:
+  GPS(const std::string& name = "gps");
+  virtual ~GPS();
 
-GravityModel::~GravityModel() {}
+  void onReset();
 
-SystemStatus GravityModel::getStatusFlags() const {
-  return STATE_ROLLPITCH;
-}
+  typename GPSModel::MeasurementVector const& getValue(const GPSUpdate &update);
+  bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
 
-ColumnVector GravityModel::ExpectedValueGet() const {
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
+private:
+  double reference_latitude_;
+  double reference_longitude_;
+  double reference_heading_;
+  bool has_reference_;
 
-  // y = q * [0 0 1] * q';
-  this->y_(1) = gravity_ * (2*qx*qz - 2*qw*qy);
-  this->y_(2) = gravity_ * (2*qw*qx + 2*qy*qz);
-  this->y_(3) = gravity_ * (qw*qw - qx*qx - qy*qy + qz*qz);
+  double radius_north_, radius_east_;
+  double cos_reference_heading_, sin_reference_heading_;
 
-  return y_;
-}
+  void updateReference();
 
-Matrix GravityModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
-
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-
-  C_(1,QUATERNION_W) = -gravity_*2*qy;
-  C_(1,QUATERNION_X) =  gravity_*2*qz;
-  C_(1,QUATERNION_Y) = -gravity_*2*qw;
-  C_(1,QUATERNION_Z) =  gravity_*2*qz;
-  C_(2,QUATERNION_W) =  gravity_*2*qx;
-  C_(2,QUATERNION_X) =  gravity_*2*qw;
-  C_(2,QUATERNION_Y) =  gravity_*2*qz;
-  C_(2,QUATERNION_Z) =  gravity_*2*qy;
-  C_(3,QUATERNION_W) =  gravity_*2*qw;
-  C_(3,QUATERNION_X) = -gravity_*2*qx;
-  C_(3,QUATERNION_Y) = -gravity_*2*qy;
-  C_(3,QUATERNION_Z) =  gravity_*2*qz;
-
-  return C_;
-}
-
-bool Gravity::beforeUpdate(PoseEstimation &estimator, const Update &update) {
-  model_->setGravity(fabs(estimator.getSystemModel()->getGravity()));
-  return true;
-}
+  GPSUpdate last_;
+  typename GPSModel::MeasurementVector y_;
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_GPS_H

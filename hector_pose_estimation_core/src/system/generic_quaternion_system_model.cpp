@@ -33,8 +33,6 @@ namespace hector_pose_estimation {
 static const double GRAVITY = -9.8065;
 
 GenericQuaternionSystemModel::GenericQuaternionSystemModel()
-  : SystemModel(StateDimension)
-  , noise_(StateDimension)
 {
   gravity_ = GRAVITY;
   gyro_stddev_ = 1.0 * M_PI/180.0;
@@ -62,8 +60,17 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 {
 }
 
+SystemStatus GenericQuaternionSystemModel::getStatusFlags() const
+{
+	SystemStatus flags = SystemStatus(0);
+	if (measurement_status_ & STATE_XY_POSITION) flags |= STATE_XY_VELOCITY;
+	if (measurement_status_ & STATE_Z_POSITION)  flags |= STATE_Z_VELOCITY;
+	if (measurement_status_ & STATE_XY_VELOCITY) flags |= STATE_ROLLPITCH;
+	return flags;
+}
+
 //--> System equation of this model xpred = x_(k+1) = f(x,u)
-ColumnVector GenericQuaternionSystemModel::ExpectedValueGet(double dt, SystemStatus status) const
+ColumnVector GenericQuaternionSystemModel::ExpectedValueGet(double dt) const
 {
 	x_pred_ = x_;
 
@@ -99,19 +106,19 @@ ColumnVector GenericQuaternionSystemModel::ExpectedValueGet(double dt, SystemSta
 
 	//--> Velocity (without coriolis forces) and Position
 	//----------------------------------------------------------
-	if (status & STATE_XY_VELOCITY) {
+	if (measurement_status_ & (STATE_XY_POSITION | STATE_XY_VELOCITY)) {
 		x_pred_(VELOCITY_X)  = v_x + dt*((q0*q0+q1*q1-q2*q2-q3*q3)*abx + (2.0*q1*q2-2.0*q0*q3)    *aby + (2.0*q1*q3+2.0*q0*q2)    *abz);
 		x_pred_(VELOCITY_Y)  = v_y + dt*((2.0*q1*q2+2.0*q0*q3)    *abx + (q0*q0-q1*q1+q2*q2-q3*q3)*aby + (2.0*q2*q3-2.0*q0*q1)    *abz);
 	}
-	if (status & STATE_Z_VELOCITY) {
+	if (measurement_status_ & (STATE_Z_POSITION  | STATE_Z_VELOCITY)) {
 		x_pred_(VELOCITY_Z)  = v_z + dt*((2.0*q1*q3-2.0*q0*q2)    *abx + (2.0*q2*q3+2.0*q0*q1)    *aby + (q0*q0-q1*q1-q2*q2+q3*q3)*abz + gravity_);
 	}
 
-	if (status & STATE_XY_POSITION) {
+	if (measurement_status_ & STATE_XY_POSITION) {
 		x_pred_(POSITION_X)  = p_x + dt*(v_x);
 		x_pred_(POSITION_Y)  = p_y + dt*(v_y);
 	}
-	if (status & STATE_Z_POSITION) {
+	if (measurement_status_ & STATE_Z_POSITION) {
 		x_pred_(POSITION_Z)  = p_z + dt*(v_z);
 	}
 	//----------------------------------------------------------
@@ -133,7 +140,7 @@ SymmetricMatrix GenericQuaternionSystemModel::CovarianceGet(double dt) const
 }
 
 //--> Jacobian matrix A
-Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt, SystemStatus status) const
+Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt) const
 {
 	if (i != 0) return Matrix();
 
@@ -182,7 +189,7 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt, SystemStat
 	A_(QUATERNION_Z,BIAS_GYRO_Y)  = 0.5*dt*q1;
 	A_(QUATERNION_Z,BIAS_GYRO_Z)  = 0.5*dt*q0;
 
-  if (status & STATE_XY_VELOCITY) {
+  if (measurement_status_ & (STATE_XY_POSITION | STATE_XY_VELOCITY)) {
     A_(VELOCITY_X,QUATERNION_W) = dt*(-2.0*q3*aby+2.0*q2*abz+2.0*q0*abx);
     A_(VELOCITY_X,QUATERNION_X) = dt*( 2.0*q2*aby+2.0*q3*abz+2.0*q1*abx);
     A_(VELOCITY_X,QUATERNION_Y) = dt*(-2.0*q2*abx+2.0*q1*aby+2.0*q0*abz);
@@ -215,7 +222,8 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt, SystemStat
 		A_(VELOCITY_Y,BIAS_ACCEL_Y) = 0.0;
 		A_(VELOCITY_Y,BIAS_ACCEL_Z) = 0.0;
 	}
-	if (status & STATE_Z_VELOCITY) {
+
+	if (measurement_status_ & (STATE_Z_POSITION  | STATE_Z_VELOCITY)) {
 		A_(VELOCITY_Z,QUATERNION_W) = dt*(-2.0*q2*abx+2.0*q1*aby+2.0*q0*abz);
 		A_(VELOCITY_Z,QUATERNION_X) = dt*( 2.0*q3*abx+2.0*q0*aby-2.0*q1*abz);
 		A_(VELOCITY_Z,QUATERNION_Y) = dt*(-2.0*q0*abx+2.0*q3*aby-2.0*q2*abz);
@@ -233,14 +241,15 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt, SystemStat
 		A_(VELOCITY_Z,BIAS_ACCEL_Z) = 0.0;
 	}
 
-  if (status & STATE_XY_POSITION) {
+  if (measurement_status_ & STATE_XY_POSITION) {
     A_(POSITION_X,VELOCITY_X)   = dt;
     A_(POSITION_Y,VELOCITY_Y)   = dt;
   } else {
     A_(POSITION_X,VELOCITY_X)   = 0.0;
     A_(POSITION_Y,VELOCITY_Y)   = 0.0;
   }
-  if (status & STATE_Z_POSITION) {
+
+  if (measurement_status_ & STATE_Z_POSITION) {
     A_(POSITION_Z,VELOCITY_Z)   = dt;
   } else {
     A_(POSITION_Z,VELOCITY_Z)   = 0.0;

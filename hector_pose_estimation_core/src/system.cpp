@@ -27,6 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/system.h>
+#include <hector_pose_estimation/pose_estimation.h>
 #include <bfl/filter/kalmanfilter.h>
 
 namespace hector_pose_estimation {
@@ -34,26 +35,52 @@ namespace hector_pose_estimation {
 System::System(SystemModel *model, const std::string &name)
   : model_(model)
   , name_(name)
+  , status_flags_(0)
   , prior_(StateDimension)
-  , input_(InputDimension)
 {
-  model->getPrior(prior_);
+  model_->getPrior(prior_);
+  parameters_.add(model_->parameters());
 }
 
 System::~System() {
   delete model_;
 }
 
-void System::update(BFL::KalmanFilter &filter, const SystemStatus& status, double dt) {
-  model_->set_dt(dt);
-  model_->set_system_status(status);
-  filter.Update(model_, input_);
+bool System::init()
+{
+  return true;
 }
 
-void System::limitState(BFL::KalmanFilter &filter) const {
-  StateVector x = filter.PostGet()->ExpectedValueGet();
-  model_->Limit(x);
-  filter.PostGet()->ExpectedValueSet(x);
+void System::cleanup()
+{
+}
+
+void System::reset()
+{
+  init();
+}
+
+bool System::update(PoseEstimation &estimator, double dt) {
+  ROS_DEBUG("Updating with system model %s", getName().c_str());
+
+  // std::cout << "[" << getName() << "] input    = [" << input_.transpose() << "]" << std::endl;
+
+  model_->set_dt(dt);
+  model_->setMeasurementStatus(estimator.getMeasurementStatus());
+  estimator.filter()->Update(model_, input_);
+  updated();
+  estimator.updated();
+
+  return true;
+}
+
+void System::updated() {
+  if (getModel()) status_flags_ = getModel()->getStatusFlags();
+}
+
+StateVector System::limitState(StateVector state) const {
+  model_->Limit(state);
+  return state;
 }
 
 } // namespace hector_pose_estimation

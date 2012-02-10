@@ -26,68 +26,41 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/gravity.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#ifndef HECTOR_POSE_ESTIMATION_MAGNETIC_H
+#define HECTOR_POSE_ESTIMATION_MAGNETIC_H
+
+#include <hector_pose_estimation/measurement.h>
+#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 
-GravityModel::GravityModel()
-  : MeasurementModel(3)
-  , gravity_(9.8065)
-{
-  SymmetricMatrix noise(3);
-  parameters().add("stddev", stddev_, 98.065);
-  noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-}
+class MagneticModel : public MeasurementModel {
+public:
+  typedef ColumnVector MeasurementVector;
+  typedef SymmetricMatrix NoiseCovariance;
 
-GravityModel::~GravityModel() {}
+  MagneticModel();
+  virtual ~MagneticModel();
 
-SystemStatus GravityModel::getStatusFlags() const {
-  return STATE_ROLLPITCH;
-}
+  virtual bool init();
 
-ColumnVector GravityModel::ExpectedValueGet() const {
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
+  virtual SystemStatus getStatusFlags() const;
 
-  // y = q * [0 0 1] * q';
-  this->y_(1) = gravity_ * (2*qx*qz - 2*qw*qy);
-  this->y_(2) = gravity_ * (2*qw*qx + 2*qy*qz);
-  this->y_(3) = gravity_ * (qw*qw - qx*qx - qy*qy + qz*qz);
+	virtual ColumnVector ExpectedValueGet() const;
+	virtual Matrix dfGet(unsigned int i) const;
 
-  return y_;
-}
+	virtual void setMagneticField(double declination, double inclination, double magnitude);
 
-Matrix GravityModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
+private:
+	double stddev_;
+	double declination_, inclination_, magnitude_;
+	ColumnVector_<3> magnetic_field_;
 
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
+	mutable Matrix C_full_;
+};
 
-  C_(1,QUATERNION_W) = -gravity_*2*qy;
-  C_(1,QUATERNION_X) =  gravity_*2*qz;
-  C_(1,QUATERNION_Y) = -gravity_*2*qw;
-  C_(1,QUATERNION_Z) =  gravity_*2*qz;
-  C_(2,QUATERNION_W) =  gravity_*2*qx;
-  C_(2,QUATERNION_X) =  gravity_*2*qw;
-  C_(2,QUATERNION_Y) =  gravity_*2*qz;
-  C_(2,QUATERNION_Z) =  gravity_*2*qy;
-  C_(3,QUATERNION_W) =  gravity_*2*qw;
-  C_(3,QUATERNION_X) = -gravity_*2*qx;
-  C_(3,QUATERNION_Y) = -gravity_*2*qy;
-  C_(3,QUATERNION_Z) =  gravity_*2*qz;
-
-  return C_;
-}
-
-bool Gravity::beforeUpdate(PoseEstimation &estimator, const Update &update) {
-  model_->setGravity(fabs(estimator.getSystemModel()->getGravity()));
-  return true;
-}
+typedef Measurement_<MagneticModel> Magnetic;
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_MAGNETIC_H

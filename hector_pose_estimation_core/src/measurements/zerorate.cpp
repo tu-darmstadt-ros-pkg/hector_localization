@@ -34,8 +34,7 @@ ZeroRateModel::ZeroRateModel()
   : MeasurementModel(1,3)
 {
   SymmetricMatrix noise(1);
-  stddev_ = 1.0;
-  parameters().add("stddev", stddev_);
+  parameters().add("stddev", stddev_, 4.0*M_PI);
   noise(1,1) = pow(stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
 }

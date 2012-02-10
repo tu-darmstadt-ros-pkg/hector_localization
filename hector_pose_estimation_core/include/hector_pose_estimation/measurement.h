@@ -51,6 +51,8 @@ public:
 
   virtual bool init();
   virtual void cleanup();
+  virtual void reset();
+  virtual void reset(const StateVector& state) { reset(); }
 
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
   virtual bool active(const SystemStatus& status) { return enabled(); }
@@ -59,8 +61,8 @@ public:
   virtual const ParameterList& parameters() const { return parameters_; }
 
   virtual void add(const MeasurementUpdate &update);
-  virtual void update(BFL::KalmanFilter &filter, const SystemStatus& status, const MeasurementUpdate &update) = 0;
-  virtual void process(BFL::KalmanFilter &filter, const SystemStatus& status);
+  virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update) = 0;
+  virtual void process(PoseEstimation &estimator);
 
   bool enabled() const { return enabled_; }
   void enable() { enabled_ = true; }
@@ -72,74 +74,94 @@ public:
 
 protected:
   virtual Queue& queue() = 0;
+  void updateInternal(PoseEstimation &estimator, ColumnVector const& y);
+  virtual void onReset() { }
 
 protected:
   std::string name_;
   ParameterList parameters_;
-
-  bool enabled_;
   SystemStatus status_flags_;
 
-  unsigned int timeout_;
-  unsigned int timer_;
+  bool enabled_;
+  double min_interval_;
+
+  double timeout_;
+  double timer_;
 };
 
-template <class ConcreteMeasurementModel>
+template <class ConcreteModel, class ConcreteUpdate> class Measurement_;
+
+template <class ConcreteModel, class ConcreteUpdate = Update_<ConcreteModel> >
 class Measurement_ : public Measurement {
 public:
-  typedef ConcreteMeasurementModel Model;
-  typedef Update_<Measurement_<ConcreteMeasurementModel> > Update;
+  typedef ConcreteModel Model;
+  typedef ConcreteUpdate Update;
+  typedef typename ConcreteModel::MeasurementVector MeasurementVector;
+  typedef typename ConcreteModel::NoiseCovariance NoiseCovariance;
+
+  Measurement_(const std::string& name)
+    : Measurement(name)
+    , model_(new Model)
+  {
+    parameters_.add(model_->parameters());
+  }
 
   Measurement_(Model *model, const std::string& name)
     : Measurement(name)
     , model_(model)
-  {}
+  {
+    parameters_.add(model_->parameters());
+  }
 
   virtual ~Measurement_() {
     delete model_;
   }
 
+	virtual bool init() { return model_->init() && Measurement::init(); }
+	virtual void cleanup() { model_->cleanup(); Measurement::cleanup(); }
+	virtual void reset() { model_->reset(); Measurement::reset(); }
+	virtual void reset(const StateVector& state) { model_->reset(state); Measurement::reset(state); }
+
   virtual Model* getModel() const { return model_; }
   virtual bool active(const SystemStatus& status) { return enabled() && getModel()->applyStatusMask(status); }
 
-  virtual ParameterList& parameters() { return getModel()->parameters(); }
-  virtual const ParameterList& parameters() const { return getModel()->parameters(); }
+  virtual MeasurementVector const& getValue(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getValue(update); }
+  virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update) : getModel()->AdditiveNoiseSigmaGet(); }
+  virtual void setNoiseCovariance(NoiseCovariance const& sigma);
 
-  virtual void update(BFL::KalmanFilter &filter, const SystemStatus& status, const MeasurementUpdate &update);
-  virtual void update(BFL::KalmanFilter &filter, const SystemStatus& status, typename Model::MeasurementVector const& y);
-  virtual void update(BFL::KalmanFilter &filter, const SystemStatus& status, typename Model::MeasurementVector const& y, typename Model::NoiseCovariance const& sigma);
-
-private:
-  Model *model_;
+  virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
 
 protected:
+  Model *model_;
+
   typedef Queue_<Update> Queue;
   Queue queue_;
   virtual Queue& queue() { return queue_; }
+
+  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update) { return true; }
+  virtual void afterUpdate(PoseEstimation &estimator) { }
 };
 
-template <class ConcreteMeasurementModel>
-void Measurement_<ConcreteMeasurementModel>::update(BFL::KalmanFilter &filter, const SystemStatus& status, const MeasurementUpdate &update_)
+template <class ConcreteModel, class ConcreteUpdate>
+bool Measurement_<ConcreteModel, ConcreteUpdate>::update(PoseEstimation &estimator, const MeasurementUpdate &update_)
 {
-  Update const &update = static_cast<Update const &>(update_);
-  if (update.getSigma())
-    this->update(filter, status, update.getY(), *(update.getSigma()));
-  else
-    this->update(filter, status, update.getY());
+  if (!enabled()) return false;
+  if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
+
+  Update const &update = dynamic_cast<Update const &>(update_);
+  if (!beforeUpdate(estimator, update)) return false;
+
+  if (update.hasCovariance()) setNoiseCovariance(getCovariance(update));
+  updateInternal(estimator, getValue(update));
+
+  afterUpdate(estimator);
+  return true;
 }
 
-template <class ConcreteMeasurementModel>
-void Measurement_<ConcreteMeasurementModel>::update(BFL::KalmanFilter &filter, const SystemStatus& status, typename Measurement_<ConcreteMeasurementModel>::Model::MeasurementVector const& y)
+template <class ConcreteModel, class ConcreteUpdate>
+void Measurement_<ConcreteModel, ConcreteUpdate>::setNoiseCovariance(Measurement_<ConcreteModel, ConcreteUpdate>::NoiseCovariance const& sigma)
 {
-  filter.Update(getModel(), y);
-  updated();
-}
-
-template <class ConcreteMeasurementModel>
-void Measurement_<ConcreteMeasurementModel>::update(BFL::KalmanFilter &filter, const SystemStatus& status, typename Measurement_<ConcreteMeasurementModel>::Model::MeasurementVector const& y, typename Measurement_<ConcreteMeasurementModel>::Model::NoiseCovariance const& sigma)
-{
-  if (&sigma) dynamic_cast<BFL::AnalyticConditionalGaussianAdditiveNoise *>(model_)->AdditiveNoiseSigmaSet(sigma);
-  this->update(filter, status, y);
+  model_->AdditiveNoiseSigmaSet(sigma);
 }
 
 } // namespace hector_pose_estimation

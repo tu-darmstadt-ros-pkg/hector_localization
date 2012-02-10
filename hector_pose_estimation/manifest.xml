@@ -14,7 +14,10 @@
   <depend package="sensor_msgs" />
   <depend package="geometry_msgs" />
   <depend package="nav_msgs" />
+  <depend package="mav_msgs" />
   <depend package="tf" />
+
+  <depend package="message_filters" />
 
   <export>
     <nodelet plugin="${prefix}/hector_pose_estimation_plugins.xml" />

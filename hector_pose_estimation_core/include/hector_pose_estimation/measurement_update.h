@@ -36,31 +36,55 @@ class MeasurementUpdate
 public:
   MeasurementUpdate() {}
   virtual ~MeasurementUpdate() {}
+
+  virtual bool hasCovariance() const { return false; }
 };
 
-template <class Measurement>
+template <class MeasurementModel>
 class Update_ : public MeasurementUpdate {
 public:
+  typedef typename MeasurementModel::MeasurementVector Vector;
+  typedef typename MeasurementModel::NoiseCovariance Covariance;
+
   Update_()
-    : has_sigma_(false)
+    : has_covariance_(false)
   {}
-  Update_(typename Measurement::Model::MeasurementVector const& y)
-    : has_sigma_(false)
+  Update_(typename MeasurementModel::MeasurementVector const& y)
+    : has_covariance_(false)
   {
-    setY(y);
+    setValue(y);
   }
   virtual ~Update_() {}
 
-  void setY(typename Measurement::Model::MeasurementVector const& y) { y_ = y; }
-  void setSigma(typename Measurement::Model::NoiseCovariance const& R) { R_ = &R; has_sigma_ = true; }
-  typename Measurement::Model::MeasurementVector const &getY() const { return y_; }
-  typename Measurement::Model::NoiseCovariance const *getSigma() const { return has_sigma_ ? &R_ : 0; }
+  virtual void setValue(Vector const& y) { y_ = y; }
+  virtual void setCovariance(Covariance const& R) { R_ = R; has_covariance_ = true; }
+  virtual Vector const &getValue() const { return y_; }
+  virtual Covariance const &getCovariance() const { return R_; }
 
-private:
-  typename Measurement::Model::MeasurementVector y_;
-  typename Measurement::Model::NoiseCovariance R_;
-  bool has_sigma_;
+  virtual Vector const &operator=(Vector const& y) { setValue(y); return y; }
+
+  virtual bool hasCovariance() const { return has_covariance_; }
+
+protected:
+  Vector y_;
+  Covariance R_;
+  bool has_covariance_;
 };
+
+namespace internal {
+  template <class ConcreteModel, class ConcreteUpdate>
+  struct UpdateInspector {
+    static typename ConcreteModel::MeasurementVector const& getValue(const ConcreteUpdate &update) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
+    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update) { return *static_cast<typename ConcreteModel::NoiseCovariance *>(0); }
+  };
+
+  template <class ConcreteModel>
+  struct UpdateInspector<ConcreteModel, Update_<ConcreteModel> >
+  {
+    static typename ConcreteModel::MeasurementVector const& getValue(const Update_<ConcreteModel> &update) { return update.getValue(); }
+    static typename ConcreteModel::NoiseCovariance const& getCovariance(const Update_<ConcreteModel> &update) { return update.getCovariance(); }
+  };
+}
 
 } // namespace hector_pose_estimation
 

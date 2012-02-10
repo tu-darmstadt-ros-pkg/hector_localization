@@ -26,68 +26,43 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/gravity.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/measurements/height.h>
 
 namespace hector_pose_estimation {
 
-GravityModel::GravityModel()
-  : MeasurementModel(3)
-  , gravity_(9.8065)
+HeightModel::HeightModel()
+  : MeasurementModel(1)
+  , elevation_(0.0)
 {
-  SymmetricMatrix noise(3);
-  parameters().add("stddev", stddev_, 98.065);
-  noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
+  SymmetricMatrix noise(1);
+  stddev_ = 1.0;
+  parameters().add("stddev", stddev_);
+  parameters().add("elevation", elevation_);
+  noise(1,1) = pow(stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
 }
 
-GravityModel::~GravityModel() {}
+HeightModel::~HeightModel() {}
 
-SystemStatus GravityModel::getStatusFlags() const {
-  return STATE_ROLLPITCH;
+SystemStatus HeightModel::getStatusFlags() const {
+  return STATE_Z_POSITION;
 }
 
-ColumnVector GravityModel::ExpectedValueGet() const {
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-
-  // y = q * [0 0 1] * q';
-  this->y_(1) = gravity_ * (2*qx*qz - 2*qw*qy);
-  this->y_(2) = gravity_ * (2*qw*qx + 2*qy*qz);
-  this->y_(3) = gravity_ * (qw*qw - qx*qx - qy*qy + qz*qz);
-
+ColumnVector HeightModel::ExpectedValueGet() const {
+  this->y_(1) = x_(POSITION_Z) - elevation_;
   return y_;
 }
 
-Matrix GravityModel::dfGet(unsigned int i) const {
+Matrix HeightModel::dfGet(unsigned int i) const {
   if (i != 0) return Matrix();
-
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-
-  C_(1,QUATERNION_W) = -gravity_*2*qy;
-  C_(1,QUATERNION_X) =  gravity_*2*qz;
-  C_(1,QUATERNION_Y) = -gravity_*2*qw;
-  C_(1,QUATERNION_Z) =  gravity_*2*qz;
-  C_(2,QUATERNION_W) =  gravity_*2*qx;
-  C_(2,QUATERNION_X) =  gravity_*2*qw;
-  C_(2,QUATERNION_Y) =  gravity_*2*qz;
-  C_(2,QUATERNION_Z) =  gravity_*2*qy;
-  C_(3,QUATERNION_W) =  gravity_*2*qw;
-  C_(3,QUATERNION_X) = -gravity_*2*qx;
-  C_(3,QUATERNION_Y) = -gravity_*2*qy;
-  C_(3,QUATERNION_Z) =  gravity_*2*qz;
-
+  C_(1,POSITION_Z) = 1.0;
   return C_;
 }
 
-bool Gravity::beforeUpdate(PoseEstimation &estimator, const Update &update) {
-  model_->setGravity(fabs(estimator.getSystemModel()->getGravity()));
-  return true;
+void Height::reset(const StateVector& state)
+{
+  setElevation(state(POSITION_Z));
 }
+
 
 } // namespace hector_pose_estimation

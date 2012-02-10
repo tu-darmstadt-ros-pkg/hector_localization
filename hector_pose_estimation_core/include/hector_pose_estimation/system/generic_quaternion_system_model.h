@@ -41,11 +41,14 @@ public:
 
   const std::string getName() const { return "GenericQuaternionSystemModel"; }
 
-	virtual ColumnVector ExpectedValueGet(double dt, SystemStatus status) const;
+  virtual SystemStatus getStatusFlags() const;
+
+	virtual ColumnVector ExpectedValueGet(double dt) const;
 	virtual SymmetricMatrix CovarianceGet(double dt) const;
-	virtual Matrix dfGet(unsigned int i, double dt, SystemStatus status) const;
+	virtual Matrix dfGet(unsigned int i, double dt) const;
 
 	void setGravity(double gravity) { gravity_ = gravity; }
+	double getGravity() const { return gravity_; }
 
 	virtual void Limit(StateVector& x) const;
 
@@ -61,7 +64,7 @@ private:
 	double gyro_drift_;
 
 	mutable double q0,q1,q2,q3;
-	mutable SymmetricMatrix noise_;
+	mutable SymmetricMatrix_<StateDimension> noise_;
 };
 
 } // namespace hector_pose_estimation

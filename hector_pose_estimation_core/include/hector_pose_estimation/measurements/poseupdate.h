@@ -64,7 +64,7 @@ public:
 class PoseUpdate : public Measurement
 {
 public:
-  PoseUpdate();
+  PoseUpdate(const std::string& name = "poseupdate");
   virtual ~PoseUpdate();
 
   class Update : public MeasurementUpdate {
@@ -74,7 +74,7 @@ public:
     geometry_msgs::PoseWithCovarianceStampedConstPtr pose;
   };
 
-  void update(BFL::KalmanFilter &filter, const SystemStatus &status, const MeasurementUpdate &update);
+  bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
 
 private:
   PositionXYModel position_xy_model_;

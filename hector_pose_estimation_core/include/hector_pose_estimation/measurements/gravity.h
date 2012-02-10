@@ -42,6 +42,8 @@ public:
   GravityModel();
   virtual ~GravityModel();
 
+  virtual void setGravity(double gravity) { gravity_ = gravity; }
+
   virtual SystemStatus getStatusFlags() const;
 
 	virtual ColumnVector ExpectedValueGet() const;
@@ -49,9 +51,15 @@ public:
 
 private:
 	double stddev_;
+	double gravity_;
 };
 
-typedef Measurement_<GravityModel> Gravity;
+class Gravity : public Measurement_<GravityModel>
+{
+public:
+	Gravity(const std::string& name = "gravity") : Measurement_<GravityModel>(name) {}
+	bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+};
 
 } // namespace hector_pose_estimation
 

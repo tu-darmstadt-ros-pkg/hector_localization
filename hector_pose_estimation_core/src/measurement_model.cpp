@@ -33,14 +33,14 @@ namespace hector_pose_estimation {
 MeasurementModel::MeasurementModel(unsigned int dimension, unsigned int conditional_arguments)
   : BFL::AnalyticConditionalGaussianAdditiveNoise(dimension, conditional_arguments == 0 ? 1 : 2)
   , BFL::AnalyticMeasurementModelGaussianUncertainty(this)
-  , x_(ConditionalArgumentGet(0))
+  , x_(static_cast<const StateVector&>(ConditionalArgumentGet(0)))
   , u_(conditional_arguments > 0 ? ConditionalArgumentGet(1) : *static_cast<ColumnVector *>(0))
   , y_(dimension)
   , C_(dimension, StateDimension)
   , D_(dimension, conditional_arguments)
 {
   C_ = 0.0; D_ = 0.0;
-  AdditiveNoiseMuSet(StateVector(dimension, 0.0));
+  AdditiveNoiseMuSet(ColumnVector(dimension, 0.0));
   AdditiveNoiseSigmaSet(SymmetricMatrix(dimension) = 0.0);
 }
 

@@ -29,11 +29,9 @@
 #ifndef HECTOR_POSE_ESTIMATION_TYPES_H
 #define HECTOR_POSE_ESTIMATION_TYPES_H
 
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
+#include <hector_pose_estimation/matrix.h>
 
 namespace hector_pose_estimation {
-
-  using namespace MatrixWrapper;
 
   enum StateIndex {
     QUATERNION_W = 1,
@@ -54,8 +52,8 @@ namespace hector_pose_estimation {
     BIAS_GYRO_Z,
   };
   static const unsigned int StateDimension = BIAS_GYRO_Z;
-  typedef ColumnVector StateVector;
-  typedef SymmetricMatrix StateCovariance;
+  typedef ColumnVector_<StateDimension> StateVector;
+  typedef SymmetricMatrix_<StateDimension> StateCovariance;
 
   enum InputIndex {
     ACCEL_X = 1,
@@ -66,7 +64,7 @@ namespace hector_pose_estimation {
     GYRO_Z,
   };
   static const unsigned int InputDimension = GYRO_Z;
-  typedef ColumnVector InputVector;
+  typedef ColumnVector_<InputDimension> InputVector;
 
   enum {
     STATE_ALIGNMENT = 1,

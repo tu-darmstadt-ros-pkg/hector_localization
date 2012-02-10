@@ -27,18 +27,21 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurement.h>
+#include <hector_pose_estimation/pose_estimation.h>
 #include <ros/console.h>
 
 namespace hector_pose_estimation {
 
 Measurement::Measurement(const std::string& name)
   : name_(name)
-  , enabled_(true)
   , status_flags_(0)
-  , timeout_(1000)
-  , timer_(0)
+  , enabled_(true)
+  , min_interval_(0.0)
+  , timeout_(1.0)
+  , timer_(0.0)
 {
   parameters().add("enabled", enabled_);
+  parameters().add("min_interval", min_interval_);
 }
 
 Measurement::~Measurement()
@@ -56,31 +59,52 @@ void Measurement::cleanup()
 {
 }
 
+void Measurement::reset()
+{
+  init();
+  onReset();
+}
+
 void Measurement::increase_timer(double dt) {
-  timer_ += static_cast<unsigned int>(dt * 1000.0 + .5);
+  timer_ += dt;
 }
 
 void Measurement::updated() {
-  timer_ = 0;
-  if (getModel()) status_flags_ |= getModel()->getStatusFlags();
+  timer_ = 0.0;
+  if (getModel()) status_flags_ = getModel()->getStatusFlags();
 }
 
 bool Measurement::timedout() const {
-  return (timer_ > timeout_);
+  if (timer_ > timeout_) {
+    if (status_flags_ > 0) ROS_WARN("Measurement %s timed out.", getName().c_str());
+    return true;
+  }
+  return false;
 }
 
 void Measurement::add(const MeasurementUpdate& update) {
   queue().push(update);
 }
 
-void Measurement::process(BFL::KalmanFilter &filter, const SystemStatus& status) {
+void Measurement::process(PoseEstimation &estimator) {
   while(!(queue().empty())) {
-    ROS_DEBUG("Updating with measurement model %s", getName().c_str());
-    update(filter, status, queue().pop());
+    update(estimator, queue().pop());
   }
 
   // check for timeout
   if (timedout()) status_flags_ = 0;
+}
+
+void Measurement::updateInternal(PoseEstimation &estimator, ColumnVector const& y) {
+  ROS_DEBUG("Updating with measurement %s", getName().c_str());
+
+  estimator.filter()->Update(getModel(), y);
+  updated();
+  estimator.updated();
+
+  // std::cout << "[" << getName() << "] update   = [" << y.transpose() << "]" << std::endl;
+  // std::cout << "[" << getName() << "] expected = [" << getModel()->ExpectedValueGet().transpose() << "]" << std::endl;
+  // std::cout << "[" << getName() << "] dy/dx    = [" << getModel()->dfGet(0) << "]" << std::endl;
 }
 
 } // namespace hector_pose_estimation

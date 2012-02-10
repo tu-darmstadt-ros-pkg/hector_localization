@@ -75,27 +75,42 @@ namespace hector_pose_estimation {
     ~ParameterList() {}
 
     template <typename T>
-    void add(const std::string& key, T& value) {
-      erase(key);
-      push_back(ParameterPtr(new TypedParameter<T>(key, value)));
+    ParameterList& add(const std::string& key, T& value, const T& default_value) {
+      value = default_value;
+      return add(key, value);
     }
 
     template <typename T>
-    void add(const std::string& key, T* value) {
+    ParameterList& add(const std::string& key, T& value) {
       erase(key);
-      push_back(ParameterPtr(new TypedParameter<T>(key, *value)));
+      push_back(ParameterPtr(new TypedParameter<T>(key, value)));
+      return *this;
     }
 
-    void copy(const std::string& prefix, ParameterList const& parameters) {
+    template <typename T>
+    ParameterList& add(const std::string& key, T* value) {
+      erase(key);
+      push_back(ParameterPtr(new TypedParameter<T>(key, *value)));
+      return *this;
+    }
+
+    ParameterList& add(ParameterList const& other) {
+      for(ParameterList::const_iterator it = other.begin(); it != other.end(); ++it) push_back(*it);
+      return *this;
+    }
+
+    ParameterList& copy(const std::string& prefix, ParameterList const& parameters) {
       for(ParameterList::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
         ParameterPtr copy((*it)->clone());
         if (!prefix.empty()) copy->key = prefix + "/" + copy->key;
         push_back(copy);
       }
+      return *this;
     }
 
-    void copy(ParameterList const& parameters) {
+    ParameterList& copy(ParameterList const& parameters) {
       copy(std::string(), parameters);
+      return *this;
     }
 
     template <typename T>
@@ -119,6 +134,13 @@ namespace hector_pose_estimation {
 
     void registerParams(ros::NodeHandle nh);
   };
+
+  static inline ParameterList operator+(ParameterList const& list1, ParameterList const& list2)
+  {
+    ParameterList result;
+    return result.add(list1).add(list2);
+  }
+
 } // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_PARAMETERS_H

@@ -27,13 +27,14 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/poseupdate.h>
+#include <hector_pose_estimation/pose_estimation.h>
 #include <hector_pose_estimation/bfl_conversions.h>
 #include <Eigen/Geometry>
 
 namespace hector_pose_estimation {
 
-PoseUpdate::PoseUpdate()
-  : Measurement("poseupdate")
+PoseUpdate::PoseUpdate(const std::string& name)
+  : Measurement(name)
 {
   alpha_ = 0.0;
   beta_  = 0.0;
@@ -52,7 +53,7 @@ PoseUpdate::~PoseUpdate()
 {
 }
 
-void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, const MeasurementUpdate &update_) {
+bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &update_) {
   Update const &update = static_cast<Update const &>(update_);
 
   // convert incoming update information
@@ -61,8 +62,8 @@ void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, c
   covarianceMsgToBfl(update.pose->pose.covariance, sigma);
 
   // fetch current state
-  ColumnVector state(filter.PostGet()->ExpectedValueGet());
-  SymmetricMatrix covariance(filter.PostGet()->CovarianceGet());
+  ColumnVector state = estimator.getState();
+  SymmetricMatrix covariance = estimator.getCovariance();
 
   // forward state vector to the individual measurement models
   position_xy_model_.ConditionalArgumentSet(0,state);
@@ -74,31 +75,6 @@ void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, c
 
   // update PositionXY
   if (sigma(1,1) > 0.0 && sigma(2,2) > 0.0) {
-//    ColumnVector x(state.sub(POSITION_X,POSITION_Y));
-//    SymmetricMatrix Ix(covariance.sub(POSITION_X,POSITION_Y,POSITION_X,POSITION_Y).inverse());
-//    ColumnVector y(2);
-//    SymmetricMatrix Iy(sigma.sub(1,2,1,2)); // assume that sigma is a information matrix directly!
-//    y(1) = update.pose->pose.pose.position.x;
-//    y(2) = update.pose->pose.pose.position.y;
-
-//    fixed_position_xy_stddev_ = 1.0;
-
-//    if (fixed_position_xy_stddev_ != 0.0) {
-//      Iy = 0.0;
-//      Iy(1,1) = Iy(2,2) = 1.0 / (fixed_position_xy_stddev_*fixed_position_xy_stddev_);
-//    }
-
-////     std::cout << "XY: ";
-////    std::cout << "state:  xy = (" << x(1) << "," << x(2) << "), P_xy = [" << (covariance.sub(POSITION_X,POSITION_Y,POSITION_X,POSITION_Y)) << ", Ix_xy = [" << Ix << "]" << std::endl;
-////    std::cout << "update: xy = (" << y(1) << "," << y(2) << "), R_xy = [" << (Iy.inverse()) << "], Iy_xy = [" << Iy << "]" << std::endl;
-
-//    ColumnVector ixy(x.rows());
-//    SymmetricMatrix Ixy(Ix.rows());
-//    updateInternal(Ix, x, Iy, y, Ixy, ixy);
-//    updateState(state, covariance, POSITION_X, POSITION_Y, Ixy, ixy);
-
-//    status_flags_ |= STATE_XY_POSITION;
-
     // fetch observation matrix H
     Matrix H = position_xy_model_.dfGet(0);
     ColumnVector x(position_xy_model_.ExpectedValueGet());
@@ -116,9 +92,7 @@ void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, c
 //    std::cout << "Position Update: " << std::endl;
 //    std::cout << "      x = [" << x.transpose() << "], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]" << std::endl;
-
     updateInternal(covariance, state, Iy, y - x, H, covariance, state);
-
 //    std::cout << " ==> xy = [" << position_xy_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
     status_flags_ |= STATE_XY_POSITION;
@@ -126,25 +100,6 @@ void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, c
 
   // update PositionZ
   if (sigma(3,3) > 0.0) {
-//    ColumnVector x(state.sub(POSITION_Z,POSITION_Z));
-//    SymmetricMatrix Ix(covariance.sub(POSITION_Z,POSITION_Z,POSITION_Z,POSITION_Z).inverse());
-//    ColumnVector y(1);
-//    SymmetricMatrix Iy(sigma.sub(3,3,3,3)); // assume that sigma is a information matrix directly!
-//    y(1) = update.pose->pose.pose.position.z;
-
-//    if (fixed_position_z_stddev_ != 0.0) {
-//      Iy = 0.0;
-//      Iy(1,1) = 1.0 / (fixed_position_z_stddev_*fixed_position_z_stddev_);
-//    }
-
-////     std::cout << "Z: ";
-//    ColumnVector ixy(x.rows());
-//    SymmetricMatrix Ixy(Ix.rows());
-//    updateInternal(Ix, x, Iy, y, Ixy, ixy);
-//    updateState(state, covariance, POSITION_Z, POSITION_Z, Ixy, ixy);
-
-//    status_flags_ |= STATE_Z_POSITION;
-
     // fetch observation matrix H
     Matrix H = position_z_model_.dfGet(0);
     ColumnVector x(position_z_model_.ExpectedValueGet());
@@ -160,9 +115,7 @@ void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, c
 //    std::cout << "Height Update: " << std::endl;
 //    std::cout << "      x = " << x(1) << ", Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = " << y(1) << ", Iy = [ " << Iy << " ]" << std::endl;
-
     updateInternal(covariance, state, Iy, y - x, H, covariance, state);
-
 //    std::cout << " ==> xy = " << position_z_model_.PredictionGet(ColumnVector(), state) << ", Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
     status_flags_ |= STATE_Z_POSITION;
@@ -170,29 +123,6 @@ void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, c
 
   // update Yaw
   if (sigma(4,4) > 0.0) {
-//    // directly set the state without changing the covariance!
-//    ColumnVector state_euler(Eigen::Quaterniond(state(QUATERNION_W), state(QUATERNION_X), state(QUATERNION_Y), state(QUATERNION_Z)).toRotationMatrix().eulerAngles(2,1,0));
-//    std::cout << "state:  " << state_euler << std::endl;
-//    std::cout << "update: " << update_euler << std::endl;
-//    Eigen::Quaterniond new_quaternion(Eigen::AngleAxisd(update_euler(1), Vector3d::UnitZ())
-//                               * Eigen::AngleAxisd(state_euler(2), Vector3d::UnitY())
-//                               * Eigen::AngleAxisd(state_euler(3), Vector3d::UnitX()));
-//    state(QUATERNION_W) = new_quaternion.w();
-//    state(QUATERNION_X) = new_quaternion.x();
-//    state(QUATERNION_Y) = new_quaternion.y();
-//    state(QUATERNION_Z) = new_quaternion.z();
-
-//    ColumnVector x(state.sub(QUATERNION_W,QUATERNION_Z));
-//    SymmetricMatrix Ix(covariance.sub(QUATERNION_W,QUATERNION_Z,QUATERNION_W,QUATERNION_Z).inverse());
-//    Matrix dquat_dyaw(4,1);
-//    dquat_dyaw(1,1) = -0.5 * x(4);
-//    dquat_dyaw(2,1) = -0.5 * x(3);
-//    dquat_dyaw(3,1) =  0.5 * x(2);
-//    dquat_dyaw(4,1) =  0.5 * x(1);
-//    ColumnVector y(4);
-//    quaternionMsgToBfl(update.pose->pose.pose.orientation, y);
-//    SymmetricMatrix Iy(dquat_dyaw * sigma(4,4) * dquat_dyaw.transpose());
-
     // fetch observation matrix H
     Matrix H = yaw_model_.dfGet(0);
     ColumnVector x(yaw_model_.ExpectedValueGet());
@@ -208,17 +138,18 @@ void PoseUpdate::update(BFL::KalmanFilter &filter, const SystemStatus &status, c
 //    std::cout << "Yaw Update: " << std::endl;
 //    std::cout << "      x = " << x(1) * 180.0/M_PI << "°, Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = " << y(1) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]" << std::endl;
-
     updateInternal(covariance, state, Iy, y - x, H, covariance, state);
-
 //    std::cout << " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
     status_flags_ |= STATE_YAW;
   }
 
-  filter.PostGet()->ExpectedValueSet(state);
-  filter.PostGet()->CovarianceSet(covariance);
+  estimator.setState(state);
+  estimator.setCovariance(covariance);
   updated();
+  estimator.updated();
+
+  return true;
 }
 
 double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const {

@@ -35,31 +35,44 @@ namespace BFL { class KalmanFilter; }
 
 namespace hector_pose_estimation {
 
+class PoseEstimation;
+
 class System
 {
 public:
   System(SystemModel *model, const std::string& name = "system");
   virtual ~System();
 
-  const std::string& getName() const { return name_; }
-  void setName(const std::string& name) { name_ = name; }
+  virtual const std::string& getName() const { return name_; }
+  virtual void setName(const std::string& name) { name_ = name; }
 
-	ParameterList& parameters() { return getModel()->parameters(); }
-	const ParameterList& parameters() const { return getModel()->parameters(); }
+	virtual void setModel(SystemModel *system_model) { model_ = system_model; }
+	virtual SystemModel *getModel() const { return model_; }
 
-	void setModel(SystemModel *system_model) { model_ = system_model; }
-	SystemModel *getModel() const { return model_; }
+  virtual bool init();
+  virtual void cleanup();
+  virtual void reset();
+  virtual void reset(const StateVector& state) { reset(); }
+
+  virtual SystemStatus getStatusFlags() const { return status_flags_; }
+
+  virtual ParameterList& parameters() { return parameters_; }
+  virtual const ParameterList& parameters() const { return parameters_; }
 
 	BFL::Gaussian *getPrior() { return &prior_; }
 	const InputVector& getInput() const { return input_; }
 	void setInput(const InputVector& input) { input_ = input; }
 
-	void update(BFL::KalmanFilter &filter, const SystemStatus& status, double dt);
-	void limitState(BFL::KalmanFilter &filter) const;
+	virtual bool update(PoseEstimation &estimator, double dt);
+	virtual void updated();
+	StateVector limitState(StateVector state) const;
 
-private:
+protected:
 	SystemModel *model_;
 	std::string name_;
+	ParameterList parameters_;
+	SystemStatus status_flags_;
+
 	BFL::Gaussian prior_;
 	InputVector input_;
 };
