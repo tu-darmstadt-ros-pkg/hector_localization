@@ -1,0 +1,19 @@
+<package>
+  <description brief="odometry_to_tf">
+
+     odometry_to_tf translates a nav_msgs/Odometry or geometry_msgs/PoseStamped message to tf.
+     The transform is divided into three subtransforms with intermediate frames for the footprint and the stabilized base frame (without roll and pitch).
+
+  </description>
+  <author>Johannes Meyer</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/odometry_to_tf</url>
+
+  <depend package="tf"/>
+  <depend package="nav_msgs"/>
+  <depend package="geometry_msgs"/>
+
+</package>
+
+
