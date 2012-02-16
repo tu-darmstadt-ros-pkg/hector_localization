@@ -37,6 +37,7 @@
 #include <geometry_msgs/QuaternionStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <nav_msgs/Odometry.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <tf/transform_broadcaster.h>
@@ -58,7 +59,7 @@ private:
   message_filters::Subscriber<sensor_msgs::NavSatFix> gps_subscriber_;
   message_filters::Subscriber<geometry_msgs::Vector3Stamped> gps_velocity_subscriber_;
   message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped> *gps_synchronizer_;
-  ros::Publisher pose_publisher_, orientation_publisher_, velocity_publisher_, imu_publisher_;
+  ros::Publisher state_publisher_, pose_publisher_, orientation_publisher_, velocity_publisher_, imu_publisher_;
   ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_;
   ros::Subscriber poseupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
@@ -78,7 +79,7 @@ private:
     }
 
     imu_subscriber_        = getNodeHandle().subscribe("raw_imu", 10, &PoseEstimationNodelet::imuCallback, this);
-    baro_subscriber_       = getNodeHandle().subscribe("height", 10, &PoseEstimationNodelet::heightCallback, this);
+    baro_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNodelet::heightCallback, this);
     magnetic_subscriber_   = getNodeHandle().subscribe("magnetic", 10, &PoseEstimationNodelet::magneticCallback, this);
 
     gps_subscriber_.subscribe(getNodeHandle(), "fix", 10);
@@ -86,6 +87,7 @@ private:
     gps_synchronizer_ = new message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped>(gps_subscriber_, gps_velocity_subscriber_, 10);
     gps_synchronizer_->registerCallback(&PoseEstimationNodelet::gpsCallback, this);
 
+    state_publisher_       = getNodeHandle().advertise<nav_msgs::Odometry>("state", 10, false);
     pose_publisher_        = getNodeHandle().advertise<geometry_msgs::PoseStamped>("pose", 10, false);
     orientation_publisher_ = getNodeHandle().advertise<geometry_msgs::QuaternionStamped>("orientation", 10, false);
     velocity_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("velocity", 10, false);
@@ -162,57 +164,43 @@ private:
   }
 
   void publish() {
-    if (pose_publisher_) {
-      tf::Stamped<tf::Pose> pose_tf;
-      pose_estimation_->getPose(pose_tf);
-      geometry_msgs::PoseStamped pose_msg;
-      tf::poseStampedTFToMsg(pose_tf, pose_msg);
-      pose_publisher_.publish(pose_msg);
+    if (state_publisher_) {
+      nav_msgs::Odometry state;
+      pose_estimation_->getState(state, false);
+      state_publisher_.publish(state);
     }
 
-    tf::Stamped<tf::Quaternion> quaternion_tf;
-    if (orientation_publisher_ || imu_publisher_) {
-      pose_estimation_->getOrientation(quaternion_tf);
+    if (pose_publisher_) {
+      geometry_msgs::PoseStamped pose_msg;
+      pose_estimation_->getPose(pose_msg);
+      pose_publisher_.publish(pose_msg);
     }
 
     if (orientation_publisher_) {
       geometry_msgs::QuaternionStamped quaternion_msg;
-      tf::quaternionStampedTFToMsg(quaternion_tf, quaternion_msg);
+      pose_estimation_->getOrientation(quaternion_msg);
       orientation_publisher_.publish(quaternion_msg);
     }
 
     if (imu_publisher_) {
       sensor_msgs::Imu imu_msg;
-      imu_msg.header.stamp = quaternion_tf.stamp_;
-      imu_msg.header.frame_id = quaternion_tf.frame_id_;
-      tf::quaternionTFToMsg(quaternion_tf, imu_msg.orientation);
+      pose_estimation_->getHeader(imu_msg.header);
+      pose_estimation_->getOrientation(imu_msg.orientation);
       pose_estimation_->getImuWithBiases(imu_msg.linear_acceleration, imu_msg.angular_velocity);
       imu_publisher_.publish(imu_msg);
     }
 
     if (velocity_publisher_) {
-      tf::Stamped<tf::Vector3> velocity_tf;
-      pose_estimation_->getVelocity(velocity_tf);
       geometry_msgs::Vector3Stamped velocity_msg;
-      tf::vector3StampedTFToMsg(velocity_tf, velocity_msg);
+      pose_estimation_->getVelocity(velocity_msg);
       velocity_publisher_.publish(velocity_msg);
     }
 
     if (angular_velocity_bias_publisher_ || linear_acceleration_bias_publisher_) {
-      tf::Stamped<tf::Vector3> angular_velocity_tf, linear_acceleration_tf;
-      pose_estimation_->getBias(angular_velocity_tf, linear_acceleration_tf);
-
-      if (angular_velocity_bias_publisher_) {
-        geometry_msgs::Vector3Stamped angular_velocity_msg;
-        tf::vector3StampedTFToMsg(angular_velocity_tf, angular_velocity_msg);
-        angular_velocity_bias_publisher_.publish(angular_velocity_msg);
-      }
-
-      if (linear_acceleration_bias_publisher_) {
-        geometry_msgs::Vector3Stamped linear_acceleration_msg;
-        tf::vector3StampedTFToMsg(linear_acceleration_tf, linear_acceleration_msg);
-        linear_acceleration_bias_publisher_.publish(linear_acceleration_msg);
-      }
+      geometry_msgs::Vector3Stamped angular_velocity_msg, linear_acceleration_msg;
+      pose_estimation_->getBias(angular_velocity_msg, linear_acceleration_msg);
+      if (angular_velocity_bias_publisher_) angular_velocity_bias_publisher_.publish(angular_velocity_msg);
+      if (linear_acceleration_bias_publisher_) linear_acceleration_bias_publisher_.publish(linear_acceleration_msg);
     }
 
     // if (transform_broadcaster_)

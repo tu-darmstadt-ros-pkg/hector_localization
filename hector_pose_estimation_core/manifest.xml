@@ -14,6 +14,7 @@
   <depend package="bfl_eigen" />
   <depend package="eigen" />
   <depend package="geometry_msgs" />
+  <depend package="nav_msgs" />
   <depend package="tf" />
 
   <export>

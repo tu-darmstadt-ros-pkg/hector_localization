@@ -43,7 +43,11 @@
 
 #include <ros/time.h>
 #include <tf/transform_datatypes.h>
-#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/QuaternionStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
+#include <nav_msgs/Odometry.h>
 
 #include "measurements/gravity.h"
 #include "measurements/zerorate.h"
@@ -96,17 +100,29 @@ public:
 	ros::Time getTimestamp() const;
 	void setTimestamp(ros::Time timestamp);
 
+	void getHeader(std_msgs::Header& header);
+	void getState(nav_msgs::Odometry& state, bool with_covariances = true);
 	void getPose(tf::Pose& pose);
 	void getPose(tf::Stamped<tf::Pose>& pose);
+	void getPose(geometry_msgs::Pose& pose);
+	void getPose(geometry_msgs::PoseStamped& pose);
 	void getPosition(tf::Point& point);
 	void getPosition(tf::Stamped<tf::Point>& point);
+	void getPosition(geometry_msgs::Point& pose);
+	void getPosition(geometry_msgs::PointStamped& pose);
 	void getOrientation(tf::Quaternion& quaternion);
 	void getOrientation(tf::Stamped<tf::Quaternion>& quaternion);
+	void getOrientation(geometry_msgs::Quaternion& pose);
+	void getOrientation(geometry_msgs::QuaternionStamped& pose);
 	void getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity);
 	void getVelocity(tf::Vector3& vector);
 	void getVelocity(tf::Stamped<tf::Vector3>& vector);
+	void getVelocity(geometry_msgs::Vector3& vector);
+	void getVelocity(geometry_msgs::Vector3Stamped& vector);
 	void getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration);
 	void getBias(tf::Stamped<tf::Vector3>& angular_velocity, tf::Stamped<tf::Vector3>& linear_acceleration);
+	void getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration);
+	void getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration);
 	void getTransforms(std::vector<tf::StampedTransform>& transforms);
 
 	ParameterList getParameters() const;

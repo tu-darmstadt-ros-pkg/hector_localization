@@ -320,6 +320,79 @@ void PoseEstimation::setTimestamp(ros::Time timestamp) {
   timestamp_ = timestamp;
 }
 
+void PoseEstimation::getHeader(std_msgs::Header& header) {
+  header.stamp = timestamp_;
+  header.frame_id = nav_frame_;
+}
+
+void PoseEstimation::getState(nav_msgs::Odometry& state, bool with_covariances) {
+  getHeader(state.header);
+  getPose(state.pose.pose);
+  getVelocity(state.twist.twist.linear);
+  state.child_frame_id = base_frame_;
+
+  const InputVector &input = system_->getInput();
+  state.twist.twist.angular.x = input(GYRO_X)  + state_(BIAS_GYRO_X);
+  state.twist.twist.angular.y = input(GYRO_Y)  + state_(BIAS_GYRO_Y);
+  state.twist.twist.angular.z = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
+
+  if (with_covariances) {
+    double qw = state_(QUATERNION_W);
+    double qx = state_(QUATERNION_X);
+    double qy = state_(QUATERNION_Y);
+    double qz = state_(QUATERNION_Z);
+    Matrix quat_to_angular_rate(3,4);
+    quat_to_angular_rate(1,1) = -qx;
+    quat_to_angular_rate(1,2) = qw;
+    quat_to_angular_rate(1,3) = -qz;
+    quat_to_angular_rate(1,4) = qy;
+    quat_to_angular_rate(2,1) = -qy;
+    quat_to_angular_rate(2,2) = -qz;
+    quat_to_angular_rate(2,3) = qw;
+    quat_to_angular_rate(2,4) = qx;
+    quat_to_angular_rate(3,1) = -qz;
+    quat_to_angular_rate(3,2) = qy;
+    quat_to_angular_rate(3,3) = -qx;
+    quat_to_angular_rate(3,4) = qw;
+    quat_to_angular_rate *= 2.0;
+
+    getCovariance();
+
+    // position covariance
+    for(int i = 0; i < 3; ++i)
+      for(int j = 0; j < 3; ++j)
+        state.pose.covariance[i*6+j] = covariance_(POSITION_X + i, POSITION_X + j);
+
+    // rotation covariance
+    SymmetricMatrix covariance_rot(quat_to_angular_rate * covariance_.sub(QUATERNION_W,QUATERNION_Z,QUATERNION_W,QUATERNION_Z) * quat_to_angular_rate.transpose());
+    for(int i = 0; i < 3; ++i)
+      for(int j = 0; j < 3; ++j)
+        state.pose.covariance[(i+3)*6+(j+3)] = covariance_rot(i+1,j+1);
+
+    // cross position/rotation covariance
+    Matrix covariance_cross(quat_to_angular_rate * covariance_.sub(QUATERNION_W,QUATERNION_Z,POSITION_X,POSITION_Z));
+    for(int i = 0; i < 3; ++i)
+      for(int j = 0; j < 3; ++j)
+        state.pose.covariance[(i+3)*6+j] = state.pose.covariance[j*6+(i+3)] = covariance_cross(i+1,j+1);
+
+    // velocity covariance
+    for(int i = 0; i < 3; ++i)
+      for(int j = 0; j < 3; ++j)
+        state.twist.covariance[i*6+j] = covariance_(VELOCITY_X + i, VELOCITY_X + j);
+
+    // angular rate covariance
+    SymmetricMatrix gyro_noise(quat_to_angular_rate * system_->getModel()->AdditiveNoiseSigmaGet().sub(QUATERNION_W,QUATERNION_Z,QUATERNION_W,QUATERNION_Z) * quat_to_angular_rate.transpose());
+    for(int i = 0; i < 3; ++i)
+      for(int j = 0; j < 3; ++j)
+        state.twist.covariance[(i+3)*6+(j+3)] = covariance_(BIAS_GYRO_X + i, BIAS_GYRO_X + j) + gyro_noise(i+1,j+1);
+
+    // cross velocity/angular_rate variance
+    for(int i = 0; i < 3; ++i)
+      for(int j = 0; j < 3; ++j)
+        state.twist.covariance[(i+3)*6+j] = state.twist.covariance[j*6+(i+3)] = covariance_(VELOCITY_X + i, BIAS_GYRO_X + j);
+  }
+}
+
 void PoseEstimation::getPose(tf::Pose& pose) {
   tf::Quaternion quaternion;
   getPosition(pose.getOrigin());
@@ -333,6 +406,16 @@ void PoseEstimation::getPose(tf::Stamped<tf::Pose>& pose) {
   pose.frame_id_ = nav_frame_;
 }
 
+void PoseEstimation::getPose(geometry_msgs::Pose& pose) {
+  getPosition(pose.position);
+  getOrientation(pose.orientation);
+}
+
+void PoseEstimation::getPose(geometry_msgs::PoseStamped& pose) {
+  getHeader(pose.header);
+  getPose(pose.pose);
+}
+
 void PoseEstimation::getPosition(tf::Point& point) {
   getState();
   point = tf::Point(state_(POSITION_X), state_(POSITION_Y), state_(POSITION_Z));
@@ -344,6 +427,18 @@ void PoseEstimation::getPosition(tf::Stamped<tf::Point>& point) {
   point.frame_id_ = nav_frame_;
 }
 
+void PoseEstimation::getPosition(geometry_msgs::Point& point) {
+  getState();
+  point.x = state_(POSITION_X);
+  point.y = state_(POSITION_Y);
+  point.z = state_(POSITION_Z);
+}
+
+void PoseEstimation::getPosition(geometry_msgs::PointStamped& point) {
+  getHeader(point.header);
+  getPosition(point.point);
+}
+
 void PoseEstimation::getOrientation(tf::Quaternion& quaternion) {
   getState();
   quaternion = tf::Quaternion(state_(QUATERNION_X), state_(QUATERNION_Y), state_(QUATERNION_Z), state_(QUATERNION_W));
@@ -353,6 +448,19 @@ void PoseEstimation::getOrientation(tf::Stamped<tf::Quaternion>& quaternion) {
   getOrientation(static_cast<tf::Quaternion &>(quaternion));
   quaternion.stamp_ = timestamp_;
   quaternion.frame_id_ = nav_frame_;
+}
+
+void PoseEstimation::getOrientation(geometry_msgs::Quaternion& quaternion) {
+  getState();
+  quaternion.w = state_(QUATERNION_W);
+  quaternion.x = state_(QUATERNION_X);
+  quaternion.y = state_(QUATERNION_Y);
+  quaternion.z = state_(QUATERNION_Z);
+}
+
+void PoseEstimation::getOrientation(geometry_msgs::QuaternionStamped& quaternion) {
+  getHeader(quaternion.header);
+  getOrientation(quaternion.quaternion);
 }
 
 void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity) {
@@ -377,6 +485,18 @@ void PoseEstimation::getVelocity(tf::Stamped<tf::Vector3>& vector) {
   vector.frame_id_ = nav_frame_;
 }
 
+void PoseEstimation::getVelocity(geometry_msgs::Vector3& vector) {
+  getState();
+  vector.x = state_(VELOCITY_X);
+  vector.y = state_(VELOCITY_Y);
+  vector.z = state_(VELOCITY_Z);
+}
+
+void PoseEstimation::getVelocity(geometry_msgs::Vector3Stamped& vector) {
+  getHeader(vector.header);
+  getVelocity(vector.vector);
+}
+
 void PoseEstimation::getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration) {
   getState();
   angular_velocity.setX(state_(BIAS_GYRO_X));
@@ -393,6 +513,24 @@ void PoseEstimation::getBias(tf::Stamped<tf::Vector3>& angular_velocity, tf::Sta
   angular_velocity.frame_id_ = base_frame_;
   linear_acceleration.stamp_ = timestamp_;
   linear_acceleration.frame_id_ = base_frame_;
+}
+
+void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration) {
+  getState();
+  angular_velocity.x = state_(BIAS_GYRO_X);
+  angular_velocity.y = state_(BIAS_GYRO_Y);
+  angular_velocity.z = state_(BIAS_GYRO_Z);
+  linear_acceleration.x = state_(BIAS_ACCEL_X);
+  linear_acceleration.y = state_(BIAS_ACCEL_Y);
+  linear_acceleration.z = state_(BIAS_ACCEL_Z);
+}
+
+void PoseEstimation::getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration) {
+  getBias(angular_velocity.vector, linear_acceleration.vector);
+  angular_velocity.header.stamp = timestamp_;
+  angular_velocity.header.frame_id = base_frame_;
+  linear_acceleration.header.stamp = timestamp_;
+  linear_acceleration.header.frame_id = base_frame_;
 }
 
 void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms) {
