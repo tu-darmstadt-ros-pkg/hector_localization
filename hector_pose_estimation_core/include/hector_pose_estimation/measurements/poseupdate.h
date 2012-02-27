@@ -70,6 +70,7 @@ public:
   class Update : public MeasurementUpdate {
   public:
     Update() {}
+    Update(const geometry_msgs::PoseWithCovarianceStamped& pose) : pose(new geometry_msgs::PoseWithCovarianceStamped(pose)) {}
     Update(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) : pose(pose) {}
     geometry_msgs::PoseWithCovarianceStampedConstPtr pose;
   };

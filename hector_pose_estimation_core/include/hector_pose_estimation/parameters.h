@@ -32,6 +32,7 @@
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include <boost/function.hpp>
 
 namespace ros {
   class NodeHandle;
@@ -39,21 +40,28 @@ namespace ros {
 
 namespace hector_pose_estimation {
 
+  class Parameter;
+  template <typename T> class TypedParameter;
+  typedef boost::shared_ptr<Parameter> ParameterPtr;
+  typedef boost::shared_ptr<const Parameter> ParameterConstPtr;
+  typedef boost::function<void(ParameterPtr)> ParameterRegisterFunc;
+
   class Parameter {
   public:
     std::string key;
     Parameter(const std::string& key) : key(key) {}
-    virtual Parameter *clone() = 0;
+    virtual ParameterPtr clone() = 0;
     virtual const char *type() const = 0;
 
-    void registerParam(ros::NodeHandle nh);
+    template <typename T> bool hasType() const {
+      return dynamic_cast<const TypedParameter<T> *>(this) != 0;
+    }
 
-  private:
-    template <typename T> class RegisterParameterImpl;
+    template <typename T> T& as() const {
+      const TypedParameter<T>& p = dynamic_cast<const TypedParameter<T> &>(*this);
+      return p.value;
+    }
   };
-
-  typedef boost::shared_ptr<Parameter> ParameterPtr;
-  typedef boost::shared_ptr<const Parameter> ParameterConstPtr;
 
   template <typename T>
   class TypedParameter : public Parameter {
@@ -62,7 +70,7 @@ namespace hector_pose_estimation {
     TypedParameter(const std::string& key, T &value) : Parameter(key), value(value) {}
     TypedParameter(const Parameter& other) : Parameter(other), value(dynamic_cast<const TypedParameter<T> &>(other).value) {}
 
-    Parameter *clone() { return new TypedParameter<T>(*this); }
+    ParameterPtr clone() { return ParameterPtr(new TypedParameter<T>(*this)); }
     const char *type() const { return typeid(T).name(); }
   };
 
@@ -117,7 +125,7 @@ namespace hector_pose_estimation {
     T& get(const std::string& key) const {
       for(iterator it = begin(); it != end(); ++it) {
         if ((*it)->key == key) {
-          return boost::shared_dynamic_cast<TypedParameter<T> &>(*it)->value;
+          return (*it)->as<T>();
         }
       }
       throw std::bad_cast();
@@ -132,7 +140,8 @@ namespace hector_pose_estimation {
       return it;
     }
 
-    void registerParams(ros::NodeHandle nh);
+    void registerParamsRos(ros::NodeHandle nh) const;
+    void registerParams(const ParameterRegisterFunc& func) const;
   };
 
   static inline ParameterList operator+(ParameterList const& list1, ParameterList const& list2)

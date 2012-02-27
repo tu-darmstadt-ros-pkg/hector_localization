@@ -62,83 +62,87 @@ public:
 
 	static PoseEstimation *Instance();
 
-	void setSystemModel(SystemModel *system_model);
-	const SystemModel *getSystemModel() const;
+	virtual bool init();
+	virtual void cleanup();
+	virtual void reset();
 
-	bool init();
-	void cleanup();
-	void reset();
+	virtual void update(const InputVector& input, ros::Time timestamp);
+	virtual void update(double dt);
 
-	void update(const InputVector& input, ros::Time timestamp);
-	void update(double dt);
+	virtual System *setSystemModel(SystemModel *system_model, const std::string& name = "system");
+	virtual System *setSystem(System *system);
+	virtual const SystemModel *getSystemModel() const;
+	virtual System *getSystem() const;
 
-	Measurement *addMeasurement(Measurement *measurement);
+	virtual Measurement *addMeasurement(Measurement *measurement);
 	Measurement *addMeasurement(const std::string& name, Measurement *measurement);
 	template <class ConcreteMeasurementModel>
 	Measurement *addMeasurement(const std::string& name, ConcreteMeasurementModel *model) {
 		return addMeasurement(new Measurement_<ConcreteMeasurementModel>(model, name));
 	}
+	virtual Measurement *getMeasurement(const std::string &name) const;
 
-	Measurement *getMeasurement(const std::string &name) const;
-	System *getSystem() const;
+	virtual const StateVector& getState();
+	virtual const StateCovariance& getCovariance();
+	virtual void setState(const StateVector& state);
+	virtual void setCovariance(const StateCovariance& covariance);
 
-	const StateVector& getState();
-	const StateCovariance& getCovariance();
-	void setState(const StateVector& state);
-	void setCovariance(const StateCovariance& covariance);
-
-	SystemStatus getSystemStatus() const;
-	SystemStatus getMeasurementStatus() const;
-	bool setSystemStatus(SystemStatus new_status);
-	bool setMeasurementStatus(SystemStatus new_status);
-	bool updateSystemStatus(SystemStatus set, SystemStatus clear);
-	bool updateMeasurementStatus(SystemStatus set, SystemStatus clear);
+	virtual SystemStatus getSystemStatus() const;
+	virtual SystemStatus getMeasurementStatus() const;
+	virtual bool inSystemStatus(SystemStatus test_status) const;
+	virtual bool setSystemStatus(SystemStatus new_status);
+	virtual bool setMeasurementStatus(SystemStatus new_status);
+	virtual bool updateSystemStatus(SystemStatus set, SystemStatus clear);
+	virtual bool updateMeasurementStatus(SystemStatus set, SystemStatus clear);
 
 	typedef boost::function<bool(SystemStatus&)> SystemStatusCallback;
-	void setSystemStatusCallback(SystemStatusCallback callback);
+	virtual void setSystemStatusCallback(SystemStatusCallback callback);
 
-	ros::Time getTimestamp() const;
-	void setTimestamp(ros::Time timestamp);
+	virtual ros::Time getTimestamp() const;
+	virtual void setTimestamp(ros::Time timestamp);
 
-	void getHeader(std_msgs::Header& header);
-	void getState(nav_msgs::Odometry& state, bool with_covariances = true);
-	void getPose(tf::Pose& pose);
-	void getPose(tf::Stamped<tf::Pose>& pose);
-	void getPose(geometry_msgs::Pose& pose);
-	void getPose(geometry_msgs::PoseStamped& pose);
-	void getPosition(tf::Point& point);
-	void getPosition(tf::Stamped<tf::Point>& point);
-	void getPosition(geometry_msgs::Point& pose);
-	void getPosition(geometry_msgs::PointStamped& pose);
-	void getOrientation(tf::Quaternion& quaternion);
-	void getOrientation(tf::Stamped<tf::Quaternion>& quaternion);
-	void getOrientation(geometry_msgs::Quaternion& pose);
-	void getOrientation(geometry_msgs::QuaternionStamped& pose);
-	void getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity);
-	void getVelocity(tf::Vector3& vector);
-	void getVelocity(tf::Stamped<tf::Vector3>& vector);
-	void getVelocity(geometry_msgs::Vector3& vector);
-	void getVelocity(geometry_msgs::Vector3Stamped& vector);
-	void getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration);
-	void getBias(tf::Stamped<tf::Vector3>& angular_velocity, tf::Stamped<tf::Vector3>& linear_acceleration);
-	void getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration);
-	void getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration);
-	void getTransforms(std::vector<tf::StampedTransform>& transforms);
+	virtual void getHeader(std_msgs::Header& header);
+	virtual void getState(nav_msgs::Odometry& state, bool with_covariances = true);
+	virtual void getPose(tf::Pose& pose);
+	virtual void getPose(tf::Stamped<tf::Pose>& pose);
+	virtual void getPose(geometry_msgs::Pose& pose);
+	virtual void getPose(geometry_msgs::PoseStamped& pose);
+	virtual void getPosition(tf::Point& point);
+	virtual void getPosition(tf::Stamped<tf::Point>& point);
+	virtual void getPosition(geometry_msgs::Point& pose);
+	virtual void getPosition(geometry_msgs::PointStamped& pose);
+	virtual void getGlobalPosition(double& latitude, double& longitude, double& altitude);
+	virtual void getOrientation(tf::Quaternion& quaternion);
+	virtual void getOrientation(tf::Stamped<tf::Quaternion>& quaternion);
+	virtual void getOrientation(geometry_msgs::Quaternion& pose);
+	virtual void getOrientation(geometry_msgs::QuaternionStamped& pose);
+	virtual void getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity);
+	virtual void getVelocity(tf::Vector3& vector);
+	virtual void getVelocity(tf::Stamped<tf::Vector3>& vector);
+	virtual void getVelocity(geometry_msgs::Vector3& vector);
+	virtual void getVelocity(geometry_msgs::Vector3Stamped& vector);
+	virtual void getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration);
+	virtual void getBias(tf::Stamped<tf::Vector3>& angular_velocity, tf::Stamped<tf::Vector3>& linear_acceleration);
+	virtual void getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration);
+	virtual void getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration);
+	virtual void getTransforms(std::vector<tf::StampedTransform>& transforms);
 
-	ParameterList getParameters() const;
+	virtual ParameterList getParameters() const;
 
-	ParameterList& parameters() { return parameters_; }
-	const ParameterList& parameters() const { return parameters_; }
+	virtual ParameterList& parameters() { return parameters_; }
+	virtual const ParameterList& parameters() const { return parameters_; }
 
-	BFL::KalmanFilter *filter() { return filter_; }
-	const BFL::KalmanFilter *filter() const { return filter_; }
+	virtual BFL::KalmanFilter *filter() { return filter_; }
+	virtual const BFL::KalmanFilter *filter() const { return filter_; }
 
-	void updated();
+	virtual void updated();
 
-private:
+protected:
 	System *system_;
 	typedef std::vector<Measurement *> Measurements;
 	Measurements measurements_;
+
+private:
 	BFL::ExtendedKalmanFilter *filter_;
 
 	StateVector state_;

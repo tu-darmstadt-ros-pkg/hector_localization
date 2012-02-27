@@ -51,7 +51,7 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   noise_(QUATERNION_W,QUATERNION_W) = noise_(QUATERNION_X,QUATERNION_X) = noise_(QUATERNION_Y,QUATERNION_Y) = noise_(QUATERNION_Z,QUATERNION_Z) = pow(0.5 * gyro_stddev_, 2);
   noise_(POSITION_X,POSITION_X) = noise_(POSITION_Y,POSITION_Y) = noise_(POSITION_Z,POSITION_Z) = pow(velocity_stddev_, 2);
   noise_(VELOCITY_X,VELOCITY_X) = noise_(VELOCITY_Y,VELOCITY_Y) = noise_(VELOCITY_Z,VELOCITY_Z) = pow(acceleration_stddev_, 2);
-  noise_(BIAS_ACCEL_X,BIAS_ACCEL_X) = noise_(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2); // 0.0;
+  noise_(BIAS_ACCEL_X,BIAS_ACCEL_X) = 0.0; // noise_(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2);
   noise_(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = pow(acceleration_drift_, 2);
   noise_(BIAS_GYRO_X,BIAS_GYRO_X)	= noise_(BIAS_GYRO_Y,BIAS_GYRO_Y)	= noise_(BIAS_GYRO_Z,BIAS_GYRO_Z)	= pow(gyro_drift_, 2);
 }

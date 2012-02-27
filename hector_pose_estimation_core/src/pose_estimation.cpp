@@ -48,6 +48,10 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
 
   base_frame_ = "base_link";
   nav_frame_ = "nav";
+  global_reference_.latitude = 0.0;
+  global_reference_.longitude = 0.0;
+  global_reference_.altitude = 0.0;
+  global_reference_.heading = 0.0;
   alignment_time_ = 0.0;
 
   parameters().add("base_frame", base_frame_);
@@ -74,25 +78,6 @@ PoseEstimation::~PoseEstimation()
 PoseEstimation *PoseEstimation::Instance() {
   if (!the_instance) the_instance = new PoseEstimation();
   return the_instance;
-}
-
-void PoseEstimation::setSystemModel(SystemModel *new_system_model) {
-  if (system_) {
-    cleanup();
-    delete system_;
-    system_ = 0;
-  }
-
-  if (!new_system_model) return;
-  system_ = new System(new_system_model);
-}
-
-const SystemModel *PoseEstimation::getSystemModel() const {
-  return system_->getModel();
-}
-
-System *PoseEstimation::getSystem() const {
-  return system_;
 }
 
 bool PoseEstimation::init()
@@ -136,13 +121,17 @@ void PoseEstimation::reset()
     status_ = static_cast<SystemStatus>(0);
   }
 
-  // reset all measurements
+  // reset system and all measurements
+  system_->reset(getState());
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->reset(getState());
 }
 
 void PoseEstimation::update(const InputVector& input, ros::Time new_timestamp)
 {
   ros::Duration dt;
+
+  // check if system is initialized
+  if (!system_) return;
 
   // set input and calculate time diff dt
   system_->setInput(input);
@@ -161,7 +150,7 @@ void PoseEstimation::update(double dt)
   else if (dt < 0.0)
     return;
 
-  // check if filter is initialized
+  // check if system and filter is initialized
   if (!system_ || !filter_) return;
 
   // time update step
@@ -173,14 +162,16 @@ void PoseEstimation::update(double dt)
 
   // iterate through measurements and do the measurement update steps
   SystemStatus measurement_status = 0;
-  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
-    Measurement *measurement = *it;
-    if (!measurement->active(getSystemStatus())) continue;
+  if (!inSystemStatus(STATE_ALIGNMENT)) {
+    for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
+      Measurement *measurement = *it;
+      if (!measurement->active(getSystemStatus())) continue;
 
-    // process the incoming queue
-    measurement->process(*this);
-    measurement_status |= measurement->getStatusFlags();
-    measurement->increase_timer(dt);
+      // process the incoming queue
+      measurement->process(*this);
+      measurement_status |= measurement->getStatusFlags();
+      measurement->increase_timer(dt);
+    }
   }
 
   // pseudo updates
@@ -209,12 +200,12 @@ void PoseEstimation::update(double dt)
 //  std::cout << "P_est = [" << filter_->PostGet()->CovarianceGet() << "]" << std::endl;
 
   // switch overall system state
-  if (status_ & STATE_ALIGNMENT) {
+  if (inSystemStatus(STATE_ALIGNMENT)) {
     if (alignment_start_.isZero()) alignment_start_ = timestamp_;
     if ((timestamp_ - alignment_start_).toSec() >= alignment_time_) {
       updateSystemStatus(STATE_DEGRADED, STATE_ALIGNMENT);
     }
-  } else if ((status_ & STATE_ROLLPITCH) && (status_ & STATE_YAW) && (status_ & STATE_XY_POSITION) && (status_ & STATE_Z_POSITION)) {
+  } else if (inSystemStatus(STATE_ROLLPITCH | STATE_YAW | STATE_XY_POSITION | STATE_Z_POSITION)) {
     // if (!(status_ & STATE_READY) && (status_ & STATE_ROLLPITCH) && (status_ & STATE_YAW) && (status_ & STATE_XY_POSITION) && (status_ & STATE_Z_POSITION)) {
     updateSystemStatus(STATE_READY, STATE_DEGRADED);
   } else {
@@ -226,6 +217,31 @@ void PoseEstimation::update(double dt)
 void PoseEstimation::updated() {
   state_is_dirty_ = covariance_is_dirty_ = true;
   setState(system_->limitState(getState()));
+}
+
+System *PoseEstimation::setSystemModel(SystemModel *new_system_model, const std::string& name) {
+  if (!new_system_model || new_system_model == getSystemModel()) return 0;
+  return setSystem(new System(new_system_model, name));
+}
+
+System *PoseEstimation::setSystem(System *new_system) {
+  if (system_) {
+    cleanup();
+    delete system_;
+    system_ = 0;
+  }
+
+  system_ = new_system;
+  return system_;
+}
+
+const SystemModel *PoseEstimation::getSystemModel() const {
+  if (!system_) return 0;
+  return system_->getModel();
+}
+
+System *PoseEstimation::getSystem() const {
+  return system_;
 }
 
 Measurement *PoseEstimation::addMeasurement(Measurement *measurement) {
@@ -280,6 +296,10 @@ SystemStatus PoseEstimation::getMeasurementStatus() const {
   return measurement_status_;
 }
 
+bool PoseEstimation::inSystemStatus(SystemStatus test_status) const {
+  return (getSystemStatus() & test_status) == test_status;
+}
+
 bool PoseEstimation::setSystemStatus(SystemStatus new_status) {
   if (status_callback_ && !status_callback_(new_status)) return false;
 
@@ -310,6 +330,10 @@ bool PoseEstimation::updateSystemStatus(SystemStatus set, SystemStatus clear) {
 
 bool PoseEstimation::updateMeasurementStatus(SystemStatus set, SystemStatus clear) {
   return setMeasurementStatus((measurement_status_ & ~clear) | set);
+}
+
+void PoseEstimation::setSystemStatusCallback(SystemStatusCallback callback) {
+  status_callback_ = callback;
 }
 
 ros::Time PoseEstimation::getTimestamp() const {
@@ -437,6 +461,10 @@ void PoseEstimation::getPosition(geometry_msgs::Point& point) {
 void PoseEstimation::getPosition(geometry_msgs::PointStamped& point) {
   getHeader(point.header);
   getPosition(point.point);
+}
+
+void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, double &altitude) {
+
 }
 
 void PoseEstimation::getOrientation(tf::Quaternion& quaternion) {

@@ -1,0 +1,1 @@
+orocos_component(hector_pose_estimation_rtt hector_pose_estimation_rtt.cpp hector_pose_estimation_rtt.h services.cpp services.h)

@@ -1,0 +1,21 @@
+<package>
+  <description brief="hector_pose_estimation_rtt">
+
+     A RTT TaskContext that runs hector_pose_estimation_core.
+
+  </description>
+  <author>Johannes Meyer</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/hector_pose_estimation_rtt</url>
+
+  <depend package="hector_pose_estimation_core"/>
+  <depend package="rtt_rosnode"/>
+
+  <depend package="rtt_sensor_msgs"/>
+  <depend package="rtt_geometry_msgs"/>
+  <depend package="rtt_nav_msgs"/>
+
+</package>
+
+

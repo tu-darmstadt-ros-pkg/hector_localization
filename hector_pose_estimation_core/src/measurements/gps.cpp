@@ -35,7 +35,7 @@ GPSModel::GPSModel()
   : MeasurementModel(4)
 {
   SymmetricMatrix noise(4);
-  position_stddev_ = 1.0;
+  position_stddev_ = 10.0;
   velocity_stddev_ = 1.0;
   parameters().add("position_stddev", position_stddev_);
   parameters().add("velocity_stddev", velocity_stddev_);

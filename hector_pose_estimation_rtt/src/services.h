@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2012, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,42 +26,37 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/parameters.h>
-#include <ros/node_handle.h>
+#ifndef HECTOR_POSE_ESTIMATION_RTT_SERVICES_H
+#define HECTOR_POSE_ESTIMATION_RTT_SERVICES_H
 
-#include <boost/algorithm/string.hpp>
+#include <rtt/Service.hpp>
+#include <hector_pose_estimation/system.h>
+#include <hector_pose_estimation/measurement.h>
 
 namespace hector_pose_estimation {
 
-template <typename T>
-class RegisterParameterImpl {
+class SystemService : public RTT::Service
+{
+private:
+  System *system;
+
 public:
-  static bool registerParam(ParameterPtr& parameter, ros::NodeHandle nh) {
-    try {
-      TypedParameter<T> p(*parameter);
-      std::string param_key(boost::algorithm::to_lower_copy(parameter->key));
-      if (!nh.getParam(param_key, p.value)) nh.setParam(param_key, p.value);
-      return true;
-    } catch(std::bad_cast&) {
-      return false;
-    }
-  }
+  SystemService(RTT::TaskContext *owner, const System *system, const std::string& name = std::string());
+  virtual ~SystemService();
 };
 
-static void registerParamRos(ParameterPtr& parameter, ros::NodeHandle nh) {
-  if (RegisterParameterImpl<std::string>::registerParam(parameter, nh)) return;
-  if (RegisterParameterImpl<double>::registerParam(parameter, nh)) return;
-  if (RegisterParameterImpl<int>::registerParam(parameter, nh)) return;
-  if (RegisterParameterImpl<bool>::registerParam(parameter, nh)) return;
-  ROS_ERROR("Could not register parameter %s due to unknown type %s!", parameter->key.c_str(), parameter->type());
-}
+class MeasurementService : public RTT::Service
+{
+private:
+  Measurement *measurement;
 
-void ParameterList::registerParamsRos(ros::NodeHandle nh) const {
-  registerParams(boost::bind(&registerParamRos, _1, nh));
-}
+public:
+  MeasurementService(RTT::TaskContext *owner, const Measurement *measurement, const std::string& name = std::string());
+  virtual ~MeasurementService();
+};
 
-void ParameterList::registerParams(const ParameterRegisterFunc& func) const {
-  for(const_iterator it = begin(); it != end(); ++it) func(*it);
-}
+void registerParamAsProperty(ParameterPtr&, RTT::PropertyBag*);
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_RTT_SERVICES_H

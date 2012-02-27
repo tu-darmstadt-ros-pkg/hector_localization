@@ -67,9 +67,9 @@ void SystemModel::getPrior(BFL::Gaussian &prior) const {
   cov(BIAS_ACCEL_X,BIAS_ACCEL_X) = 0.0;
   cov(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = 0.0;
   cov(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = 0.0;
-  cov(BIAS_GYRO_X,BIAS_GYRO_X) = 10.0 * M_PI/180.0;
-  cov(BIAS_GYRO_Y,BIAS_GYRO_Y) = 10.0 * M_PI/180.0;
-  cov(BIAS_GYRO_Z,BIAS_GYRO_Z) = 10.0 * M_PI/180.0;
+  cov(BIAS_GYRO_X,BIAS_GYRO_X) = 0.0;
+  cov(BIAS_GYRO_Y,BIAS_GYRO_Y) = 0.0;
+  cov(BIAS_GYRO_Z,BIAS_GYRO_Z) = 0.0;
 
   prior.ExpectedValueSet(mu);
   prior.CovarianceSet(cov);
