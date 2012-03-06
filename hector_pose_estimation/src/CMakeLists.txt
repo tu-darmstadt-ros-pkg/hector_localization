@@ -1,5 +1,8 @@
 rosbuild_add_library(hector_pose_estimation_nodelet pose_estimation_nodelet.cpp)
 target_link_libraries(hector_pose_estimation_nodelet hector_pose_estimation)
 
-rosbuild_add_executable(hector_pose_estimation_node pose_estimation_node.cpp)
+rosbuild_add_library(hector_pose_estimation_node pose_estimation_node.cpp)
 target_link_libraries(hector_pose_estimation_node hector_pose_estimation)
+
+rosbuild_add_executable(pose_estimation main.cpp)
+target_link_libraries(pose_estimation hector_pose_estimation_node)

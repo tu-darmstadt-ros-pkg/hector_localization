@@ -21,6 +21,6 @@
 
   <export>
     <nodelet plugin="${prefix}/hector_pose_estimation_plugins.xml" />
-    <cpp cflags="-I${prefix}/include" />
+    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib" />
   </export>
 </package>

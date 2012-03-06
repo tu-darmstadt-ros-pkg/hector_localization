@@ -47,8 +47,10 @@ public:
   SystemModel();
   virtual ~SystemModel();
 
-	ParameterList& parameters() { return parameters_; }
-	const ParameterList& parameters() const { return parameters_; }
+  virtual std::string getName() const { return std::string(); }
+
+  ParameterList& parameters() { return parameters_; }
+  const ParameterList& parameters() const { return parameters_; }
 
   void set_dt(double dt) { dt_ = dt; }
   double get_dt() const { return dt_; }
@@ -63,35 +65,35 @@ public:
     return CovarianceGet(dt_);
   }
 
-	virtual ColumnVector ExpectedValueGet(double dt) const {
-		return ExpectedValueGet();
-	}
-	virtual ColumnVector ExpectedValueGet() const {
-		return ExpectedValueGet(dt_);
-	}
+  virtual ColumnVector ExpectedValueGet(double dt) const {
+    return ExpectedValueGet();
+  }
+  virtual ColumnVector ExpectedValueGet() const {
+    return ExpectedValueGet(dt_);
+  }
 
-	virtual Matrix dfGet(unsigned int i, double dt) const {
-		return dfGet(i);
-	}
-	virtual Matrix dfGet(unsigned int i) const {
-		return dfGet(i, dt_);
-	}
+  virtual Matrix dfGet(unsigned int i, double dt) const {
+    return dfGet(i);
+  }
+  virtual Matrix dfGet(unsigned int i) const {
+    return dfGet(i, dt_);
+  }
 
-	virtual void Limit(StateVector& x) const {
-	}
+  virtual void Limit(StateVector& x) const {
+  }
 
-	virtual double getGravity() const { return 0.0; }
-
-protected:
-	double dt_;
-	ParameterList parameters_;
+  virtual double getGravity() const { return 0.0; }
 
 protected:
-	const StateVector& x_;
-	const InputVector& u_;
-	mutable StateVector x_pred_;
-	mutable Matrix A_;
-	SystemStatus measurement_status_;
+  double dt_;
+  ParameterList parameters_;
+
+protected:
+  const StateVector& x_;
+  const InputVector& u_;
+  mutable StateVector x_pred_;
+  mutable Matrix A_;
+  SystemStatus measurement_status_;
 };
 
 } // namespace hector_pose_estimation

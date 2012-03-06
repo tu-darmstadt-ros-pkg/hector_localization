@@ -92,6 +92,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 //    std::cout << "Position Update: " << std::endl;
 //    std::cout << "      x = [" << x.transpose() << "], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]" << std::endl;
+    /* double innovation = */
     updateInternal(covariance, state, Iy, y - x, H, covariance, state);
 //    std::cout << " ==> xy = [" << position_xy_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
@@ -115,6 +116,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 //    std::cout << "Height Update: " << std::endl;
 //    std::cout << "      x = " << x(1) << ", Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = " << y(1) << ", Iy = [ " << Iy << " ]" << std::endl;
+    /* double innovation = */
     updateInternal(covariance, state, Iy, y - x, H, covariance, state);
 //    std::cout << " ==> xy = " << position_z_model_.PredictionGet(ColumnVector(), state) << ", Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
@@ -122,12 +124,12 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
   }
 
   // update Yaw
-  if (sigma(4,4) > 0.0) {
+  if (sigma(6,6) > 0.0) {
     // fetch observation matrix H
     Matrix H = yaw_model_.dfGet(0);
     ColumnVector x(yaw_model_.ExpectedValueGet());
     ColumnVector y(1); y(1) = update_euler(1);
-    SymmetricMatrix Iy(sigma.sub(4,4,4,4)); // assume that sigma is a information matrix directly!
+    SymmetricMatrix Iy(sigma.sub(6,6,6,6)); // assume that sigma is a information matrix directly!
 
     // fixed_yaw_stddev_ = 5.0 * M_PI/180.0;
     if (fixed_yaw_stddev_ != 0.0) {
@@ -138,6 +140,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 //    std::cout << "Yaw Update: " << std::endl;
 //    std::cout << "      x = " << x(1) * 180.0/M_PI << "°, Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = " << y(1) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]" << std::endl;
+    /* double innovation = */
     updateInternal(covariance, state, Iy, y - x, H, covariance, state);
 //    std::cout << " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 

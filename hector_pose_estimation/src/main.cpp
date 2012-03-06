@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2012, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,31 +26,15 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_NODELET_H
-#define HECTOR_POSE_ESTIMATION_NODELET_H
+#include <hector_pose_estimation/pose_estimation_node.h>
 
-#include <nodelet/nodelet.h>
-#include <hector_pose_estimation/pose_estimation.h>
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "pose_estimation");
+  hector_pose_estimation::PoseEstimationNode node;
+  if (!node.init()) return 1;
 
-namespace hector_pose_estimation {
+  ros::spin();
 
-class Nodelet : public nodelet::Nodelet
-{
-protected:
-  PoseEstimation *pose_estimation_;
-
-public:
-  Nodelet()
-    : pose_estimation_(PoseEstimation::Instance())
-  {}
-  ~Nodelet() {}
-
-private:
-  virtual void onInit() = 0;
-  virtual void onReset() {}
-  virtual void onCleanup() {}
-};
-
-} // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_NODELET_H
+  node.cleanup();
+  return 0;
+}
