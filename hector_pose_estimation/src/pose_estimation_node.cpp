@@ -26,20 +26,173 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <nodelet/loader.h>
-#include <ros/console.h>
+#include <hector_pose_estimation/pose_estimation_node.h>
 
-int main(int argc, char **argv) {
-  ros::init(argc, argv, "pose_estimation");
-  nodelet::Loader loader;
-  nodelet::M_string remap(ros::names::getRemappings());
-  nodelet::V_string nargv;
+#include <hector_pose_estimation/system/generic_quaternion_system_model.h>
+#include <hector_pose_estimation/measurements/poseupdate.h>
+#include <hector_pose_estimation/measurements/height.h>
+#include <hector_pose_estimation/measurements/magnetic.h>
+#include <hector_pose_estimation/measurements/gps.h>
 
-  //  log4cxx::Logger::getLogger(ROSCONSOLE_ROOT_LOGGER_NAME ".hector_pose_estimation_core")->setLevel(log4cxx::Level::getDebug());
-  //  ros::console::notifyLoggerLevelsChanged();
+namespace hector_pose_estimation {
 
-  loader.load("pose_estimation", "hector_pose_estimation/PoseEstimation", remap, nargv);
-
-  ros::spin();
-  return 0;
+PoseEstimationNode::PoseEstimationNode(SystemModel *system_model)
+  : pose_estimation_(new PoseEstimation(system_model ? system_model : new GenericQuaternionSystemModel))
+  , private_nh_("~")
+{
+  pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
+  pose_estimation_->addMeasurement(new Height("height"));
+  pose_estimation_->addMeasurement(new Magnetic("magnetic"));
+  pose_estimation_->addMeasurement(new GPS("gps"));
 }
+
+PoseEstimationNode::~PoseEstimationNode()
+{
+  cleanup();
+  delete pose_estimation_;
+}
+
+bool PoseEstimationNode::init() {
+  pose_estimation_->getParameters().registerParamsRos(getPrivateNodeHandle());
+
+  if (!pose_estimation_->init()) {
+    ROS_ERROR("Intitialization of pose estimation failed!");
+    return false;
+  }
+
+  imu_subscriber_        = getNodeHandle().subscribe("raw_imu", 10, &PoseEstimationNode::imuCallback, this);
+  baro_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNode::heightCallback, this);
+  magnetic_subscriber_   = getNodeHandle().subscribe("magnetic", 10, &PoseEstimationNode::magneticCallback, this);
+
+  gps_subscriber_.subscribe(getNodeHandle(), "fix", 10);
+  gps_velocity_subscriber_.subscribe(getNodeHandle(), "gps_velocity", 10);
+  gps_synchronizer_ = new message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped>(gps_subscriber_, gps_velocity_subscriber_, 10);
+  gps_synchronizer_->registerCallback(&PoseEstimationNode::gpsCallback, this);
+
+  state_publisher_       = getNodeHandle().advertise<nav_msgs::Odometry>("state", 10, false);
+  pose_publisher_        = getNodeHandle().advertise<geometry_msgs::PoseStamped>("pose", 10, false);
+  velocity_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("velocity", 10, false);
+  imu_publisher_         = getNodeHandle().advertise<sensor_msgs::Imu>("imu", 10, false);
+  global_publisher_      = getNodeHandle().advertise<sensor_msgs::NavSatFix>("global", 10, false);
+
+  angular_velocity_bias_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("angular_velocity_bias", 10, false);
+  linear_acceleration_bias_publisher_ = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("linear_acceleration_bias", 10, false);
+
+  poseupdate_subscriber_ = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
+  syscommand_subscriber_ = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
+
+  // publish initial state
+  publish();
+
+  return true;
+}
+
+void PoseEstimationNode::reset() {
+  pose_estimation_->reset();
+}
+
+void PoseEstimationNode::cleanup() {
+  pose_estimation_->cleanup();
+  delete gps_synchronizer_;
+}
+
+void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
+  InputVector input(InputDimension);
+  input(ACCEL_X) = imu->linear_acceleration.x;
+  input(ACCEL_Y) = imu->linear_acceleration.y;
+  input(ACCEL_Z) = imu->linear_acceleration.z;
+  input(GYRO_X)  = imu->angular_velocity.x;
+  input(GYRO_Y)  = imu->angular_velocity.y;
+  input(GYRO_Z)  = imu->angular_velocity.z;
+
+  pose_estimation_->update(input, imu->header.stamp);
+  publish();
+}
+
+#ifdef USE_MAV_MSGS
+void PoseEstimationNode::heightCallback(const mav_msgs::HeightConstPtr& height) {
+  Height::MeasurementVector update(1);
+  update = height->height;
+  pose_estimation_->getMeasurement("height")->add(Height::Update(update));
+}
+#else
+void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
+  Height::MeasurementVector update(1);
+  update = height->point.z;
+  pose_estimation_->getMeasurement("height")->add(Height::Update(update));
+}
+#endif
+
+void PoseEstimationNode::magneticCallback(const geometry_msgs::Vector3StampedConstPtr& magnetic) {
+  Magnetic::MeasurementVector update(3);
+  update(1) = magnetic->vector.x;
+  update(2) = magnetic->vector.y;
+  update(3) = magnetic->vector.z;
+  pose_estimation_->getMeasurement("magnetic")->add(Magnetic::Update(update));
+}
+
+void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, const geometry_msgs::Vector3StampedConstPtr& gps_velocity) {
+  if (gps->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) return;
+  GPS::Update update;
+  update.latitude = gps->latitude * M_PI/180.0;
+  update.longitude = gps->longitude * M_PI/180.0;
+  update.velocity_north =  gps_velocity->vector.x;
+  update.velocity_east  = -gps_velocity->vector.y;
+  pose_estimation_->getMeasurement("gps")->add(update);
+}
+
+void PoseEstimationNode::poseupdateCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) {
+  pose_estimation_->getMeasurement("poseupdate")->add(PoseUpdate::Update(pose));
+}
+
+void PoseEstimationNode::syscommandCallback(const std_msgs::StringConstPtr& syscommand) {
+  if (syscommand->data == "reset") {
+    ROS_INFO("Resetting pose_estimation");
+    pose_estimation_->reset();
+    publish();
+  }
+}
+
+void PoseEstimationNode::publish() {
+  if (state_publisher_) {
+    nav_msgs::Odometry state;
+    pose_estimation_->getState(state, false);
+    state_publisher_.publish(state);
+  }
+
+  if (pose_publisher_) {
+    geometry_msgs::PoseStamped pose_msg;
+    pose_estimation_->getPose(pose_msg);
+    pose_publisher_.publish(pose_msg);
+  }
+
+  if (imu_publisher_) {
+    sensor_msgs::Imu imu_msg;
+    pose_estimation_->getHeader(imu_msg.header);
+    pose_estimation_->getOrientation(imu_msg.orientation);
+    pose_estimation_->getImuWithBiases(imu_msg.linear_acceleration, imu_msg.angular_velocity);
+    imu_publisher_.publish(imu_msg);
+  }
+
+  if (velocity_publisher_) {
+    geometry_msgs::Vector3Stamped velocity_msg;
+    pose_estimation_->getVelocity(velocity_msg);
+    velocity_publisher_.publish(velocity_msg);
+  }
+
+  if (angular_velocity_bias_publisher_ || linear_acceleration_bias_publisher_) {
+    geometry_msgs::Vector3Stamped angular_velocity_msg, linear_acceleration_msg;
+    pose_estimation_->getBias(angular_velocity_msg, linear_acceleration_msg);
+    if (angular_velocity_bias_publisher_) angular_velocity_bias_publisher_.publish(angular_velocity_msg);
+    if (linear_acceleration_bias_publisher_) linear_acceleration_bias_publisher_.publish(linear_acceleration_msg);
+  }
+
+  // if (transform_broadcaster_)
+  {
+    std::vector<tf::StampedTransform> transforms(3);
+    pose_estimation_->getTransforms(transforms);
+    transform_broadcaster_.sendTransform(transforms);
+  }
+}
+
+} // namespace hector_pose_estimation

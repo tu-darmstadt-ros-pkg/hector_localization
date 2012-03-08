@@ -26,194 +26,29 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/nodelet.h>
-
-#include <ros/ros.h>
-
-#include <sensor_msgs/Imu.h>
-#ifdef USE_MAV_MSGS
-  #include <mav_msgs/Height.h>
-#else
-  #include <geometry_msgs/PointStamped.h>
-#endif
-#include <sensor_msgs/NavSatFix.h>
-#include <geometry_msgs/QuaternionStamped.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Vector3Stamped.h>
-#include <nav_msgs/Odometry.h>
-#include <std_msgs/String.h>
-#include <tf/transform_broadcaster.h>
-
-#include <hector_pose_estimation/system/generic_quaternion_system_model.h>
-#include <hector_pose_estimation/measurements/poseupdate.h>
-#include <hector_pose_estimation/measurements/height.h>
-#include <hector_pose_estimation/measurements/magnetic.h>
-#include <hector_pose_estimation/measurements/gps.h>
-
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
+#include <hector_pose_estimation/pose_estimation_node.h>
+#include <nodelet/nodelet.h>
 
 namespace hector_pose_estimation {
 
-class PoseEstimationNodelet : public Nodelet {
-private:
-  ros::Subscriber imu_subscriber_, baro_subscriber_, magnetic_subscriber_;
-  message_filters::Subscriber<sensor_msgs::NavSatFix> gps_subscriber_;
-  message_filters::Subscriber<geometry_msgs::Vector3Stamped> gps_velocity_subscriber_;
-  message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped> *gps_synchronizer_;
-  ros::Publisher state_publisher_, pose_publisher_, velocity_publisher_, imu_publisher_, global_publisher_;
-  ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_;
-  ros::Subscriber poseupdate_subscriber_;
-  ros::Subscriber syscommand_subscriber_;
-  tf::TransformBroadcaster transform_broadcaster_;
+class PoseEstimationNodelet : public PoseEstimationNode, public nodelet::Nodelet
+{
+public:
+  PoseEstimationNodelet(SystemModel* system_model = 0)
+    : PoseEstimationNode(system_model)
+  {}
 
 private:
   void onInit() {
-    pose_estimation_->setSystemModel(new GenericQuaternionSystemModel);
-    pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
-    pose_estimation_->addMeasurement(new Height("height"));
-    pose_estimation_->addMeasurement(new Magnetic("magnetic"));
-    pose_estimation_->addMeasurement(new GPS("gps"));
-
-    pose_estimation_->getParameters().registerParamsRos(getPrivateNodeHandle());
-
-    if (!pose_estimation_->init()) {
-      ROS_ERROR("Intitialization of pose estimation failed!");
-      return;
-    }
-
-    imu_subscriber_        = getNodeHandle().subscribe("raw_imu", 10, &PoseEstimationNodelet::imuCallback, this);
-    baro_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNodelet::heightCallback, this);
-    magnetic_subscriber_   = getNodeHandle().subscribe("magnetic", 10, &PoseEstimationNodelet::magneticCallback, this);
-
-    gps_subscriber_.subscribe(getNodeHandle(), "fix", 10);
-    gps_velocity_subscriber_.subscribe(getNodeHandle(), "gps_velocity", 10);
-    gps_synchronizer_ = new message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped>(gps_subscriber_, gps_velocity_subscriber_, 10);
-    gps_synchronizer_->registerCallback(&PoseEstimationNodelet::gpsCallback, this);
-
-    state_publisher_       = getNodeHandle().advertise<nav_msgs::Odometry>("state", 10, false);
-    pose_publisher_        = getNodeHandle().advertise<geometry_msgs::PoseStamped>("pose", 10, false);
-    velocity_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("velocity", 10, false);
-    imu_publisher_         = getNodeHandle().advertise<sensor_msgs::Imu>("imu", 10, false);
-    global_publisher_      = getNodeHandle().advertise<sensor_msgs::NavSatFix>("global", 10, false);
-
-    angular_velocity_bias_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("angular_velocity_bias", 10, false);
-    linear_acceleration_bias_publisher_ = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("linear_acceleration_bias", 10, false);
-
-    poseupdate_subscriber_ = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNodelet::poseupdateCallback, this);
-    syscommand_subscriber_ = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNodelet::syscommandCallback, this);
-
-    // publish initial state
-    publish();
+    PoseEstimationNode::init();
   }
 
   void onReset() {
-    pose_estimation_->reset();
+    PoseEstimationNode::reset();
   }
 
   void onCleanup() {
-    pose_estimation_->cleanup();
-    delete gps_synchronizer_;
-  }
-
-  void imuCallback(const sensor_msgs::ImuConstPtr& imu) {
-    InputVector input(InputDimension);
-    input(ACCEL_X) = imu->linear_acceleration.x;
-    input(ACCEL_Y) = imu->linear_acceleration.y;
-    input(ACCEL_Z) = imu->linear_acceleration.z;
-    input(GYRO_X)  = imu->angular_velocity.x;
-    input(GYRO_Y)  = imu->angular_velocity.y;
-    input(GYRO_Z)  = imu->angular_velocity.z;
-
-    pose_estimation_->update(input, imu->header.stamp);
-    publish();
-  }
-
-#ifdef USE_MAV_MSGS
-  void heightCallback(const mav_msgs::HeightConstPtr& height) {
-    Height::MeasurementVector update(1);
-    update = height->height;
-    pose_estimation_->getMeasurement("height")->add(Height::Update(update));
-  }
-#else
-  void heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
-    Height::MeasurementVector update(1);
-    update = height->point.z;
-    pose_estimation_->getMeasurement("height")->add(Height::Update(update));
-  }
-#endif
-
-  void magneticCallback(const geometry_msgs::Vector3StampedConstPtr& magnetic) {
-    Magnetic::MeasurementVector update(3);
-    update(1) = magnetic->vector.x;
-    update(2) = magnetic->vector.y;
-    update(3) = magnetic->vector.z;
-    pose_estimation_->getMeasurement("magnetic")->add(Magnetic::Update(update));
-  }
-
-  void gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, const geometry_msgs::Vector3StampedConstPtr& gps_velocity) {
-    if (gps->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) return;
-    GPS::Update update;
-    update.latitude = gps->latitude * M_PI/180.0;
-    update.longitude = gps->longitude * M_PI/180.0;
-    update.velocity_north =  gps_velocity->vector.x;
-    update.velocity_east  = -gps_velocity->vector.y;
-    pose_estimation_->getMeasurement("gps")->add(update);
-  }
-
-  void poseupdateCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) {
-    pose_estimation_->getMeasurement("poseupdate")->add(PoseUpdate::Update(pose));
-  }
-
-  void syscommandCallback(const std_msgs::StringConstPtr& syscommand) {
-    if (syscommand->data == "reset") {
-      ROS_INFO("Resetting pose_estimation");
-      pose_estimation_->reset();
-      publish();
-    }
-  }
-
-  void publish() {
-    if (state_publisher_) {
-      nav_msgs::Odometry state;
-      pose_estimation_->getState(state, false);
-      state_publisher_.publish(state);
-    }
-
-    if (pose_publisher_) {
-      geometry_msgs::PoseStamped pose_msg;
-      pose_estimation_->getPose(pose_msg);
-      pose_publisher_.publish(pose_msg);
-    }
-
-    if (imu_publisher_) {
-      sensor_msgs::Imu imu_msg;
-      pose_estimation_->getHeader(imu_msg.header);
-      pose_estimation_->getOrientation(imu_msg.orientation);
-      pose_estimation_->getImuWithBiases(imu_msg.linear_acceleration, imu_msg.angular_velocity);
-      imu_publisher_.publish(imu_msg);
-    }
-
-    if (velocity_publisher_) {
-      geometry_msgs::Vector3Stamped velocity_msg;
-      pose_estimation_->getVelocity(velocity_msg);
-      velocity_publisher_.publish(velocity_msg);
-    }
-
-    if (angular_velocity_bias_publisher_ || linear_acceleration_bias_publisher_) {
-      geometry_msgs::Vector3Stamped angular_velocity_msg, linear_acceleration_msg;
-      pose_estimation_->getBias(angular_velocity_msg, linear_acceleration_msg);
-      if (angular_velocity_bias_publisher_) angular_velocity_bias_publisher_.publish(angular_velocity_msg);
-      if (linear_acceleration_bias_publisher_) linear_acceleration_bias_publisher_.publish(linear_acceleration_msg);
-    }
-
-    // if (transform_broadcaster_)
-    {
-      std::vector<tf::StampedTransform> transforms(3);
-      pose_estimation_->getTransforms(transforms);
-      transform_broadcaster_.sendTransform(transforms);
-    }
+    PoseEstimationNode::cleanup();
   }
 };
 
