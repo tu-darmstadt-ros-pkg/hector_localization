@@ -16,6 +16,8 @@
   <depend package="rtt_geometry_msgs"/>
   <depend package="rtt_nav_msgs"/>
 
+  <export>
+    <cpp cflags="-I${prefix}/include"/>
+  </export>
+
 </package>
-
-

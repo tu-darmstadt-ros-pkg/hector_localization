@@ -26,7 +26,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include "hector_pose_estimation_rtt.h"
+#include <hector_pose_estimation/hector_pose_estimation_rtt.h>
 #include "services.h"
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
@@ -39,9 +39,9 @@
 
 namespace hector_pose_estimation {
 
-PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, SystemModel *model)
+PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, SystemModel *system_model)
   : RTT::TaskContext(name, RTT::TaskContext::PreOperational)
-  , PoseEstimation(model)
+  , PoseEstimation(system_model)
 {
   this->addEventPort("raw_imu", imu_input_);
   this->addPort("poseupdate", pose_update_input_);
@@ -65,7 +65,6 @@ PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, Sy
   this->addOperation("getSystemStatus", &PoseEstimation::getSystemStatus, static_cast<PoseEstimation *>(this), RTT::OwnThread);
   this->addOperation("getMeasurementStatus", &PoseEstimation::getMeasurementStatus, static_cast<PoseEstimation *>(this), RTT::OwnThread);
 
-  PoseEstimation::setSystemModel(new GenericQuaternionSystemModel);
   PoseEstimation::addMeasurement(new PoseUpdate("PoseUpdate"));
   PoseEstimation::addMeasurement(new Height("Height"));
   PoseEstimation::addMeasurement(new Magnetic("Magnetic"));

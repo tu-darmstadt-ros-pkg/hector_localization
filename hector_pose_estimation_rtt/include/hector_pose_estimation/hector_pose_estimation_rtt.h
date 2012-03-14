@@ -55,7 +55,7 @@ namespace hector_pose_estimation {
 
 class PoseEstimationTaskContext : public RTT::TaskContext, PoseEstimation {
 public:
-  PoseEstimationTaskContext(const std::string& name = "PoseEsimation", SystemModel* model = 0);
+  PoseEstimationTaskContext(const std::string& name = "PoseEsimation", SystemModel* system_model = 0);
   virtual ~PoseEstimationTaskContext();
 
   void updateOutputs();
