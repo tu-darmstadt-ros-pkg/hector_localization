@@ -44,21 +44,22 @@ public:
 
   virtual void setGravity(double gravity) { gravity_ = gravity; }
 
+  bool applyStatusMask(const SystemStatus &status) const;
   virtual SystemStatus getStatusFlags() const;
 
-	virtual ColumnVector ExpectedValueGet() const;
-	virtual Matrix dfGet(unsigned int i) const;
+  virtual ColumnVector ExpectedValueGet() const;
+  virtual Matrix dfGet(unsigned int i) const;
 
 private:
-	double stddev_;
-	double gravity_;
+  double stddev_;
+  double gravity_;
 };
 
 class Gravity : public Measurement_<GravityModel>
 {
 public:
-	Gravity(const std::string& name = "gravity") : Measurement_<GravityModel>(name) {}
-	bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+  Gravity(const std::string& name = "gravity") : Measurement_<GravityModel>(name) {}
+  bool beforeUpdate(PoseEstimation &estimator, const Update &update);
 };
 
 } // namespace hector_pose_estimation

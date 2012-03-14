@@ -93,7 +93,10 @@ void PoseEstimationNode::reset() {
 
 void PoseEstimationNode::cleanup() {
   pose_estimation_->cleanup();
-  delete gps_synchronizer_;
+  if (gps_synchronizer_) {
+    delete gps_synchronizer_;
+    gps_synchronizer_ = 0;
+  }
 }
 
 void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {

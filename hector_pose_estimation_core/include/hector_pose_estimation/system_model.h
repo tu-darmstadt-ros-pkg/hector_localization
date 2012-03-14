@@ -56,7 +56,7 @@ public:
   double get_dt() const { return dt_; }
 
   virtual void setMeasurementStatus(const SystemStatus& status) { measurement_status_ = status; }
-  virtual SystemStatus getStatusFlags() const { return SystemStatus(0); }
+  virtual SystemStatus getStatusFlags() const { return measurement_status_; }
 
   virtual void getPrior(BFL::Gaussian &prior) const;
 

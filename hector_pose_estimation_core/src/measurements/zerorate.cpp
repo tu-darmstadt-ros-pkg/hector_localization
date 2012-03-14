@@ -41,6 +41,11 @@ ZeroRateModel::ZeroRateModel()
 
 ZeroRateModel::~ZeroRateModel() {}
 
+bool ZeroRateModel::applyStatusMask(const SystemStatus &status) const {
+  if (status & STATE_YAW) return false;
+  return true;
+}
+
 ColumnVector ZeroRateModel::ExpectedValueGet() const {
   y_(1) = -x_(BIAS_GYRO_Z);
   return y_;

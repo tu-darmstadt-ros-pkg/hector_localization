@@ -36,12 +36,17 @@ GravityModel::GravityModel()
   , gravity_(9.8065)
 {
   SymmetricMatrix noise(3);
-  parameters().add("stddev", stddev_, 98.065);
+  parameters().add("stddev", stddev_, 9.8065);
   noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
 }
 
 GravityModel::~GravityModel() {}
+
+bool GravityModel::applyStatusMask(const SystemStatus &status) const {
+  if (status & STATE_ROLLPITCH) return false;
+  return true;
+}
 
 SystemStatus GravityModel::getStatusFlags() const {
   return STATE_ROLLPITCH;

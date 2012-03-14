@@ -175,9 +175,6 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
     alpha = 1.0 - beta;
   }
 
-//  alpha = 0.5;
-//  beta = 0.5;
-
 //  std::cout << "alpha = " << alpha << ", beta = " << beta << std::endl;
 
   if (beta > 0.8) {

@@ -114,12 +114,13 @@ void PoseEstimation::reset()
   updated();
 
   // set initial status
+  alignment_start_ = ros::Time();
   if (alignment_time_ > 0) {
     status_ = STATE_ALIGNMENT;
-    alignment_start_ = ros::Time();
   } else {
     status_ = static_cast<SystemStatus>(0);
   }
+  measurement_status_ = 0;
 
   // reset system and all measurements
   system_->reset(getState());
@@ -155,6 +156,7 @@ void PoseEstimation::update(double dt)
 
   // time update step
   system_->update(*this, dt);
+  updateSystemStatus(system_->getStatusFlags(), STATE_ROLLPITCH | STATE_YAW | STATE_XY_POSITION | STATE_XY_VELOCITY | STATE_Z_POSITION | STATE_Z_VELOCITY);
 
 //  std::cout << "     u = [" << system_->getInput().transpose() << "]" << std::endl;
 //  std::cout << "x_pred = [" << getState().transpose() << "]" << std::endl;
@@ -162,39 +164,56 @@ void PoseEstimation::update(double dt)
 
   // iterate through measurements and do the measurement update steps
   SystemStatus measurement_status = 0;
-  if (!inSystemStatus(STATE_ALIGNMENT)) {
-    for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
-      Measurement *measurement = *it;
-      if (!measurement->active(getSystemStatus())) continue;
 
-      // process the incoming queue
-      measurement->process(*this);
-      measurement_status |= measurement->getStatusFlags();
-      measurement->increase_timer(dt);
+  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
+    Measurement *measurement = *it;
+    if (!measurement->active(getSystemStatus())) continue;
+
+    // pseudo updates
+    if (measurement == &gravity_) {
+      ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
+      Gravity::Update y(system_->getInput().sub(ACCEL_X, ACCEL_Z));
+      gravity_.update(*this, y);
+      continue;
     }
-  }
 
-  // pseudo updates
-  if (!(measurement_status & (STATE_XY_VELOCITY | STATE_XY_POSITION))) {
-    ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
-    Gravity::Update y(system_->getInput().sub(ACCEL_X, ACCEL_Z));
-    gravity_.enable();
-    if (gravity_.update(*this, y)) measurement_status |= gravity_.getStatusFlags();
-  } else {
-    gravity_.disable();
-  }
+    if (measurement == &zerorate_) {
+      ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_.getName().c_str());
+      ZeroRate::Update y(system_->getInput().sub(GYRO_Z, GYRO_Z));
+      zerorate_.update(*this, y);
+      continue;
+    }
 
-  if (!(measurement_status & STATE_YAW)) {
-    ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_.getName().c_str());
-    ZeroRate::Update y(system_->getInput().sub(GYRO_Z, GYRO_Z));
-    zerorate_.enable();
-    if (zerorate_.update(*this, y)) measurement_status |= zerorate_.getStatusFlags();
-  } else {
-    zerorate_.disable();
+    // skip all other measurements during alignment
+    if (inSystemStatus(STATE_ALIGNMENT)) continue;
+
+    // process the incoming queue
+    measurement->process(*this);
+    measurement_status |= measurement->getStatusFlags();
+    measurement->increase_timer(dt);
   }
 
   // update the measurement status
-  updateMeasurementStatus(measurement_status, STATE_ROLLPITCH | STATE_YAW | STATE_XY_POSITION | STATE_XY_VELOCITY | STATE_Z_POSITION | STATE_Z_VELOCITY);
+  setMeasurementStatus(measurement_status);
+
+//  // pseudo updates
+//  if (gravity_.active(getSystemStatus())) {
+//    ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
+//    Gravity::Update y(system_->getInput().sub(ACCEL_X, ACCEL_Z));
+//    // gravity_.enable();
+//    if (gravity_.update(*this, y)) measurement_status |= gravity_.getStatusFlags();
+//  } else {
+//    // gravity_.disable();
+//  }
+
+//  if (zerorate_.active(getSystemStatus())) {
+//    ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_.getName().c_str());
+//    ZeroRate::Update y(system_->getInput().sub(GYRO_Z, GYRO_Z));
+//    // zerorate_.enable();
+//    if (zerorate_.update(*this, y)) measurement_status |= zerorate_.getStatusFlags();
+//  } else {
+//    // zerorate_.disable();
+//  }
 
 //  std::cout << "x_est = [" << getState().transpose() << "]" << std::endl;
 //  std::cout << "P_est = [" << filter_->PostGet()->CovarianceGet() << "]" << std::endl;
@@ -289,7 +308,7 @@ void PoseEstimation::setCovariance(const StateCovariance& covariance) {
 
 
 SystemStatus PoseEstimation::getSystemStatus() const {
-  return status_ | measurement_status_ | system_->getStatusFlags();
+  return status_;
 }
 
 SystemStatus PoseEstimation::getMeasurementStatus() const {
@@ -313,8 +332,6 @@ bool PoseEstimation::setSystemStatus(SystemStatus new_status) {
 }
 
 bool PoseEstimation::setMeasurementStatus(SystemStatus new_measurement_status) {
-  setSystemStatus(status_ | new_measurement_status);
-
   SystemStatus set = new_measurement_status & ~measurement_status_;
   SystemStatus cleared = measurement_status_ & ~new_measurement_status;
   if (set)     ROS_INFO_STREAM("Set measurement state " << getSystemStatusString(set));

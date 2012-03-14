@@ -117,10 +117,10 @@ public:
     delete model_;
   }
 
-	virtual bool init() { return model_->init() && Measurement::init(); }
-	virtual void cleanup() { model_->cleanup(); Measurement::cleanup(); }
-	virtual void reset() { model_->reset(); Measurement::reset(); }
-	virtual void reset(const StateVector& state) { model_->reset(state); Measurement::reset(state); }
+  virtual bool init() { return model_->init() && Measurement::init(); }
+  virtual void cleanup() { model_->cleanup(); Measurement::cleanup(); }
+  virtual void reset() { model_->reset(); Measurement::reset(); }
+  virtual void reset(const StateVector& state) { model_->reset(state); Measurement::reset(state); }
 
   virtual Model* getModel() const { return model_; }
   virtual bool active(const SystemStatus& status) { return enabled() && getModel()->applyStatusMask(status); }

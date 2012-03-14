@@ -42,6 +42,8 @@ public:
   ZeroRateModel();
   virtual ~ZeroRateModel();
 
+  bool applyStatusMask(const SystemStatus &status) const;
+
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
 

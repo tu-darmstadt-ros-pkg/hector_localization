@@ -38,8 +38,8 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   gyro_stddev_ = 1.0 * M_PI/180.0;
   acceleration_stddev_ = 1.0;
   velocity_stddev_ = 0.0;
-  acceleration_drift_ = 1.0e-6;
-  gyro_drift_ = 5.0e-6 * M_PI/180.0;
+  acceleration_drift_ = 1.0e-3;
+  gyro_drift_ = 1.0e-3 * M_PI/180.0;
   parameters().add("gravity", gravity_);
   parameters().add("gyro_stddev", gyro_stddev_);
   parameters().add("acceleration_stddev", acceleration_stddev_);
@@ -51,7 +51,7 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   noise_(QUATERNION_W,QUATERNION_W) = noise_(QUATERNION_X,QUATERNION_X) = noise_(QUATERNION_Y,QUATERNION_Y) = noise_(QUATERNION_Z,QUATERNION_Z) = pow(0.5 * gyro_stddev_, 2);
   noise_(POSITION_X,POSITION_X) = noise_(POSITION_Y,POSITION_Y) = noise_(POSITION_Z,POSITION_Z) = pow(velocity_stddev_, 2);
   noise_(VELOCITY_X,VELOCITY_X) = noise_(VELOCITY_Y,VELOCITY_Y) = noise_(VELOCITY_Z,VELOCITY_Z) = pow(acceleration_stddev_, 2);
-  noise_(BIAS_ACCEL_X,BIAS_ACCEL_X) = 0.0; // noise_(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2);
+  noise_(BIAS_ACCEL_X,BIAS_ACCEL_X) = noise_(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2);
   noise_(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = pow(acceleration_drift_, 2);
   noise_(BIAS_GYRO_X,BIAS_GYRO_X)    = noise_(BIAS_GYRO_Y,BIAS_GYRO_Y)    = noise_(BIAS_GYRO_Z,BIAS_GYRO_Z)    = pow(gyro_drift_, 2);
 }
@@ -63,9 +63,9 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 SystemStatus GenericQuaternionSystemModel::getStatusFlags() const
 {
     SystemStatus flags = measurement_status_;
-    if (measurement_status_ & STATE_XY_POSITION) flags |= STATE_XY_VELOCITY | STATE_ROLLPITCH;
-    if (measurement_status_ & STATE_Z_POSITION)  flags |= STATE_Z_VELOCITY;
-    if (measurement_status_ & STATE_XY_VELOCITY) flags |= STATE_ROLLPITCH;
+    if (flags & STATE_XY_POSITION) flags |= STATE_XY_VELOCITY | STATE_ROLLPITCH;
+    if (flags & STATE_Z_POSITION)  flags |= STATE_Z_VELOCITY;
+    if (flags & STATE_XY_VELOCITY) flags |= STATE_ROLLPITCH;
     return flags;
 }
 
@@ -194,17 +194,18 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt) const
     A_(VELOCITY_X,QUATERNION_X) = dt*( 2.0*q2*aby+2.0*q3*abz+2.0*q1*abx);
     A_(VELOCITY_X,QUATERNION_Y) = dt*(-2.0*q2*abx+2.0*q1*aby+2.0*q0*abz);
     A_(VELOCITY_X,QUATERNION_Z) = dt*(-2.0*q3*abx-2.0*q0*aby+2.0*q1*abz);
-//    A_(VELOCITY_X,BIAS_ACCEL_X) = dt*(q0*q0+q1*q1-q2*q2-q3*q3);
-//    A_(VELOCITY_X,BIAS_ACCEL_Y) = dt*(2.0*q1*q2-2.0*q0*q3);
-//    A_(VELOCITY_X,BIAS_ACCEL_Z) = dt*(2.0*q1*q3+2.0*q0*q2);
+    A_(VELOCITY_X,BIAS_ACCEL_X) = dt*(q0*q0+q1*q1-q2*q2-q3*q3);
+    A_(VELOCITY_X,BIAS_ACCEL_Y) = dt*(2.0*q1*q2-2.0*q0*q3);
+    A_(VELOCITY_X,BIAS_ACCEL_Z) = dt*(2.0*q1*q3+2.0*q0*q2);
 
     A_(VELOCITY_Y,QUATERNION_W) = dt*(2.0*q3*abx-2.0*q1*abz+2.0*q0*aby);
     A_(VELOCITY_Y,QUATERNION_X) = dt*(2.0*q2*abx-2.0*q1*aby-2.0*q0*abz);
     A_(VELOCITY_Y,QUATERNION_Y) = dt*(2.0*q1*abx+2.0*q3*abz+2.0*q2*aby);
     A_(VELOCITY_Y,QUATERNION_Z) = dt*(2.0*q0*abx-2.0*q3*aby+2.0*q2*abz);
-//    A_(VELOCITY_Y,BIAS_ACCEL_X) = dt*(2.0*q1*q2+2.0*q0*q3);
-//    A_(VELOCITY_Y,BIAS_ACCEL_Y) = dt*(q0*q0-q1*q1+q2*q2-q3*q3);
-//    A_(VELOCITY_Y,BIAS_ACCEL_Z) = dt*(2.0*q2*q3-2.0*q0*q1);
+    A_(VELOCITY_Y,BIAS_ACCEL_X) = dt*(2.0*q1*q2+2.0*q0*q3);
+    A_(VELOCITY_Y,BIAS_ACCEL_Y) = dt*(q0*q0-q1*q1+q2*q2-q3*q3);
+    A_(VELOCITY_Y,BIAS_ACCEL_Z) = dt*(2.0*q2*q3-2.0*q0*q1);
+
   } else {
     A_(VELOCITY_X,QUATERNION_W) = 0.0;
     A_(VELOCITY_X,QUATERNION_X) = 0.0;
@@ -231,6 +232,7 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt) const
     A_(VELOCITY_Z,BIAS_ACCEL_X) = dt*( 2.0*q1*q3-2.0*q0*q2);
     A_(VELOCITY_Z,BIAS_ACCEL_Y) = dt*( 2.0*q2*q3+2.0*q0*q1);
     A_(VELOCITY_Z,BIAS_ACCEL_Z) = dt*(q0*q0-q1*q1-q2*q2+q3*q3);
+
   } else {
     A_(VELOCITY_Z,QUATERNION_W) = 0.0;
     A_(VELOCITY_Z,QUATERNION_X) = 0.0;
