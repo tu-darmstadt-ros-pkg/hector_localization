@@ -52,7 +52,7 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   global_reference_.longitude = 0.0;
   global_reference_.altitude = 0.0;
   global_reference_.heading = 0.0;
-  alignment_time_ = 0.0;
+  alignment_time_ = 5.0;
 
   parameters().add("base_frame", base_frame_);
   parameters().add("nav_frame", nav_frame_);

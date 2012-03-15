@@ -87,8 +87,13 @@ private:
   double fixed_position_z_stddev_;
   double fixed_yaw_stddev_;
 
+  double max_time_difference_;
+  double max_position_xy_error_;
+  double max_position_z_error_;
+  double max_yaw_error_;
+
   double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const;
-  double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &i, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy);
+  double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error = 0.0);
 
 protected:
   typedef Queue_<Update> Queue;

@@ -42,11 +42,20 @@ PoseUpdate::PoseUpdate(const std::string& name)
   fixed_position_z_stddev_ = 0.0;
   fixed_yaw_stddev_ = 0.0;
 
+  max_time_difference_ = 1.0;
+  max_position_xy_error_ = 3.0; // 3 sigma
+  max_position_z_error_ = 3.0; // 3 sigma
+  max_yaw_error_ = 3.0; // 3 sigma
+
   parameters().add("alpha", alpha_);
   parameters().add("beta", beta_);
   parameters().add("fixed_position_xy_stddev", fixed_position_xy_stddev_);
   parameters().add("fixed_position_z_stddev", fixed_position_z_stddev_);
   parameters().add("fixed_yaw_stddev", fixed_yaw_stddev_);
+  parameters().add("max_time_difference", max_time_difference_);
+  parameters().add("max_position_xy_error", max_position_xy_error_ );
+  parameters().add("max_position_z_error", max_position_z_error_);
+  parameters().add("max_yaw_error", max_yaw_error_);
 }
 
 PoseUpdate::~PoseUpdate()
@@ -56,10 +65,14 @@ PoseUpdate::~PoseUpdate()
 bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &update_) {
   Update const &update = static_cast<Update const &>(update_);
 
-  // convert incoming update information
-  ColumnVector update_euler(Eigen::Quaterniond(update.pose->pose.pose.orientation.w, update.pose->pose.pose.orientation.x, update.pose->pose.pose.orientation.y, update.pose->pose.pose.orientation.z).toRotationMatrix().eulerAngles(2,1,0));
-  SymmetricMatrix sigma(6);
-  covarianceMsgToBfl(update.pose->pose.covariance, sigma);
+  // convert incoming update information to Eigen
+  Eigen::Vector3d update_pose(update.pose->pose.pose.position.x, update.pose->pose.pose.position.y, update.pose->pose.pose.position.z);
+  Eigen::Quaterniond update_orientation(update.pose->pose.pose.orientation.w, update.pose->pose.pose.orientation.x, update.pose->pose.pose.orientation.y, update.pose->pose.pose.orientation.z);
+  Eigen::Vector3d update_euler(update_orientation.toRotationMatrix().eulerAngles(2,1,0));
+
+   // assume that message covariance is a information matrix directly!
+  SymmetricMatrix information(6);
+  covarianceMsgToBfl(update.pose->pose.covariance, information);
 
   // fetch current state
   ColumnVector state = estimator.getState();
@@ -70,18 +83,28 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
   position_z_model_.ConditionalArgumentSet(0,state);
   yaw_model_.ConditionalArgumentSet(0,state);
 
-//   std::cout << "PoseUpdate: state = [ " << state.transpose() << " ]" << std::endl
-//             << "            euler = [ " << update_euler.transpose() << " ], sigma = [ " << sigma << " ]" << std::endl;
+//  std::cout << "PoseUpdate: state = [ " << state.transpose() << " ]" << std::endl
+//            << "     update: pose = [ " << update_pose.transpose() << " ], euler = [ " << update_euler.transpose() << " ], information = [ " << information << " ]" << std::endl;
+//  std::cout << "             dt = " << (estimator.getTimestamp() - update.pose->header.stamp).toSec() << " s" << std::endl;
+
+  // predict update pose using the estimated velocity and degrade information
+  double dt = (estimator.getTimestamp() - update.pose->header.stamp).toSec();
+  if (max_time_difference_ > 0.0) {
+    if (dt < 0.0 || dt > max_time_difference_) return false;
+    Eigen::Vector3d state_velocity(state.sub(VELOCITY_X, VELOCITY_Z));
+    update_pose = update_pose + dt * state_velocity;
+    information = information * (1.0 - (dt*dt)/(max_time_difference_*max_time_difference_));
+  }
 
   // update PositionXY
-  if (sigma(1,1) > 0.0 && sigma(2,2) > 0.0) {
+  if (information(1,1) > 0.0 && information(2,2) > 0.0) {
     // fetch observation matrix H
     Matrix H = position_xy_model_.dfGet(0);
     ColumnVector x(position_xy_model_.ExpectedValueGet());
     ColumnVector y(2);
-    SymmetricMatrix Iy(sigma.sub(1,2,1,2)); // assume that sigma is a information matrix directly!
-    y(1) = update.pose->pose.pose.position.x;
-    y(2) = update.pose->pose.pose.position.y;
+    SymmetricMatrix Iy(information.sub(1,2,1,2));
+    y(1) = update_pose.x();
+    y(2) = update_pose.y();
 
     // fixed_position_xy_stddev_ = 1.0;
     if (fixed_position_xy_stddev_ != 0.0) {
@@ -93,19 +116,19 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 //    std::cout << "      x = [" << x.transpose() << "], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]" << std::endl;
     /* double innovation = */
-    updateInternal(covariance, state, Iy, y - x, H, covariance, state);
+    updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_xy", max_position_xy_error_);
 //    std::cout << " ==> xy = [" << position_xy_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
     status_flags_ |= STATE_XY_POSITION;
   }
 
   // update PositionZ
-  if (sigma(3,3) > 0.0) {
+  if (information(3,3) > 0.0) {
     // fetch observation matrix H
     Matrix H = position_z_model_.dfGet(0);
     ColumnVector x(position_z_model_.ExpectedValueGet());
-    ColumnVector y(1); y(1) =  update.pose->pose.pose.position.z;
-    SymmetricMatrix Iy(sigma.sub(3,3,3,3)); // assume that sigma is a information matrix directly!
+    ColumnVector y(1); y(1) =  update_pose.z();
+    SymmetricMatrix Iy(information.sub(3,3,3,3));
 
     // fixed_position_z_stddev_ = 1.0;
     if (fixed_position_z_stddev_ != 0.0) {
@@ -117,19 +140,19 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 //    std::cout << "      x = " << x(1) << ", Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = " << y(1) << ", Iy = [ " << Iy << " ]" << std::endl;
     /* double innovation = */
-    updateInternal(covariance, state, Iy, y - x, H, covariance, state);
+    updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_z", max_position_z_error_);
 //    std::cout << " ==> xy = " << position_z_model_.PredictionGet(ColumnVector(), state) << ", Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
     status_flags_ |= STATE_Z_POSITION;
   }
 
   // update Yaw
-  if (sigma(6,6) > 0.0) {
+  if (information(6,6) > 0.0) {
     // fetch observation matrix H
     Matrix H = yaw_model_.dfGet(0);
     ColumnVector x(yaw_model_.ExpectedValueGet());
-    ColumnVector y(1); y(1) = update_euler(1);
-    SymmetricMatrix Iy(sigma.sub(6,6,6,6)); // assume that sigma is a information matrix directly!
+    ColumnVector y(1); y(1) = update_euler(0);
+    SymmetricMatrix Iy(information.sub(6,6,6,6));
 
     // fixed_yaw_stddev_ = 5.0 * M_PI/180.0;
     if (fixed_yaw_stddev_ != 0.0) {
@@ -141,7 +164,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 //    std::cout << "      x = " << x(1) * 180.0/M_PI << "°, Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = " << y(1) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]" << std::endl;
     /* double innovation = */
-    updateInternal(covariance, state, Iy, y - x, H, covariance, state);
+    updateInternal(covariance, state, Iy, y - x, H, covariance, state, "yaw", max_yaw_error_);
 //    std::cout << " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
     status_flags_ |= STATE_YAW;
@@ -149,8 +172,8 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 
   estimator.setState(state);
   estimator.setCovariance(covariance);
-  updated();
   estimator.updated();
+  updated();
 
   return true;
 }
@@ -161,13 +184,20 @@ double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatr
   return tr_y / (tr_x + tr_y);
 }
 
-double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &i, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy) {
+double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error) {
   Matrix HT(H.transpose());
   SymmetricMatrix H_Px_HT(H*Px*HT);
   SymmetricMatrix Ix(H_Px_HT.inverse());
 
 //  std::cout << "H = [" << H << "]" << std::endl;
 //  std::cout << "Ix = [" << Ix << "]" << std::endl;
+
+  if (max_error > 0.0) {
+    if (error.transpose() * Ix * error > max_error * max_error) {
+        ROS_WARN_STREAM("Ignoring poseupdate for " << text << " as the error [ " << error.transpose() << " ], Ix = [ " << Ix << " ] is too high!");
+      return 0.0;
+    }
+  }
 
   double alpha = alpha_, beta = beta_;
   if (alpha == 0.0 && beta == 0.0) {
@@ -178,7 +208,7 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
 //  std::cout << "alpha = " << alpha << ", beta = " << beta << std::endl;
 
   if (beta > 0.8) {
-    ROS_DEBUG_STREAM("Reducing update variance due to high information difference between Ix = [" << Ix << "] and Iy = [" << Iy << "]");
+    ROS_DEBUG_STREAM("Reducing update variance for " << text << " due to high information difference between Ix = [" << Ix << "] and Iy = [" << Iy << "]");
     beta = 0.8;
     alpha = 1.0 - beta;
   }
@@ -192,15 +222,15 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
   if (innovation > 0.0) {
     S_1 = (Ii.inverse() + H_Px_HT).inverse();
   } else if (innovation <= 0.0) {
-    // ROS_DEBUG_STREAM("Ignoring useless poseupdate for H = [" << H << "]" << " with information [" << Iy << "]");
+    // ROS_DEBUG_STREAM("Ignoring useless poseupdate for " << text << " with information [" << Iy << "]");
     // return innovation;
   }
 
   Pxy = Px - Px  * HT * S_1 * H * Px; // may invalidate Px if &Pxy == &Px
-   xy =  x + Pxy * HT * Iy * beta * i;
+   xy =  x + Pxy * HT * Iy * beta * error;
 
 //  std::cout << "K = [" << (Pxy * HT * Iy * beta) << "]" << std::endl;
-//  std::cout << "dx = [" << ( Pxy * HT * Iy * beta * i).transpose() << "]" << std::endl;
+//  std::cout << "dx = [" << ( Pxy * HT * Iy * beta * error).transpose() << "]" << std::endl;
 
   return innovation;
 }
