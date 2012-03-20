@@ -38,8 +38,8 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   gyro_stddev_ = 1.0 * M_PI/180.0;
   acceleration_stddev_ = 1.0;
   velocity_stddev_ = 0.0;
-  acceleration_drift_ = 1.0e-1;
-  gyro_drift_ = 1.0e-1 * M_PI/180.0;
+  acceleration_drift_ = 0.0;
+  gyro_drift_ = 1.0e-2 * M_PI/180.0;
   parameters().add("gravity", gravity_);
   parameters().add("gyro_stddev", gyro_stddev_);
   parameters().add("acceleration_stddev", acceleration_stddev_);
