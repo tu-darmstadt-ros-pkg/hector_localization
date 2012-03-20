@@ -27,7 +27,6 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/measurements/gravity.h>
 
 namespace hector_pose_estimation {
 
@@ -43,6 +42,7 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   , measurement_status_()
   , gravity_("gravity")
   , zerorate_("zerorate")
+//  , heading_("heading")
 {
   if (!the_instance) the_instance = this;
 
@@ -68,6 +68,7 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   // add default measurements
   addMeasurement(&gravity_);
   addMeasurement(&zerorate_);
+//  addMeasurement(&heading_);
 }
 
 PoseEstimation::~PoseEstimation()
@@ -82,7 +83,7 @@ PoseEstimation *PoseEstimation::Instance() {
 
 bool PoseEstimation::init()
 {
-  // cleanup everything
+  // check if system is initialized
   if (!system_) return false;
 
   // reset (or initialize) filter and measurements
@@ -110,6 +111,10 @@ void PoseEstimation::reset()
 {
   // reset extended Kalman filter
   if (filter_) cleanup();
+
+  // check if system is initialized
+  if (!system_) return;
+
   filter_ = new BFL::ExtendedKalmanFilter(system_->getPrior());
   updated();
 
@@ -183,6 +188,13 @@ void PoseEstimation::update(double dt)
       zerorate_.update(*this, y);
       continue;
     }
+
+//    if (measurement == &heading_) {
+//      ROS_DEBUG("Updating with pseudo measurement model %s", heading_.getName().c_str());
+//      Heading::Update y(0.0);
+//      heading_.update(*this, y);
+//      continue;
+//    }
 
     // skip all other measurements during alignment
     if (inSystemStatus(STATE_ALIGNMENT)) continue;

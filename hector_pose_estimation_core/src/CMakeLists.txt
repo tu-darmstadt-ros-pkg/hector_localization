@@ -9,6 +9,7 @@ set(hector_pose_estimation_SOURCES
   measurement_model.cpp
   measurements/gravity.cpp
   measurements/zerorate.cpp
+  measurements/heading.cpp
   measurements/magnetic.cpp
   measurements/height.cpp
   measurements/gps.cpp

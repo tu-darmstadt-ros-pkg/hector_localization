@@ -36,7 +36,7 @@ GravityModel::GravityModel()
   , gravity_(9.8065)
 {
   SymmetricMatrix noise(3);
-  parameters().add("stddev", stddev_, 9.8065);
+  parameters().add("stddev", stddev_, 1.0); //9.8065);
   noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
 }
@@ -77,7 +77,7 @@ Matrix GravityModel::dfGet(unsigned int i) const {
   C_(1,QUATERNION_W) = -gravity_*2*qy;
   C_(1,QUATERNION_X) =  gravity_*2*qz;
   C_(1,QUATERNION_Y) = -gravity_*2*qw;
-  C_(1,QUATERNION_Z) =  gravity_*2*qz;
+  C_(1,QUATERNION_Z) =  gravity_*2*qx;
   C_(2,QUATERNION_W) =  gravity_*2*qx;
   C_(2,QUATERNION_X) =  gravity_*2*qw;
   C_(2,QUATERNION_Y) =  gravity_*2*qz;

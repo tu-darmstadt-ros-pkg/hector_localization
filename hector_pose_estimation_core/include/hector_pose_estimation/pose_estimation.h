@@ -51,6 +51,7 @@
 
 #include "measurements/gravity.h"
 #include "measurements/zerorate.h"
+//#include "measurements/heading.h"
 
 namespace hector_pose_estimation {
 
@@ -167,6 +168,7 @@ private:
 
   Gravity gravity_;
   ZeroRate zerorate_;
+//  Heading heading_;
 };
 
 } // namespace hector_pose_estimation

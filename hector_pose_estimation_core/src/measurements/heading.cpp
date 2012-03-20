@@ -26,85 +26,58 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/pose_estimation.h>
-#include <ros/console.h>
+#include <hector_pose_estimation/measurements/heading.h>
 
 namespace hector_pose_estimation {
 
-Measurement::Measurement(const std::string& name)
-  : name_(name)
-  , status_flags_(0)
-  , enabled_(true)
-  , min_interval_(0.0)
-  , timeout_(1.0)
-  , timer_(0.0)
+HeadingModel::HeadingModel()
+  : MeasurementModel(1)
 {
-  parameters().add("enabled", enabled_);
-  parameters().add("min_interval", min_interval_);
+  SymmetricMatrix noise(1);
+  parameters().add("stddev", stddev_, 10.0*M_PI/180.0);
+  noise(1,1) = pow(stddev_, 2);
+  this->AdditiveNoiseSigmaSet(noise);
 }
 
-Measurement::~Measurement()
-{
-}
+HeadingModel::~HeadingModel() {}
 
-bool Measurement::init()
-{
-  queue().clear();
-  timer_ = 0;
+bool HeadingModel::applyStatusMask(const SystemStatus &status) const {
+  if (status & STATE_YAW) return false;
   return true;
 }
 
-void Measurement::cleanup()
-{
+SystemStatus HeadingModel::getStatusFlags() const {
+  return STATE_YAW;
 }
 
-void Measurement::reset()
-{
-  init();
-  onReset();
+ColumnVector HeadingModel::ExpectedValueGet() const {
+  const double qw = x_(QUATERNION_W);
+  const double qx = x_(QUATERNION_X);
+  const double qy = x_(QUATERNION_Y);
+  const double qz = x_(QUATERNION_Z);
+
+  y_(1) = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
+
+  return y_;
 }
 
-void Measurement::increase_timer(double dt) {
-  timer_ += dt;
-}
+Matrix HeadingModel::dfGet(unsigned int i) const {
+  if (i != 0) return Matrix();
 
-void Measurement::updated() {
-  timer_ = 0.0;
-  if (getModel()) status_flags_ = getModel()->getStatusFlags();
-}
+  const double qw = x_(QUATERNION_W);
+  const double qx = x_(QUATERNION_X);
+  const double qy = x_(QUATERNION_Y);
+  const double qz = x_(QUATERNION_Z);
+  const double t1 = qw*qw + qx*qx - qy*qy - qz*qz;
+  const double t2 = 2*(qx*qy + qw*qz);
+  const double t3 = 1.0 / (t1*t1 + t2*t2);
 
-bool Measurement::timedout() const {
-  if (timer_ > timeout_) {
-    if (status_flags_ > 0) ROS_WARN("Measurement %s timed out.", getName().c_str());
-    return true;
-  }
-  return false;
-}
+  C_(1,QUATERNION_W) = 2.0 * t3 * (qz * t1 - qw * t2);
+  C_(1,QUATERNION_X) = 2.0 * t3 * (qy * t1 - qx * t2);
+  C_(1,QUATERNION_Y) = 2.0 * t3 * (qx * t1 + qy * t2);
+  C_(1,QUATERNION_Z) = 2.0 * t3 * (qw * t1 + qz * t2);
 
-void Measurement::add(const MeasurementUpdate& update) {
-  queue().push(update);
-}
-
-void Measurement::process(PoseEstimation &estimator) {
-  while(!(queue().empty())) {
-    update(estimator, queue().pop());
-  }
-
-  // check for timeout
-  if (timedout()) status_flags_ = 0;
-}
-
-void Measurement::updateInternal(PoseEstimation &estimator, ColumnVector const& y) {
-  ROS_DEBUG("Updating with measurement %s", getName().c_str());
-
-  estimator.filter()->Update(getModel(), y);
-  updated();
-  estimator.updated();
-
-//   std::cout << "[" << getName() << "] update   = [" << y.transpose() << "]" << std::endl;
-//   std::cout << "[" << getName() << "] expected = [" << getModel()->ExpectedValueGet().transpose() << "]" << std::endl;
-//   std::cout << "[" << getName() << "] dy/dx    = [" << getModel()->dfGet(0) << "]" << std::endl;
+  return C_;
 }
 
 } // namespace hector_pose_estimation
