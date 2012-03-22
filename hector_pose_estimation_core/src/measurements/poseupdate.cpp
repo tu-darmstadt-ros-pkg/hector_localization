@@ -163,8 +163,12 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 //    std::cout << "Yaw Update: " << std::endl;
 //    std::cout << "      x = " << x(1) * 180.0/M_PI << "°, Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
 //    std::cout << "      y = " << y(1) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]" << std::endl;
+
+    ColumnVector error(y - x);
+    error(1) = error(1) - 2.0*M_PI * round(error(1) / (2.0*M_PI));
+
     /* double innovation = */
-    updateInternal(covariance, state, Iy, y - x, H, covariance, state, "yaw", max_yaw_error_);
+    updateInternal(covariance, state, Iy, error, H, covariance, state, "yaw", max_yaw_error_);
 //    std::cout << " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
 
     status_flags_ |= STATE_YAW;
