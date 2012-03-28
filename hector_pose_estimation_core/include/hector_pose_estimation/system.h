@@ -46,8 +46,8 @@ public:
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
 
-	virtual void setModel(SystemModel *system_model) { model_ = system_model; }
-	virtual SystemModel *getModel() const { return model_; }
+  virtual void setModel(SystemModel *system_model);
+  virtual SystemModel *getModel() const { return model_; }
 
   virtual bool init();
   virtual void cleanup();
@@ -59,22 +59,22 @@ public:
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
 
-	BFL::Gaussian *getPrior() { return &prior_; }
-	const InputVector& getInput() const { return input_; }
-	void setInput(const InputVector& input) { input_ = input; }
+  BFL::Gaussian *getPrior();
+  const InputVector& getInput() const { return input_; }
+  void setInput(const InputVector& input) { input_ = input; }
 
-	virtual bool update(PoseEstimation &estimator, double dt);
-	virtual void updated();
-	StateVector limitState(StateVector state) const;
+  virtual bool update(PoseEstimation &estimator, double dt);
+  virtual void updated();
+  StateVector limitState(StateVector state) const;
 
 protected:
-	SystemModel *model_;
-	std::string name_;
-	ParameterList parameters_;
-	SystemStatus status_flags_;
+  SystemModel *model_;
+  std::string name_;
+  ParameterList parameters_;
+  SystemStatus status_flags_;
 
-	BFL::Gaussian prior_;
-	InputVector input_;
+  BFL::Gaussian prior_;
+  InputVector input_;
 };
 
 } // namespace hector_pose_estimation

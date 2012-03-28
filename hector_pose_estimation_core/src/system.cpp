@@ -33,17 +33,28 @@
 namespace hector_pose_estimation {
 
 System::System(SystemModel *model, const std::string &name)
-  : model_(model)
-  , name_(name)
+  : name_(name)
   , status_flags_(0)
   , prior_(StateDimension)
 {
-  model_->getPrior(prior_);
-  parameters_.add(model_->parameters());
+  setModel(model);
 }
 
 System::~System() {
   delete model_;
+}
+
+void System::setModel(SystemModel *system_model)
+{
+  model_ = system_model;
+  parameters_.clear();
+  parameters_.add(model_->parameters());
+}
+
+BFL::Gaussian *System::getPrior()
+{
+  model_->getPrior(prior_);
+  return &prior_;
 }
 
 bool System::init()

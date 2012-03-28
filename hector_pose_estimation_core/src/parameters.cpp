@@ -40,7 +40,12 @@ public:
     try {
       TypedParameter<T> p(*parameter);
       std::string param_key(boost::algorithm::to_lower_copy(parameter->key));
-      if (!nh.getParam(param_key, p.value)) nh.setParam(param_key, p.value);
+      if (!nh.getParam(param_key, p.value)) {
+        nh.setParam(param_key, p.value);
+        ROS_DEBUG_STREAM("Registered parameter " << param_key << " with new value " << p.value);
+      } else {
+        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value);
+      }
       return true;
     } catch(std::bad_cast&) {
       return false;
