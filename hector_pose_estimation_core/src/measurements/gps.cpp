@@ -87,7 +87,7 @@ void GPS::onReset() {
   has_reference_ = false;
 }
 
-typename GPSModel::MeasurementVector const& GPS::getValue(const GPSUpdate &update) {
+GPSModel::MeasurementVector const& GPS::getValue(const GPSUpdate &update) {
   double north = radius_north_ * (update.latitude  - reference_latitude_);
   double east  = radius_east_  * (update.longitude - reference_longitude_);
 
