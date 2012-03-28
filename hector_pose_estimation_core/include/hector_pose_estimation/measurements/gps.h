@@ -67,7 +67,7 @@ public:
 
   void onReset();
 
-  typename GPSModel::MeasurementVector const& getValue(const GPSUpdate &update);
+  GPSModel::MeasurementVector const& getValue(const GPSUpdate &update);
   bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
 
 private:
@@ -82,7 +82,7 @@ private:
   void updateReference();
 
   GPSUpdate last_;
-  typename GPSModel::MeasurementVector y_;
+  GPSModel::MeasurementVector y_;
 };
 
 } // namespace hector_pose_estimation
