@@ -47,6 +47,8 @@ PoseUpdate::PoseUpdate(const std::string& name)
   max_position_z_error_ = 3.0; // 3 sigma
   max_yaw_error_ = 3.0; // 3 sigma
 
+  jump_on_max_error_ = false;
+
   parameters().add("alpha", alpha_);
   parameters().add("beta", beta_);
   parameters().add("fixed_position_xy_stddev", fixed_position_xy_stddev_);
@@ -56,6 +58,7 @@ PoseUpdate::PoseUpdate(const std::string& name)
   parameters().add("max_position_xy_error", max_position_xy_error_ );
   parameters().add("max_position_z_error", max_position_z_error_);
   parameters().add("max_yaw_error", max_yaw_error_);
+  parameters().add("jump_on_max_error", jump_on_max_error_);
 }
 
 PoseUpdate::~PoseUpdate()
@@ -196,13 +199,6 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
 //  std::cout << "H = [" << H << "]" << std::endl;
 //  std::cout << "Ix = [" << Ix << "]" << std::endl;
 
-  if (max_error > 0.0) {
-    if (error.transpose() * Ix * error > max_error * max_error) {
-        ROS_WARN_STREAM("Ignoring poseupdate for " << text << " as the error [ " << error.transpose() << " ], Ix = [ " << Ix << " ] is too high!");
-      return 0.0;
-    }
-  }
-
   double alpha = alpha_, beta = beta_;
   if (alpha == 0.0 && beta == 0.0) {
     beta = calculateOmega(Ix, Iy);
@@ -217,15 +213,28 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
     alpha = 1.0 - beta;
   }
 
+  if (max_error > 0.0) {
+    if (error.transpose() * Ix * error > max_error * max_error) {
+      if (!jump_on_max_error_) {
+        ROS_WARN_STREAM("Ignoring poseupdate for " << text << " as the error [ " << error.transpose() << " ], Ix = [ " << Ix << " ] is too high!");
+        return 0.0;
+      } else {
+        alpha = 0.0;
+        beta = 1.0;
+      }
+    }
+  }
+
   SymmetricMatrix Ii(Ix * (alpha - 1) + Iy * beta);
   double innovation = Ii.determinant();
 
 //  std::cout << "Ii = [" << Ii << "], innovation = " << innovation << std::endl;
 
-  SymmetricMatrix S_1(Ii.rows()); S_1 = 0.0;
+  SymmetricMatrix S_1(Ii.rows());
   if (innovation > 0.0) {
     S_1 = (Ii.inverse() + H_Px_HT).inverse();
   } else if (innovation <= 0.0) {
+    S_1 = 0.0;
     // ROS_DEBUG_STREAM("Ignoring useless poseupdate for " << text << " with information [" << Iy << "]");
     // return innovation;
   }

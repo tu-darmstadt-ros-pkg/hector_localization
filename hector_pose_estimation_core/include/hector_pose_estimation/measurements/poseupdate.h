@@ -92,6 +92,8 @@ private:
   double max_position_z_error_;
   double max_yaw_error_;
 
+  bool jump_on_max_error_;
+
   double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const;
   double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error = 0.0);
 
