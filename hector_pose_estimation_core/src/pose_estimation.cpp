@@ -48,19 +48,23 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
 
   base_frame_ = "base_link";
   nav_frame_ = "nav";
+  stabilized_frame_ = "base_stabilized";
+  footprint_frame_ = "base_footprint";
   global_reference_.latitude = 0.0;
   global_reference_.longitude = 0.0;
   global_reference_.altitude = 0.0;
   global_reference_.heading = 0.0;
-  alignment_time_ = 5.0;
+  alignment_time_ = 0.0;
 
   parameters().add("base_frame", base_frame_);
   parameters().add("nav_frame", nav_frame_);
+  parameters().add("stabilized_frame", stabilized_frame_);
+  parameters().add("footprint_frame", footprint_frame_);
   parameters().add("reference_latitude",  global_reference_.latitude);
   parameters().add("reference_longitude", global_reference_.longitude);
   parameters().add("reference_altitude",  global_reference_.altitude);
   parameters().add("reference_heading",   global_reference_.heading);
-  parameters().add("alignment_time",      alignment_time_);
+  parameters().add("alignment_time", alignment_time_);
 
   // initialize system model
   setSystemModel(system_model);
@@ -591,34 +595,61 @@ void PoseEstimation::getBias(geometry_msgs::Vector3Stamped& angular_velocity, ge
 }
 
 void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms) {
-  transforms.resize(3);
   tf::Quaternion orientation;
   tf::Point position;
   getOrientation(orientation);
   getPosition(position);
-  btMatrix3x3 rotation(orientation);
+
+  tf::Transform transform(orientation, position);
   double y,p,r;
-  rotation.getEulerYPR(y,p,r);
+  transform.getBasis().getEulerYPR(y,p,r);
 
-  transforms[0].stamp_ = timestamp_;
-  transforms[0].frame_id_ = nav_frame_;
-  transforms[0].child_frame_id_ = "base_footprint";
-  transforms[0].setOrigin(tf::Point(position.x(), position.y(), 0.0));
-  rotation.setEulerYPR(y,0.0,0.0);
-  transforms[0].setBasis(rotation);
+  transforms.clear();
+  std::string parent_frame = nav_frame_;
 
-  transforms[1].stamp_ = timestamp_;
-  transforms[1].frame_id_ = "base_footprint";
-  transforms[1].child_frame_id_ = "base_stabilized";
-  transforms[1].setIdentity();
-  transforms[1].setOrigin(tf::Point(0.0, 0.0, position.z()));
+  if (!footprint_frame_.empty()) {
+    tf::Transform footprint_transform;
+    footprint_transform.getBasis().setEulerYPR(y, 0.0, 0.0);
+    footprint_transform.setOrigin(tf::Point(position.x(), position.y(), 0.0));
+    transforms.push_back(tf::StampedTransform(footprint_transform, timestamp_, parent_frame, footprint_frame_));
 
-  transforms[2].stamp_ = timestamp_;
-  transforms[2].frame_id_ = "base_stabilized";
-  transforms[2].child_frame_id_ = base_frame_;
-  transforms[2].setIdentity();
-  rotation.setEulerYPR(0.0,p,r);
-  transforms[2].setBasis(rotation);
+    parent_frame = footprint_frame_;
+    transform = footprint_transform.inverseTimes(transform);
+  }
+
+  if (!stabilized_frame_.empty()) {
+    tf::Transform stabilized_transform(transform);
+    btMatrix3x3 rollpitch_rotation; rollpitch_rotation.setEulerYPR(0.0, p, r);
+    stabilized_transform = stabilized_transform * tf::Transform(rollpitch_rotation.inverse());
+    transforms.push_back(tf::StampedTransform(stabilized_transform, timestamp_, parent_frame, stabilized_frame_));
+
+    parent_frame = stabilized_frame_;
+    transform = stabilized_transform.inverseTimes(transform);
+  }
+
+  transforms.push_back(tf::StampedTransform(transform, timestamp_, parent_frame, base_frame_));
+
+//  transforms.resize(3);
+
+//  transforms[0].stamp_ = timestamp_;
+//  transforms[0].frame_id_ = nav_frame_;
+//  transforms[0].child_frame_id_ = footprint_frame_;
+//  transforms[0].setOrigin(tf::Point(position.x(), position.y(), 0.0));
+//  rotation.setEulerYPR(y,0.0,0.0);
+//  transforms[0].setBasis(rotation);
+
+//  transforms[1].stamp_ = timestamp_;
+//  transforms[1].frame_id_ = footprint_frame_;
+//  transforms[1].child_frame_id_ = stabilized_frame_;
+//  transforms[1].setIdentity();
+//  transforms[1].setOrigin(tf::Point(0.0, 0.0, position.z()));
+
+//  transforms[2].stamp_ = timestamp_;
+//  transforms[2].frame_id_ = stabilized_frame_;
+//  transforms[2].child_frame_id_ = base_frame_;
+//  transforms[2].setIdentity();
+//  rotation.setEulerYPR(0.0,p,r);
+//  transforms[2].setBasis(rotation);
 }
 
 

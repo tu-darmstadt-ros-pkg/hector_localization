@@ -160,6 +160,8 @@ private:
   ros::Time timestamp_;
   std::string nav_frame_;
   std::string base_frame_;
+  std::string stabilized_frame_;
+  std::string footprint_frame_;
 
   ros::Time alignment_start_;
   double alignment_time_;
