@@ -50,8 +50,6 @@ Measurement::~Measurement()
 
 bool Measurement::init()
 {
-  queue().clear();
-  timer_ = 0;
   return true;
 }
 
@@ -61,7 +59,8 @@ void Measurement::cleanup()
 
 void Measurement::reset()
 {
-  init();
+  queue().clear();
+  timer_ = 0;
   onReset();
 }
 

@@ -90,11 +90,11 @@ bool PoseEstimation::init()
   // check if system is initialized
   if (!system_) return false;
 
-  // reset (or initialize) filter and measurements
-  reset();
-
   // initialize all measurements
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->init();
+
+  // reset (or initialize) filter and measurements
+  reset();
 
   return true;
 }

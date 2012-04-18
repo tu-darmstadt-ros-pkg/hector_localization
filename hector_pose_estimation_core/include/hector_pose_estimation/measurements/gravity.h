@@ -43,6 +43,7 @@ public:
   virtual ~GravityModel();
 
   virtual void setGravity(double gravity) { gravity_ = gravity; }
+  virtual double getGravity() const { return gravity_; }
 
   bool applyStatusMask(const SystemStatus &status) const;
   virtual SystemStatus getStatusFlags() const;

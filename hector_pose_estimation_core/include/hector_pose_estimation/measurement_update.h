@@ -49,7 +49,7 @@ public:
   Update_()
     : has_covariance_(false)
   {}
-  Update_(typename MeasurementModel::MeasurementVector const& y)
+  Update_(Vector const& y)
     : has_covariance_(false)
   {
     setValue(y);

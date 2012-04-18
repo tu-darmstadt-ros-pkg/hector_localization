@@ -36,11 +36,14 @@ namespace hector_pose_estimation {
 
 class Queue {
 public:
-  static const size_t size_ = 10;
+  static const size_t capacity_ = 10;
 
   virtual ~Queue() {}
-  virtual bool empty() = 0;
-  virtual bool full() = 0;
+  virtual bool empty() const = 0;
+  virtual bool full() const = 0;
+  virtual size_t size() const = 0;
+  virtual size_t capacity() const = 0;
+
   virtual void push(const MeasurementUpdate& update) = 0;
   virtual const MeasurementUpdate& pop() = 0;
   virtual void clear() = 0;
@@ -50,20 +53,33 @@ template <class Update>
 class Queue_ : public Queue
 {
 public:
-  Queue_() : in_(0), out_(0) {}
+  Queue_() : in_(0), out_(0), size_(0) {}
   virtual ~Queue_() {}
 
-  virtual bool empty() { return in_ == out_; }
-  virtual bool full() { return ((in_ - out_) % data_.size()) == data_.size() - 1; }
-  virtual void push(const MeasurementUpdate& update) { if (!full()) data_[inc(in_)] = static_cast<Update const &>(update); }
-  virtual const Update& pop() { return data_[inc(out_)]; }
-  virtual void clear() { out_ = in_ = 0; }
+  virtual bool empty() const { return size_ == 0; }
+  virtual bool full() const { return size_ == capacity_; }
+  virtual size_t size() const { return size_; }
+  virtual size_t capacity() const { return capacity_; }
+
+  virtual void push(const MeasurementUpdate& update) {
+    if (full()) return;
+    data_[inc(in_)] = static_cast<Update const &>(update);
+    size_++;
+  }
+
+  virtual const Update& pop() {
+    if (empty()) throw std::runtime_error("queue is empty");
+    size_--;
+    return data_[inc(out_)];
+  }
+
+  virtual void clear() { out_ = in_ = size_ = 0; }
 
 private:
-  size_t inc(size_t& index) { size_t temp = index++; index %= data_.size(); return temp; }
+  static size_t inc(size_t& index) { size_t temp = index++; index %= Queue::capacity_; return temp; }
 
-  boost::array<Update, Queue::size_> data_;
-  size_t in_, out_;
+  boost::array<Update, Queue::capacity_> data_;
+  size_t in_, out_, size_;
 };
 
 } // namespace hector_pose_estimation

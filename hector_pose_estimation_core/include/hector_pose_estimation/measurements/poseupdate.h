@@ -98,8 +98,7 @@ private:
   double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error = 0.0);
 
 protected:
-  typedef Queue_<Update> Queue;
-  Queue queue_;
+  Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
 };
 

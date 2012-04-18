@@ -44,12 +44,12 @@ public:
 
   virtual SystemStatus getStatusFlags() const;
 
-	virtual ColumnVector ExpectedValueGet() const;
-	virtual Matrix dfGet(unsigned int i) const;
+  virtual ColumnVector ExpectedValueGet() const;
+  virtual Matrix dfGet(unsigned int i) const;
 
 private:
-	double position_stddev_;
-	double velocity_stddev_;
+  double position_stddev_;
+  double velocity_stddev_;
 };
 
 struct GPSUpdate : public MeasurementUpdate {

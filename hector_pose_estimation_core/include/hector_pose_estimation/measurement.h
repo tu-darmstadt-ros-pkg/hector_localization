@@ -134,8 +134,7 @@ public:
 protected:
   Model *model_;
 
-  typedef Queue_<Update> Queue;
-  Queue queue_;
+  Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
 
   virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update) { return true; }
