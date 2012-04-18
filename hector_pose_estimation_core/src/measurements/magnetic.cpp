@@ -64,9 +64,9 @@ ColumnVector MagneticModel::ExpectedValueGet() const {
   const double qy = x_(QUATERNION_Y);
   const double qz = x_(QUATERNION_Z);
 
-	y_(1) = (qw*qw+qx*qx-qy*qy-qz*qz) * magnetic_field_(1) + (2.0*qx*qy+2.0*qw*qz)     * magnetic_field_(2) + (2.0*qx*qz-2.0*qw*qy)     * magnetic_field_(3);
-	y_(2) = (2.0*qx*qy-2.0*qw*qz)     * magnetic_field_(1) + (qw*qw-qx*qx+qy*qy-qz*qz) * magnetic_field_(2) + (2.0*qy*qz+2.0*qw*qx)     * magnetic_field_(3);
-	y_(3) = (2.0*qx*qz+2.0*qw*qy)     * magnetic_field_(1) + (2.0*qy*qz-2.0*qw*qx)     * magnetic_field_(2) + (qw*qw-qx*qx-qy*qy+qz*qz) * magnetic_field_(3);
+  y_(1) = (qw*qw+qx*qx-qy*qy-qz*qz) * magnetic_field_(1) + (2.0*qx*qy+2.0*qw*qz)     * magnetic_field_(2) + (2.0*qx*qz-2.0*qw*qy)     * magnetic_field_(3);
+  y_(2) = (2.0*qx*qy-2.0*qw*qz)     * magnetic_field_(1) + (qw*qw-qx*qx+qy*qy-qz*qz) * magnetic_field_(2) + (2.0*qy*qz+2.0*qw*qx)     * magnetic_field_(3);
+  y_(3) = (2.0*qx*qz+2.0*qw*qy)     * magnetic_field_(1) + (2.0*qy*qz-2.0*qw*qx)     * magnetic_field_(2) + (qw*qw-qx*qx-qy*qy+qz*qz) * magnetic_field_(3);
 
   return y_;
 }
@@ -79,33 +79,33 @@ Matrix MagneticModel::dfGet(unsigned int i) const {
   const double qy = x_(QUATERNION_Y);
   const double qz = x_(QUATERNION_Z);
 
-	C_full_(1,QUATERNION_W) =  2.0*qw * magnetic_field_(1) + 2.0*qz * magnetic_field_(2) - 2.0*qy * magnetic_field_(3);
-	C_full_(1,QUATERNION_X) =  2.0*qx * magnetic_field_(1) + 2.0*qy * magnetic_field_(2) + 2.0*qz * magnetic_field_(3);
-	C_full_(1,QUATERNION_Y) = -2.0*qy * magnetic_field_(1) + 2.0*qx * magnetic_field_(2) - 2.0*qw * magnetic_field_(3);
-	C_full_(1,QUATERNION_Z) = -2.0*qz * magnetic_field_(1) + 2.0*qw * magnetic_field_(2) + 2.0*qx * magnetic_field_(3);
-	C_full_(2,QUATERNION_W) = -2.0*qz * magnetic_field_(1) + 2.0*qw * magnetic_field_(2) + 2.0*qx * magnetic_field_(3);
-	C_full_(2,QUATERNION_X) =  2.0*qy * magnetic_field_(1) - 2.0*qx * magnetic_field_(2) + 2.0*qw * magnetic_field_(3);
-	C_full_(2,QUATERNION_Y) =  2.0*qx * magnetic_field_(1) + 2.0*qy * magnetic_field_(2) + 2.0*qz * magnetic_field_(3);
-	C_full_(2,QUATERNION_Z) = -2.0*qw * magnetic_field_(1) - 2.0*qz * magnetic_field_(2) + 2.0*qy * magnetic_field_(3);
-	C_full_(3,QUATERNION_W) =  2.0*qy * magnetic_field_(1) - 2.0*qx * magnetic_field_(2) + 2.0*qw * magnetic_field_(3);
-	C_full_(3,QUATERNION_X) =  2.0*qz * magnetic_field_(1) - 2.0*qw * magnetic_field_(2) - 2.0*qx * magnetic_field_(3);
-	C_full_(3,QUATERNION_Y) =  2.0*qw * magnetic_field_(1) + 2.0*qz * magnetic_field_(2) - 2.0*qy * magnetic_field_(3);
-	C_full_(3,QUATERNION_Z) =  2.0*qx * magnetic_field_(1) + 2.0*qy * magnetic_field_(2) + 2.0*qz * magnetic_field_(3);
+  C_full_(1,QUATERNION_W) =  2.0*qw * magnetic_field_(1) + 2.0*qz * magnetic_field_(2) - 2.0*qy * magnetic_field_(3);
+  C_full_(1,QUATERNION_X) =  2.0*qx * magnetic_field_(1) + 2.0*qy * magnetic_field_(2) + 2.0*qz * magnetic_field_(3);
+  C_full_(1,QUATERNION_Y) = -2.0*qy * magnetic_field_(1) + 2.0*qx * magnetic_field_(2) - 2.0*qw * magnetic_field_(3);
+  C_full_(1,QUATERNION_Z) = -2.0*qz * magnetic_field_(1) + 2.0*qw * magnetic_field_(2) + 2.0*qx * magnetic_field_(3);
+  C_full_(2,QUATERNION_W) = -2.0*qz * magnetic_field_(1) + 2.0*qw * magnetic_field_(2) + 2.0*qx * magnetic_field_(3);
+  C_full_(2,QUATERNION_X) =  2.0*qy * magnetic_field_(1) - 2.0*qx * magnetic_field_(2) + 2.0*qw * magnetic_field_(3);
+  C_full_(2,QUATERNION_Y) =  2.0*qx * magnetic_field_(1) + 2.0*qy * magnetic_field_(2) + 2.0*qz * magnetic_field_(3);
+  C_full_(2,QUATERNION_Z) = -2.0*qw * magnetic_field_(1) - 2.0*qz * magnetic_field_(2) + 2.0*qy * magnetic_field_(3);
+  C_full_(3,QUATERNION_W) =  2.0*qy * magnetic_field_(1) - 2.0*qx * magnetic_field_(2) + 2.0*qw * magnetic_field_(3);
+  C_full_(3,QUATERNION_X) =  2.0*qz * magnetic_field_(1) - 2.0*qw * magnetic_field_(2) - 2.0*qx * magnetic_field_(3);
+  C_full_(3,QUATERNION_Y) =  2.0*qw * magnetic_field_(1) + 2.0*qz * magnetic_field_(2) - 2.0*qy * magnetic_field_(3);
+  C_full_(3,QUATERNION_Z) =  2.0*qx * magnetic_field_(1) + 2.0*qy * magnetic_field_(2) + 2.0*qz * magnetic_field_(3);
 
-	return C_full_;
+  // return C_full_;
 
-	// dq/dyaw * dyaw*dq = 1/2 * [-qz -qy qx qw] * 2 * [-qz; -qy; qx; qw] =
-	//  [ qz*qz  qz*qy -qz*qx -qz*qw ;
-	//    qy*qz  qy*qy -qy*qx -qy*qw ;
-	//   -qx*qz -qx*qy  qx*qx  qx*qw ;
-	//   -qw*qz -qw*qy  qw*qx  qw*qw ]
+  // dq/dyaw * dyaw*dq = 1/2 * [-qz -qy qx qw] * 2 * [-qz; -qy; qx; qw] =
+  //  [ qz*qz  qz*qy -qz*qx -qz*qw ;
+  //    qy*qz  qy*qy -qy*qx -qy*qw ;
+  //   -qx*qz -qx*qy  qx*qx  qx*qw ;
+  //   -qw*qz -qw*qy  qw*qx  qw*qw ]
 
-	for(int i = 1; i <= 3; ++i) {
-		C_(i,QUATERNION_W) =  C_full_(i,QUATERNION_W) * qz*qz + C_full_(i,QUATERNION_X) * qy*qz - C_full_(i,QUATERNION_Y) * qx*qz - C_full_(i,QUATERNION_Z) * qw*qz;
-		C_(i,QUATERNION_X) =  C_full_(i,QUATERNION_W) * qz*qy + C_full_(i,QUATERNION_X) * qy*qy - C_full_(i,QUATERNION_Y) * qx*qy - C_full_(i,QUATERNION_Z) * qw*qy;
-		C_(i,QUATERNION_Y) = -C_full_(i,QUATERNION_W) * qz*qx - C_full_(i,QUATERNION_X) * qy*qx + C_full_(i,QUATERNION_Y) * qx*qx + C_full_(i,QUATERNION_Z) * qw*qx;
-		C_(i,QUATERNION_Z) = -C_full_(i,QUATERNION_W) * qz*qw - C_full_(i,QUATERNION_X) * qy*qw + C_full_(i,QUATERNION_Y) * qx*qw + C_full_(i,QUATERNION_Z) * qw*qw;
-	}
+  for(int i = 1; i <= 3; ++i) {
+    C_(i,QUATERNION_W) =  C_full_(i,QUATERNION_W) * qz*qz + C_full_(i,QUATERNION_X) * qy*qz - C_full_(i,QUATERNION_Y) * qx*qz - C_full_(i,QUATERNION_Z) * qw*qz;
+    C_(i,QUATERNION_X) =  C_full_(i,QUATERNION_W) * qz*qy + C_full_(i,QUATERNION_X) * qy*qy - C_full_(i,QUATERNION_Y) * qx*qy - C_full_(i,QUATERNION_Z) * qw*qy;
+    C_(i,QUATERNION_Y) = -C_full_(i,QUATERNION_W) * qz*qx - C_full_(i,QUATERNION_X) * qy*qx + C_full_(i,QUATERNION_Y) * qx*qx + C_full_(i,QUATERNION_Z) * qw*qx;
+    C_(i,QUATERNION_Z) = -C_full_(i,QUATERNION_W) * qz*qw - C_full_(i,QUATERNION_X) * qy*qw + C_full_(i,QUATERNION_Y) * qx*qw + C_full_(i,QUATERNION_Z) * qw*qw;
+  }
 
   return C_;
 }
