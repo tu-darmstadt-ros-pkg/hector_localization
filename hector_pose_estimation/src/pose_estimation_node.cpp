@@ -65,7 +65,7 @@ bool PoseEstimationNode::init() {
   magnetic_subscriber_   = getNodeHandle().subscribe("magnetic", 10, &PoseEstimationNode::magneticCallback, this);
 
   gps_subscriber_.subscribe(getNodeHandle(), "fix", 10);
-  gps_velocity_subscriber_.subscribe(getNodeHandle(), "gps_velocity", 10);
+  gps_velocity_subscriber_.subscribe(getNodeHandle(), "fix_velocity", 10);
   gps_synchronizer_ = new message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped>(gps_subscriber_, gps_velocity_subscriber_, 10);
   gps_synchronizer_->registerCallback(&PoseEstimationNode::gpsCallback, this);
 
@@ -77,6 +77,7 @@ bool PoseEstimationNode::init() {
 
   angular_velocity_bias_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("angular_velocity_bias", 10, false);
   linear_acceleration_bias_publisher_ = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("linear_acceleration_bias", 10, false);
+  gps_pose_publisher_                 = getNodeHandle().advertise<geometry_msgs::PoseStamped>("fix/pose", 10, false);
 
   poseupdate_subscriber_ = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
   syscommand_subscriber_ = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
@@ -142,6 +143,18 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
   update.velocity_north =  gps_velocity->vector.x;
   update.velocity_east  = -gps_velocity->vector.y;
   pose_estimation_->getMeasurement("gps")->add(update);
+
+  if (gps_pose_publisher_.getNumSubscribers() > 0) {
+    geometry_msgs::PoseStamped gps_pose;
+    pose_estimation_->getHeader(gps_pose.header);
+    gps_pose.header.seq = gps->header.seq;
+    gps_pose.header.stamp = gps->header.stamp;
+    GPSModel::MeasurementVector y = static_cast<GPS *>(pose_estimation_->getMeasurement("gps"))->getValue(update);
+    gps_pose.pose.position.x = y(1);
+    gps_pose.pose.position.y = y(2);
+    gps_pose.pose.orientation.w = 1.0;
+    gps_pose_publisher_.publish(gps_pose);
+  }
 }
 
 void PoseEstimationNode::poseupdateCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) {

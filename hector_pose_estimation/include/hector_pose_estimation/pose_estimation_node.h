@@ -92,7 +92,7 @@ private:
   message_filters::Subscriber<geometry_msgs::Vector3Stamped> gps_velocity_subscriber_;
   message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped> *gps_synchronizer_;
   ros::Publisher state_publisher_, pose_publisher_, velocity_publisher_, imu_publisher_, global_publisher_;
-  ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_;
+  ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_, gps_pose_publisher_;
   ros::Subscriber poseupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
   tf::TransformBroadcaster transform_broadcaster_;
