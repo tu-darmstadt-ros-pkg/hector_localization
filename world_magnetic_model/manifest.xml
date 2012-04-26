@@ -1,0 +1,19 @@
+<package>
+  <description brief="world_magnetic_model">
+
+     world_magnetic_model
+
+  </description>
+  <author>Johannes Meyer</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/world_magnetic_model</url>
+
+  <export>
+    <rosdoc external="http://www.ngdc.noaa.gov/geomag/WMM/DoDWMM.shtml"/>
+    <cpp cflags="-I${prefix}/src" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lworld_magnetic_model"/>
+  </export>
+
+</package>
+
+
