@@ -31,12 +31,17 @@
 namespace hector_pose_estimation {
 
 HeadingModel::HeadingModel()
-  : MeasurementModel(1)
+  : MeasurementModel(MeasurementDimension)
 {
-  SymmetricMatrix noise(1);
   parameters().add("stddev", stddev_, 10.0*M_PI/180.0);
+}
+
+bool HeadingModel::init()
+{
+  NoiseCovariance noise = 0.0;
   noise(1,1) = pow(stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
+  return true;
 }
 
 HeadingModel::~HeadingModel() {}

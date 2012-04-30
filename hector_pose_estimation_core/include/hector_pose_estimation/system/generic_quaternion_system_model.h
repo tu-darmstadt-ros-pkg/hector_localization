@@ -40,6 +40,7 @@ public:
   virtual ~GenericQuaternionSystemModel();
 
   virtual std::string getName() const { return "GenericQuaternionSystemModel"; }
+  virtual bool init();
 
   virtual SystemStatus getStatusFlags() const;
 

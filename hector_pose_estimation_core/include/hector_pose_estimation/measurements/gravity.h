@@ -36,11 +36,14 @@ namespace hector_pose_estimation {
 
 class GravityModel : public MeasurementModel {
 public:
-  typedef ColumnVector MeasurementVector;
-  typedef SymmetricMatrix NoiseCovariance;
+  static const unsigned int MeasurementDimension = 3;
+  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
   GravityModel();
   virtual ~GravityModel();
+
+  virtual bool init();
 
   virtual void setGravity(double gravity) { gravity_ = gravity; }
   virtual double getGravity() const { return gravity_; }
@@ -51,7 +54,7 @@ public:
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
 
-private:
+protected:
   double stddev_;
   double gravity_;
 };

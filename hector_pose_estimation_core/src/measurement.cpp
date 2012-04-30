@@ -97,13 +97,19 @@ void Measurement::process(PoseEstimation &estimator) {
 void Measurement::updateInternal(PoseEstimation &estimator, ColumnVector const& y) {
   ROS_DEBUG("Updating with measurement %s", getName().c_str());
 
+//  std::cout << "[" << getName() << "] x_prior   = [" << estimator.getState().transpose() << "]" << std::endl;
+////  std::cout << "[" << getName() << "] P_prior   = [" << estimator.getCovariance() << "]" << std::endl;
+//  std::cout << "[" << getName() << "] update    = [" << y.transpose() << "]" << std::endl;
+
   estimator.filter()->Update(getModel(), y);
   updated();
   estimator.updated();
 
-//   std::cout << "[" << getName() << "] update   = [" << y.transpose() << "]" << std::endl;
-//   std::cout << "[" << getName() << "] expected = [" << getModel()->ExpectedValueGet().transpose() << "]" << std::endl;
-//   std::cout << "[" << getName() << "] dy/dx    = [" << getModel()->dfGet(0) << "]" << std::endl;
+//  std::cout << "[" << getName() << "] expected  = [" << getModel()->ExpectedValueGet().transpose() << "]" << std::endl;
+//  std::cout << "[" << getName() << "] R         = [" << getModel()->CovarianceGet() << "]" << std::endl;
+//  std::cout << "[" << getName() << "] H = dy/dx = [" << getModel()->dfGet(0) << "]" << std::endl;
+//  std::cout << "[" << getName() << "] x_post    = [" << estimator.getState().transpose() << "]" << std::endl;
+////  std::cout << "[" << getName() << "] P_post    = [" << estimator.getCovariance() << "]" << std::endl;
 }
 
 } // namespace hector_pose_estimation

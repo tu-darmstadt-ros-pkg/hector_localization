@@ -49,6 +49,11 @@ public:
 
   virtual std::string getName() const { return std::string(); }
 
+  virtual bool init() { return true; }
+  virtual void cleanup() { }
+  virtual void reset() { }
+  virtual void reset(const StateVector& state) { reset(); }
+
   ParameterList& parameters() { return parameters_; }
   const ParameterList& parameters() const { return parameters_; }
 

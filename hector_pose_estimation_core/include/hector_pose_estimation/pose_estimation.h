@@ -122,6 +122,10 @@ public:
   virtual void getVelocity(tf::Stamped<tf::Vector3>& vector);
   virtual void getVelocity(geometry_msgs::Vector3& vector);
   virtual void getVelocity(geometry_msgs::Vector3Stamped& vector);
+  virtual void getRate(tf::Vector3& vector);
+  virtual void getRate(tf::Stamped<tf::Vector3>& vector);
+  virtual void getRate(geometry_msgs::Vector3& vector);
+  virtual void getRate(geometry_msgs::Vector3Stamped& vector);
   virtual void getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration);
   virtual void getBias(tf::Stamped<tf::Vector3>& angular_velocity, tf::Stamped<tf::Vector3>& linear_acceleration);
   virtual void getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration);

@@ -82,6 +82,8 @@ bool PoseEstimationNode::init() {
   poseupdate_subscriber_ = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
   syscommand_subscriber_ = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
 
+  getPrivateNodeHandle().param("with_covariances", with_covariances_, false);
+
   // publish initial state
   publish();
 
@@ -172,7 +174,7 @@ void PoseEstimationNode::syscommandCallback(const std_msgs::StringConstPtr& sysc
 void PoseEstimationNode::publish() {
   if (state_publisher_) {
     nav_msgs::Odometry state;
-    pose_estimation_->getState(state, false);
+    pose_estimation_->getState(state, with_covariances_);
     state_publisher_.publish(state);
   }
 

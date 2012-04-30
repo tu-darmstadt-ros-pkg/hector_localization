@@ -31,15 +31,20 @@
 namespace hector_pose_estimation {
 
 HeightModel::HeightModel()
-  : MeasurementModel(1)
-  , elevation_(0.0)
+  : MeasurementModel(MeasurementDimension)
 {
-  SymmetricMatrix noise(1);
   stddev_ = 1.0;
+  elevation_ = 0.0;
   parameters().add("stddev", stddev_);
   parameters().add("elevation", elevation_);
+}
+
+bool HeightModel::init()
+{
+  NoiseCovariance noise = 0.0;
   noise(1,1) = pow(stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
+  return true;
 }
 
 HeightModel::~HeightModel() {}
@@ -49,7 +54,7 @@ SystemStatus HeightModel::getStatusFlags() const {
 }
 
 ColumnVector HeightModel::ExpectedValueGet() const {
-  this->y_(1) = x_(POSITION_Z) - elevation_;
+  this->y_(1) = x_(POSITION_Z) + elevation_;
   return y_;
 }
 
@@ -61,8 +66,7 @@ Matrix HeightModel::dfGet(unsigned int i) const {
 
 void Height::reset(const StateVector& state)
 {
-  setElevation(state(POSITION_Z));
+  setElevation(state(POSITION_Z) + getElevation());
 }
-
 
 } // namespace hector_pose_estimation

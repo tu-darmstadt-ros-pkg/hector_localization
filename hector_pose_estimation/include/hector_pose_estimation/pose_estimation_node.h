@@ -96,6 +96,8 @@ private:
   ros::Subscriber poseupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
   tf::TransformBroadcaster transform_broadcaster_;
+
+  bool with_covariances_;
 };
 
 } // namespace hector_pose_estimation

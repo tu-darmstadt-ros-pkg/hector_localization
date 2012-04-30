@@ -36,11 +36,14 @@ namespace hector_pose_estimation {
 
 class HeadingModel : public MeasurementModel {
 public:
-  typedef ColumnVector MeasurementVector;
-  typedef SymmetricMatrix NoiseCovariance;
+  static const unsigned int MeasurementDimension = 1;
+  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
   HeadingModel();
   virtual ~HeadingModel();
+
+  virtual bool init();
 
   bool applyStatusMask(const SystemStatus &status) const;
   virtual SystemStatus getStatusFlags() const;
@@ -48,7 +51,7 @@ public:
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
 
-private:
+protected:
   double stddev_;
 };
 

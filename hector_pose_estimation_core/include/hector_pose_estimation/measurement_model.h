@@ -58,6 +58,9 @@ public:
   virtual ColumnVector ExpectedValueGet() const = 0;
   virtual Matrix dfGet(unsigned int i) const = 0;
 
+  using BFL::AnalyticConditionalGaussianAdditiveNoise::CovarianceGet;
+  using BFL::AnalyticMeasurementModelGaussianUncertainty::CovarianceGet;
+
 protected:
   ParameterList parameters_;
   const StateVector& x_;

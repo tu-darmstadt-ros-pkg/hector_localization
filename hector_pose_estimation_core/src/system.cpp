@@ -59,28 +59,38 @@ BFL::Gaussian *System::getPrior()
 
 bool System::init()
 {
-  return true;
+  if (!model_) return false;
+  return model_->init();
 }
 
 void System::cleanup()
 {
+  model_->cleanup();
 }
 
 void System::reset()
 {
-  init();
+  model_->reset();
+}
+
+void System::reset(const StateVector& state)
+{
+  model_->reset(state);
 }
 
 bool System::update(PoseEstimation &estimator, double dt) {
   ROS_DEBUG("Updating with system model %s", getName().c_str());
 
-  // std::cout << "[" << getName() << "] input    = [" << input_.transpose() << "]" << std::endl;
+//  std::cout << "     u = [" << getInput().transpose() << "]" << std::endl;
 
   model_->set_dt(dt);
   model_->setMeasurementStatus(estimator.getMeasurementStatus());
   estimator.filter()->Update(model_, input_);
   updated();
   estimator.updated();
+
+//  std::cout << "x_pred = [" << estimator.getState().transpose() << "]" << std::endl;
+//  std::cout << "P_pred = [" << estimator.getCovariance() << "]" << std::endl;
 
   return true;
 }

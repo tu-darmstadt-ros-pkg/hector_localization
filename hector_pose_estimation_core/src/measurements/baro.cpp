@@ -26,40 +26,33 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/zerorate.h>
+#include <hector_pose_estimation/measurements/baro.h>
 
 namespace hector_pose_estimation {
 
-ZeroRateModel::ZeroRateModel()
-  : MeasurementModel(MeasurementDimension)
+BaroModel::BaroModel()
 {
-  parameters().add("stddev", stddev_, 90.0*M_PI/180.0);
+  qnh_ = 1013.25;
+  parameters().add("qnh", qnh_);
 }
 
-bool ZeroRateModel::init()
+BaroModel::~BaroModel() {}
+
+ColumnVector BaroModel::ExpectedValueGet() const
 {
-  NoiseCovariance noise = 0.0;
-  noise(1,1) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-  return true;
-}
-
-ZeroRateModel::~ZeroRateModel() {}
-
-bool ZeroRateModel::applyStatusMask(const SystemStatus &status) const {
-  if (status & STATE_YAW) return false;
-  return true;
-}
-
-ColumnVector ZeroRateModel::ExpectedValueGet() const {
-  y_(1) = -x_(BIAS_GYRO_Z);
+  y_(1) = qnh_ * pow(1.0 - (0.0065 * (x_(POSITION_Z) + elevation_)) / 288.15, 5.255);
   return y_;
 }
 
-Matrix ZeroRateModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
-  C_(1,BIAS_GYRO_Z)  = -1.0;
+Matrix BaroModel::dfGet(unsigned int i) const
+{
+  C_(1,POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (x_(POSITION_Z) + elevation_)) / 288.15, 4.255) * (-0.0065 * (x_(POSITION_Z) + elevation_));
   return C_;
+}
+
+void Baro::reset(const StateVector& state)
+{
+  setElevation(state(POSITION_Z) + getElevation());
 }
 
 } // namespace hector_pose_estimation

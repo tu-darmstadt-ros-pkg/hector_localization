@@ -36,29 +36,31 @@ namespace hector_pose_estimation {
 
 class HeightModel : public MeasurementModel {
 public:
-  typedef ColumnVector MeasurementVector;
-  typedef SymmetricMatrix NoiseCovariance;
+  static const unsigned int MeasurementDimension = 1;
+  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
   HeightModel();
   virtual ~HeightModel();
 
+  virtual bool init();
   virtual SystemStatus getStatusFlags() const;
 
-	virtual ColumnVector ExpectedValueGet() const;
-	virtual Matrix dfGet(unsigned int i) const;
+  virtual ColumnVector ExpectedValueGet() const;
+  virtual Matrix dfGet(unsigned int i) const;
 
   void setElevation(double elevation) { elevation_ = elevation; }
   double getElevation() const { return elevation_; }
 
-private:
-	double stddev_;
-	double elevation_;
+protected:
+  double stddev_;
+  double elevation_;
 };
 
 class Height : public Measurement_<HeightModel>
 {
 public:
-  Height(const std::string& name = "baro") : Measurement_<HeightModel>(name) {}
+  Height(const std::string& name = "height") : Measurement_<HeightModel>(name) {}
   virtual ~Height() {}
 
   void reset(const StateVector& state);

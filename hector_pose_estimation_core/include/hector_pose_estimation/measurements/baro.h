@@ -38,30 +38,17 @@ namespace hector_pose_estimation {
 class BaroModel : public HeightModel
 {
 public:
-	BaroModel() : qnh_(1013.25), elevation_(0.0) {}
-	virtual ~BaroModel() {}
+  BaroModel();
+  virtual ~BaroModel();
 
-	virtual ColumnVector ExpectedValueGet() const
-	{
-		y_(1) = qnh_ * pow(1.0 - (0.0065 * (x_(POSITION_Z) + elevation_)) / 288.15, 5.255);
-		return y_;
-	}
-
-	virtual Matrix dfGet(unsigned int i) const
-	{
-		C_(1,POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (x_(POSITION_Z) + elevation_)) / 288.15, 4.255) * (-0.0065 * (x_(POSITION_Z) + elevation_));
-		return C_;
-	}
-
-  void setElevation(double elevation) { elevation_ = elevation; }
-  double getElevation() const { return elevation_; }
+  virtual ColumnVector ExpectedValueGet() const;
+  virtual Matrix dfGet(unsigned int i) const;
 
   void setQnh(double qnh) { qnh_ = qnh; }
   double getQnh() const { return qnh_; }
 
-private:
+protected:
   double qnh_;
-  double elevation_;
 };
 
 class Baro : public Measurement_<BaroModel>
@@ -70,10 +57,7 @@ public:
   Baro(const std::string& name = "baro") : Measurement_<BaroModel>(name) {}
   virtual ~Baro() {}
 
-  void reset(const StateVector& state)
-  {
-    setElevation(state(POSITION_Z));
-  }
+  void reset(const StateVector& state);
 
   void setElevation(double elevation) { getModel()->setElevation(elevation); }
   double getElevation() const { return getModel()->getElevation(); }

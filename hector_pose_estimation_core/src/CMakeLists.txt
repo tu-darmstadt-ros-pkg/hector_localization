@@ -12,6 +12,7 @@ set(hector_pose_estimation_SOURCES
   measurements/heading.cpp
   measurements/magnetic.cpp
   measurements/height.cpp
+  measurements/baro.cpp
   measurements/gps.cpp
   measurements/poseupdate.cpp
 )

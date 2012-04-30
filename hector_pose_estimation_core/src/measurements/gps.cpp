@@ -32,16 +32,21 @@
 namespace hector_pose_estimation {
 
 GPSModel::GPSModel()
-  : MeasurementModel(4)
+  : MeasurementModel(MeasurementDimension)
 {
-  SymmetricMatrix noise(4);
   position_stddev_ = 10.0;
   velocity_stddev_ = 1.0;
   parameters().add("position_stddev", position_stddev_);
   parameters().add("velocity_stddev", velocity_stddev_);
+}
+
+bool GPSModel::init()
+{
+  NoiseCovariance noise = 0.0;
   noise(1,1) = noise(2,2) = pow(position_stddev_, 2);
   noise(3,3) = noise(4,4) = pow(velocity_stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
+  return true;
 }
 
 GPSModel::~GPSModel() {}

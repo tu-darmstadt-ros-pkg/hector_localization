@@ -32,13 +32,18 @@
 namespace hector_pose_estimation {
 
 GravityModel::GravityModel()
-  : MeasurementModel(3)
+  : MeasurementModel(MeasurementDimension)
   , gravity_(0.0)
 {
-  SymmetricMatrix noise(3);
-  parameters().add("stddev", stddev_, 1.0); //9.8065);
+  parameters().add("stddev", stddev_, 1.0); // 9.8065);
+}
+
+bool GravityModel::init()
+{
+  NoiseCovariance noise = 0.0;
   noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
   this->AdditiveNoiseSigmaSet(noise);
+  return true;
 }
 
 GravityModel::~GravityModel() {}

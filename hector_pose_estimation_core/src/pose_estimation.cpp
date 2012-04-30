@@ -90,8 +90,12 @@ bool PoseEstimation::init()
   // check if system is initialized
   if (!system_) return false;
 
+  // initialize system
+  if (!system_->init()) return false;
+
   // initialize all measurements
-  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->init();
+  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)
+    if (!(*it)->init()) return false;
 
   // reset (or initialize) filter and measurements
   reset();
@@ -107,6 +111,9 @@ void PoseEstimation::cleanup()
     filter_ = 0;
   }
 
+  // cleanup system
+  system_->cleanup();
+
   // cleanup all measurements
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->cleanup();
 }
@@ -119,6 +126,7 @@ void PoseEstimation::reset()
   // check if system is initialized
   if (!system_) return;
 
+  // initialize new filter
   filter_ = new BFL::ExtendedKalmanFilter(system_->getPrior());
   updated();
 
@@ -167,10 +175,6 @@ void PoseEstimation::update(double dt)
   system_->update(*this, dt);
   updateSystemStatus(system_->getStatusFlags(), STATE_ROLLPITCH | STATE_YAW | STATE_XY_POSITION | STATE_XY_VELOCITY | STATE_Z_POSITION | STATE_Z_VELOCITY);
 
-//  std::cout << "     u = [" << system_->getInput().transpose() << "]" << std::endl;
-//  std::cout << "x_pred = [" << getState().transpose() << "]" << std::endl;
-//  std::cout << "P_pred = [" << filter_->PostGet()->CovarianceGet() << "]" << std::endl;
-
   // iterate through measurements and do the measurement update steps
   SystemStatus measurement_status = 0;
 
@@ -178,18 +182,16 @@ void PoseEstimation::update(double dt)
     Measurement *measurement = *it;
     if (!measurement->active(getSystemStatus())) continue;
 
-    // pseudo updates
+    // special updates
     if (measurement == &gravity_) {
       ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
-      Gravity::Update y(system_->getInput().sub(ACCEL_X, ACCEL_Z));
-      gravity_.update(*this, y);
+      gravity_.update(*this, Gravity::Update(system_->getInput().sub(ACCEL_X, ACCEL_Z)));
       continue;
     }
 
     if (measurement == &zerorate_) {
       ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_.getName().c_str());
-      ZeroRate::Update y(system_->getInput().sub(GYRO_Z, GYRO_Z));
-      zerorate_.update(*this, y);
+      zerorate_.update(*this, ZeroRate::Update(system_->getInput().sub(GYRO_Z, GYRO_Z)));
       continue;
     }
 
@@ -314,7 +316,8 @@ const StateCovariance& PoseEstimation::getCovariance() {
 
 void PoseEstimation::setState(const StateVector& state) {
   filter_->PostGet()->ExpectedValueSet(state);
-  state_is_dirty_ = true;
+  state_ = state;
+  state_is_dirty_ = false;
 }
 
 void PoseEstimation::setCovariance(const StateCovariance& covariance) {
@@ -386,12 +389,8 @@ void PoseEstimation::getState(nav_msgs::Odometry& state, bool with_covariances) 
   getHeader(state.header);
   getPose(state.pose.pose);
   getVelocity(state.twist.twist.linear);
+  getRate(state.twist.twist.angular);
   state.child_frame_id = base_frame_;
-
-  const InputVector &input = system_->getInput();
-  state.twist.twist.angular.x = input(GYRO_X)  + state_(BIAS_GYRO_X);
-  state.twist.twist.angular.y = input(GYRO_Y)  + state_(BIAS_GYRO_Y);
-  state.twist.twist.angular.z = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
 
   if (with_covariances) {
     double qw = state_(QUATERNION_W);
@@ -420,7 +419,7 @@ void PoseEstimation::getState(nav_msgs::Odometry& state, bool with_covariances) 
       for(int j = 0; j < 3; ++j)
         state.pose.covariance[i*6+j] = covariance_(POSITION_X + i, POSITION_X + j);
 
-    // rotation covariance
+    // rotation covariance (world-fixed)
     SymmetricMatrix covariance_rot(quat_to_angular_rate * covariance_.sub(QUATERNION_W,QUATERNION_Z,QUATERNION_W,QUATERNION_Z) * quat_to_angular_rate.transpose());
     for(int i = 0; i < 3; ++i)
       for(int j = 0; j < 3; ++j)
@@ -437,7 +436,7 @@ void PoseEstimation::getState(nav_msgs::Odometry& state, bool with_covariances) 
       for(int j = 0; j < 3; ++j)
         state.twist.covariance[i*6+j] = covariance_(VELOCITY_X + i, VELOCITY_X + j);
 
-    // angular rate covariance
+    // angular rate covariance (body-fixed)
     SymmetricMatrix gyro_noise(quat_to_angular_rate * system_->getModel()->AdditiveNoiseSigmaGet().sub(QUATERNION_W,QUATERNION_Z,QUATERNION_W,QUATERNION_Z) * quat_to_angular_rate.transpose());
     for(int i = 0; i < 3; ++i)
       for(int j = 0; j < 3; ++j)
@@ -556,6 +555,31 @@ void PoseEstimation::getVelocity(geometry_msgs::Vector3& vector) {
 void PoseEstimation::getVelocity(geometry_msgs::Vector3Stamped& vector) {
   getHeader(vector.header);
   getVelocity(vector.vector);
+}
+
+void PoseEstimation::getRate(tf::Vector3& vector) {
+  getState();
+  const InputVector &input = system_->getInput();
+  vector = tf::Vector3(input(GYRO_X)  + state_(BIAS_GYRO_Z), input(GYRO_Y)  + state_(BIAS_GYRO_Z), input(GYRO_Z) + state_(BIAS_GYRO_Z));
+}
+
+void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
+  getRate(static_cast<tf::Vector3 &>(vector));
+  vector.stamp_ = timestamp_;
+  vector.frame_id_ = nav_frame_;
+}
+
+void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
+  getState();
+  const InputVector &input = system_->getInput();
+  vector.x = input(GYRO_X)  + state_(BIAS_GYRO_Z);
+  vector.y = input(GYRO_Y)  + state_(BIAS_GYRO_Z);
+  vector.z = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
+}
+
+void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
+  getHeader(vector.header);
+  getRate(vector.vector);
 }
 
 void PoseEstimation::getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration) {

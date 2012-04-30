@@ -96,8 +96,9 @@ class Measurement_ : public Measurement {
 public:
   typedef ConcreteModel Model;
   typedef ConcreteUpdate Update;
-  typedef typename ConcreteModel::MeasurementVector MeasurementVector;
-  typedef typename ConcreteModel::NoiseCovariance NoiseCovariance;
+  static const unsigned int MeasurementDimension = Model::MeasurementDimension;
+  typedef typename Model::MeasurementVector MeasurementVector;
+  typedef typename Model::NoiseCovariance NoiseCovariance;
 
   Measurement_(const std::string& name)
     : Measurement(name)
@@ -123,10 +124,10 @@ public:
   virtual void reset(const StateVector& state) { model_->reset(state); Measurement::reset(state); }
 
   virtual Model* getModel() const { return model_; }
-  virtual bool active(const SystemStatus& status) { return enabled() && getModel()->applyStatusMask(status); }
+  virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
 
   virtual MeasurementVector const& getValue(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getValue(update); }
-  virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update) : getModel()->AdditiveNoiseSigmaGet(); }
+  virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update) : static_cast<NoiseCovariance const&>(model_->AdditiveNoiseSigmaGet()); }
   virtual void setNoiseCovariance(NoiseCovariance const& sigma);
 
   virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update);

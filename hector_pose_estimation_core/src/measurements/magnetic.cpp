@@ -31,25 +31,26 @@
 namespace hector_pose_estimation {
 
 MagneticModel::MagneticModel()
-  : MeasurementModel(3)
+  : MeasurementModel(MeasurementDimension)
   , declination_(0.0), inclination_(60.0 * M_PI/180.0), magnitude_(20.0)
   , C_full_(3,StateDimension)
 {
-  SymmetricMatrix noise(3);
   parameters().add("stddev", stddev_, 1.0);
   parameters().add("declination", declination_);
   parameters().add("inclination", inclination_);
   parameters().add("magnitude", magnitude_);
-  noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
+
   C_full_= 0.0;
-  init();
 }
 
 MagneticModel::~MagneticModel() {}
 
 bool MagneticModel::init()
 {
+  NoiseCovariance noise = 0.0;
+  noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
+  this->AdditiveNoiseSigmaSet(noise);
+
   setMagneticField(declination_, inclination_, magnitude_);
   return true;
 }

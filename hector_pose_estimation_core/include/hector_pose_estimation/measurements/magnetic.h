@@ -36,27 +36,27 @@ namespace hector_pose_estimation {
 
 class MagneticModel : public MeasurementModel {
 public:
-  typedef ColumnVector MeasurementVector;
-  typedef SymmetricMatrix NoiseCovariance;
+  static const unsigned int MeasurementDimension = 3;
+  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
   MagneticModel();
   virtual ~MagneticModel();
 
   virtual bool init();
-
   virtual SystemStatus getStatusFlags() const;
 
-	virtual ColumnVector ExpectedValueGet() const;
-	virtual Matrix dfGet(unsigned int i) const;
+  virtual ColumnVector ExpectedValueGet() const;
+  virtual Matrix dfGet(unsigned int i) const;
 
-	virtual void setMagneticField(double declination, double inclination, double magnitude);
+  virtual void setMagneticField(double declination, double inclination, double magnitude);
 
-private:
-	double stddev_;
-	double declination_, inclination_, magnitude_;
-	ColumnVector_<3> magnetic_field_;
+protected:
+  double stddev_;
+  double declination_, inclination_, magnitude_;
+  ColumnVector_<3> magnetic_field_;
 
-	mutable Matrix C_full_;
+  mutable Matrix C_full_;
 };
 
 typedef Measurement_<MagneticModel> Magnetic;

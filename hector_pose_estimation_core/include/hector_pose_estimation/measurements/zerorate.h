@@ -36,18 +36,20 @@ namespace hector_pose_estimation {
 
 class ZeroRateModel : public MeasurementModel {
 public:
-  typedef ColumnVector MeasurementVector;
-  typedef SymmetricMatrix NoiseCovariance;
+  static const unsigned int MeasurementDimension = 1;
+  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
   ZeroRateModel();
   virtual ~ZeroRateModel();
 
+  virtual bool init();
   bool applyStatusMask(const SystemStatus &status) const;
 
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
 
-private:
+protected:
   double stddev_;
 };
 

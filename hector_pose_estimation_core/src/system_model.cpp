@@ -77,7 +77,8 @@ void SystemModel::getPrior(BFL::Gaussian &prior) const {
 
 SymmetricMatrix SystemModel::CovarianceGet(double dt) const
 {
-  return this->AdditiveNoiseSigmaGet() * (dt_*dt_);
+//  return this->AdditiveNoiseSigmaGet() * (dt*dt);
+  return this->AdditiveNoiseSigmaGet() * dt;
 }
 
 } // namespace hector_pose_estimation
