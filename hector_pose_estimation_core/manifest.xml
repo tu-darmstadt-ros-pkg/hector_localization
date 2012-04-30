@@ -13,6 +13,7 @@
   <depend package="roscpp" />
   <depend package="bfl_eigen" />
   <depend package="eigen" />
+  <depend package="sensor_msgs" />
   <depend package="geometry_msgs" />
   <depend package="nav_msgs" />
   <depend package="tf" />

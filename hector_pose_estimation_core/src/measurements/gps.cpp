@@ -74,32 +74,31 @@ Matrix GPSModel::dfGet(unsigned int i) const {
 
 GPS::GPS(const std::string &name)
   : Measurement_<GPSModel,GPSUpdate>(name)
-  , reference_latitude_(0.0)
-  , reference_longitude_(0.0)
-  , reference_heading_(0.0)
-  , has_reference_(false)
+  , reference_(0)
   , y_(4)
 {
-  parameters().add("reference_latitude", reference_latitude_);
-  parameters().add("reference_longitude", reference_longitude_);
-  parameters().add("reference_heading", reference_heading_);
 }
 
 GPS::~GPS()
 {}
 
 void GPS::onReset() {
-  has_reference_ = false;
+  reference_ = 0;
 }
 
 GPSModel::MeasurementVector const& GPS::getValue(const GPSUpdate &update) {
-  double north = radius_north_ * (update.latitude  - reference_latitude_);
-  double east  = radius_east_  * (update.longitude - reference_longitude_);
+  if (!reference_) {
+    y_(1) = y_(2) = y_(3) = y_(4) = 0.0/0.0;
+    return y_;
+  }
 
-  y_(1) = north * cos_reference_heading_ + east * sin_reference_heading_;
-  y_(2) = north * sin_reference_heading_ - east * cos_reference_heading_;
-  y_(3) = update.velocity_north * cos_reference_heading_ + update.velocity_east * sin_reference_heading_;
-  y_(4) = update.velocity_north * sin_reference_heading_ - update.velocity_east * cos_reference_heading_;
+  double north = reference_->radius_north * (update.latitude  - reference_->latitude);
+  double east  = reference_->radius_east  * (update.longitude - reference_->longitude);
+
+  y_(1) = north * reference_->cos_heading + east * reference_->sin_heading;
+  y_(2) = north * reference_->sin_heading - east * reference_->cos_heading;
+  y_(3) = update.velocity_north * reference_->cos_heading + update.velocity_east * reference_->sin_heading;
+  y_(4) = update.velocity_north * reference_->sin_heading - update.velocity_east * reference_->cos_heading;
 
   last_ = update;
   return y_;
@@ -107,33 +106,26 @@ GPSModel::MeasurementVector const& GPS::getValue(const GPSUpdate &update) {
 
 bool GPS::beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update) {
   // reset reference position if GPS has not been updated for a while
-  if (timedout()) has_reference_ = false;
+  if (timedout()) reference_ = 0;
 
   // find new reference position
-  if (!has_reference_) {
-    reference_latitude_ = update.latitude;
-    reference_longitude_ = update.longitude;
-    updateReference();
+  if (!reference_) {
+    reference_ = estimator.globalReference();
+    reference_->latitude  = update.latitude;
+    reference_->longitude = update.longitude;
+    reference_->updated();
 
     StateVector state = estimator.getState();
-    double north =  state(POSITION_X) * cos_reference_heading_ + state(POSITION_Y) * sin_reference_heading_;
-    double east  =  state(POSITION_X) * sin_reference_heading_ - state(POSITION_Y) * cos_reference_heading_;
-    reference_latitude_  = update.latitude  - north / radius_north_;
-    reference_longitude_ = update.longitude - east  / radius_east_;
-    has_reference_ = true;
+    double north =  state(POSITION_X) * reference_->cos_heading + state(POSITION_Y) * reference_->sin_heading;
+    double east  =  state(POSITION_X) * reference_->sin_heading - state(POSITION_Y) * reference_->cos_heading;
+    reference_->latitude  = update.latitude  - north / reference_->radius_north;
+    reference_->longitude = update.longitude - east  / reference_->radius_east;
+    reference_->updated();
 
-    ROS_INFO("Set new GPS reference position: %f/%f", reference_latitude_ * 180.0/M_PI, reference_longitude_ * 180.0/M_PI);
+    ROS_INFO("Set new GPS reference position: %f/%f", reference_->latitude * 180.0/M_PI, reference_->longitude * 180.0/M_PI);
   }
 
   return true;
-}
-
-void GPS::updateReference() {
-  static const double radius_earth = 6371e3;
-  radius_north_ = radius_earth;
-  radius_east_  = radius_earth * cos(reference_latitude_);
-  cos_reference_heading_ = cos(reference_heading_);
-  sin_reference_heading_ = sin(reference_heading_);
 }
 
 } // namespace hector_pose_estimation

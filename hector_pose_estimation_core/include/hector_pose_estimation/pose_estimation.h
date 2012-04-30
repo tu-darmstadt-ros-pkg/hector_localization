@@ -48,6 +48,7 @@
 #include <geometry_msgs/QuaternionStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
 
 #include "measurements/gravity.h"
 #include "measurements/zerorate.h"
@@ -102,6 +103,8 @@ public:
   virtual ros::Time getTimestamp() const;
   virtual void setTimestamp(ros::Time timestamp);
 
+  virtual GlobalReference* globalReference();
+
   virtual void getHeader(std_msgs::Header& header);
   virtual void getState(nav_msgs::Odometry& state, bool with_covariances = true);
   virtual void getPose(tf::Pose& pose);
@@ -113,6 +116,7 @@ public:
   virtual void getPosition(geometry_msgs::Point& pose);
   virtual void getPosition(geometry_msgs::PointStamped& pose);
   virtual void getGlobalPosition(double& latitude, double& longitude, double& altitude);
+  virtual void getGlobalPosition(sensor_msgs::NavSatFix& global);
   virtual void getOrientation(tf::Quaternion& quaternion);
   virtual void getOrientation(tf::Stamped<tf::Quaternion>& quaternion);
   virtual void getOrientation(geometry_msgs::Quaternion& pose);

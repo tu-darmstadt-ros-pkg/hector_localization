@@ -496,7 +496,20 @@ void PoseEstimation::getPosition(geometry_msgs::PointStamped& point) {
 }
 
 void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, double &altitude) {
+  getState();
+  double north =  state_(POSITION_X) * globalReference()->cos_heading - state_(POSITION_Y) * globalReference()->sin_heading;
+  double east  = -state_(POSITION_X) * globalReference()->sin_heading - state_(POSITION_Y) * globalReference()->cos_heading;
+  latitude  = global_reference_.latitude  + north / globalReference()->radius_north;
+  longitude = global_reference_.longitude + east  / globalReference()->radius_east;
+  altitude  = global_reference_.altitude  + state_(POSITION_Z);
+}
 
+void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
+{
+  getHeader(global.header);
+  getGlobalPosition(global.latitude, global.longitude, global.altitude);
+  global.latitude  *= 180.0/M_PI;
+  global.longitude *= 180.0/M_PI;
 }
 
 void PoseEstimation::getOrientation(tf::Quaternion& quaternion) {
@@ -689,6 +702,18 @@ ParameterList PoseEstimation::getParameters() const {
   }
 
   return parameters;
+}
+
+GlobalReference* PoseEstimation::globalReference() {
+  return &global_reference_;
+}
+
+void GlobalReference::updated() {
+  static const double radius_earth = 6371e3;
+  radius_north = radius_earth;
+  radius_east  = radius_earth * cos(latitude);
+  cos_heading = cos(heading);
+  sin_heading = sin(heading);
 }
 
 } // namespace hector_pose_estimation

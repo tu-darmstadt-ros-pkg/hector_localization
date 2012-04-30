@@ -73,16 +73,7 @@ public:
   bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
 
 private:
-  double reference_latitude_;
-  double reference_longitude_;
-  double reference_heading_;
-  bool has_reference_;
-
-  double radius_north_, radius_east_;
-  double cos_reference_heading_, sin_reference_heading_;
-
-  void updateReference();
-
+  GlobalReference *reference_;
   GPSUpdate last_;
   GPSModel::MeasurementVector y_;
 };

@@ -198,6 +198,12 @@ void PoseEstimationNode::publish() {
     velocity_publisher_.publish(velocity_msg);
   }
 
+  if (global_publisher_) {
+    sensor_msgs::NavSatFix global_msg;
+    pose_estimation_->getGlobalPosition(global_msg);
+    global_publisher_.publish(global_msg);
+  }
+
   if (angular_velocity_bias_publisher_ || linear_acceleration_bias_publisher_) {
     geometry_msgs::Vector3Stamped angular_velocity_msg, linear_acceleration_msg;
     pose_estimation_->getBias(angular_velocity_msg, linear_acceleration_msg);
