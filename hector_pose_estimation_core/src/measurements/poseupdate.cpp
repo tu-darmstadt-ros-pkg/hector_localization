@@ -42,22 +42,40 @@ PoseUpdate::PoseUpdate(const std::string& name)
   fixed_position_z_stddev_ = 0.0;
   fixed_yaw_stddev_ = 0.0;
 
+  fixed_velocity_xy_stddev_ = 0.0;
+  fixed_velocity_z_stddev_ = 0.0;
+  fixed_angular_rate_xy_stddev_ = 0.0;
+  fixed_angular_rate_z_stddev_ = 0.0;
+
   max_time_difference_ = 1.0;
   max_position_xy_error_ = 3.0; // 3 sigma
   max_position_z_error_ = 3.0; // 3 sigma
   max_yaw_error_ = 3.0; // 3 sigma
 
-  jump_on_max_error_ = false;
+  max_velocity_xy_error_ = 3.0; // 3 sigma
+  max_velocity_z_error_ = 3.0; // 3 sigma
+  max_angular_rate_xy_error_ = 3.0; // 3 sigma
+  max_angular_rate_z_error_ = 3.0; // 3 sigma
+
+  jump_on_max_error_ = true;
 
   parameters().add("alpha", alpha_);
   parameters().add("beta", beta_);
   parameters().add("fixed_position_xy_stddev", fixed_position_xy_stddev_);
   parameters().add("fixed_position_z_stddev", fixed_position_z_stddev_);
   parameters().add("fixed_yaw_stddev", fixed_yaw_stddev_);
+  parameters().add("fixed_velocity_xy_stddev", fixed_velocity_xy_stddev_);
+  parameters().add("fixed_velocity_z_stddev", fixed_velocity_z_stddev_);
+  parameters().add("fixed_angular_rate_xy_stddev", fixed_angular_rate_xy_stddev_);
+  parameters().add("fixed_angular_rate_z_stddev", fixed_angular_rate_z_stddev_);
   parameters().add("max_time_difference", max_time_difference_);
   parameters().add("max_position_xy_error", max_position_xy_error_ );
   parameters().add("max_position_z_error", max_position_z_error_);
   parameters().add("max_yaw_error", max_yaw_error_);
+  parameters().add("max_velocity_xy_error", max_velocity_xy_error_ );
+  parameters().add("max_velocity_z_error", max_velocity_z_error_);
+  parameters().add("max_angular_rate_xy_error", max_angular_rate_xy_error_ );
+  parameters().add("max_angular_rate_z_error", max_angular_rate_z_error_);
   parameters().add("jump_on_max_error", jump_on_max_error_);
 }
 
@@ -176,6 +194,77 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
     }
   }
 
+  if (update.twist) {
+    // convert incoming update information to Eigen
+    Eigen::Vector3d update_linear(update.twist->twist.twist.linear.x, update.twist->twist.twist.linear.y, update.twist->twist.twist.linear.z);
+    Eigen::Vector3d update_angular(update.twist->twist.twist.angular.x, update.twist->twist.twist.angular.y, update.twist->twist.twist.angular.z);
+
+     // assume that message covariance is a information matrix directly!
+    SymmetricMatrix information(6);
+    covarianceMsgToBfl(update.twist->twist.covariance, information);
+
+    // forward state vector to the individual measurement models
+    twist_model_.ConditionalArgumentSet(0,state);
+
+    std::cout << "TwistUpdate:  state = [ " << state.transpose() << " ], P = [ " << covariance << " ]" << std::endl
+              << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]" << std::endl;
+    std::cout << "                dt = " << (estimator.getTimestamp() - update.twist->header.stamp).toSec() << " s" << std::endl;
+
+    // predict update pose using the estimated velocity and degrade information
+    double dt = (estimator.getTimestamp() - update.twist->header.stamp).toSec();
+    if (max_time_difference_ > 0.0) {
+      if (dt < 0.0 || dt > max_time_difference_) return false;
+      information = information * (1.0 - dt/max_time_difference_);
+    }
+
+    // update Twist
+    // fetch observation matrix H
+    Matrix H = twist_model_.dfGet(0);
+    ColumnVector x(twist_model_.ExpectedValueGet());
+    TwistModel::NoiseCovariance Iy(information);
+    TwistModel::MeasurementVector y;
+    y(1) = update_linear.x();
+    y(2) = update_linear.y();
+    y(3) = update_linear.z();
+    y(4) = update_angular.x();
+    y(5) = update_angular.y();
+    y(6) = update_angular.z();
+
+    // fixed_velocity_xy_stddev_ = 1.0;
+    if (fixed_velocity_xy_stddev_ != 0.0) {
+      for(int i = 1; i <= 6; ++i) Iy(1,i) = Iy(2,i) = Iy(i,1) = Iy(i,2) = 0.0;
+      Iy(1,1) = Iy(2,2) = 1.0 / (fixed_velocity_xy_stddev_*fixed_velocity_xy_stddev_);
+    }
+
+    // fixed_velocity_z_stddev_ = 1.0;
+    if (fixed_velocity_z_stddev_ != 0.0) {
+        for(int i = 1; i <= 6; ++i) Iy(3,i) = Iy(i,3) = 0.0;
+      Iy(3,3) = 1.0 / (fixed_velocity_z_stddev_*fixed_velocity_z_stddev_);
+    }
+
+    // fixed_angular_rate_xy_stddev_ = 1.0;
+    if (fixed_angular_rate_xy_stddev_ != 0.0) {
+      for(int i = 1; i <= 6; ++i) Iy(4,i) = Iy(4,i) = Iy(i,5) = Iy(i,5) = 0.0;
+      Iy(4,4) = Iy(5,5) = 1.0 / (fixed_angular_rate_xy_stddev_*fixed_angular_rate_xy_stddev_);
+    }
+
+    // fixed_angular_rate_z_stddev_ = 1.0;
+    if (fixed_angular_rate_z_stddev_ != 0.0) {
+        for(int i = 1; i <= 6; ++i) Iy(6,i) = Iy(i,6) = 0.0;
+      Iy(6,6) = 1.0 / (fixed_angular_rate_z_stddev_*fixed_angular_rate_z_stddev_);
+    }
+
+    std::cout << "Twist Update: " << std::endl;
+    std::cout << "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
+    std::cout << "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]" << std::endl;
+    double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "twist", 0.0);
+    std::cout << " ==> xy = [" << twist_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
+
+    if (information(1,1) > 0.0 && information(2,2) > 0.0) {
+      status_flags_ |= STATE_XY_VELOCITY;
+    }
+  }
+
   estimator.setState(state);
   estimator.setCovariance(covariance);
   estimator.updated();
@@ -233,9 +322,9 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
   if (innovation > 0.0) {
     S_1 = (Ii.inverse() + H_Px_HT).inverse();
   } else if (innovation <= 0.0) {
-    // S_1 = 0.0;
-    ROS_DEBUG_STREAM("Ignoring useless poseupdate for " << text << " with information [" << Iy << "]");
-    return innovation;
+    S_1 = 0.0;
+    // ROS_DEBUG_STREAM("Ignoring useless poseupdate for " << text << " with information [" << Iy << "]");
+    // return innovation;
   }
 
   Pxy = Px - Px  * HT * S_1 * H * Px; // may invalidate Px if &Pxy == &Px
@@ -298,6 +387,28 @@ Matrix YawModel::dfGet(unsigned int i) const {
   C_(1,QUATERNION_Y) = 2.0 * t3 * (qx * t1 + qy * t2);
   C_(1,QUATERNION_Z) = 2.0 * t3 * (qw * t1 + qz * t2);
 
+  return C_;
+}
+
+ColumnVector TwistModel::ExpectedValueGet() const {
+  y_(1) = x_(VELOCITY_X);
+  y_(2) = x_(VELOCITY_Y);
+  y_(3) = x_(VELOCITY_Z);
+  y_(4) = x_(RATE_X);
+  y_(5) = x_(RATE_Y);
+  y_(6) = x_(RATE_Z);
+  return y_;
+}
+
+Matrix TwistModel::dfGet(unsigned int i) const {
+  if (i != 0) return Matrix();
+
+  C_(1,VELOCITY_X) = 1.0;
+  C_(2,VELOCITY_Y) = 1.0;
+  C_(3,VELOCITY_Z) = 1.0;
+  C_(4,RATE_X) = 1.0;
+  C_(5,RATE_Y) = 1.0;
+  C_(6,RATE_Z) = 1.0;
   return C_;
 }
 
