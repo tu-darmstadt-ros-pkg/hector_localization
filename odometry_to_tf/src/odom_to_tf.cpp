@@ -1,14 +1,18 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
 
 std::string g_odometry_topic;
 std::string g_pose_topic;
+std::string g_imu_topic;
 std::string g_frame_id;
 std::string g_footprint_frame_id;
 std::string g_stabilized_frame_id;
 std::string g_child_frame_id;
+
+tf::TransformBroadcaster *br;
 
 void addTransform(std::vector<geometry_msgs::TransformStamped>& transforms, const tf::StampedTransform& tf)
 {
@@ -18,8 +22,7 @@ void addTransform(std::vector<geometry_msgs::TransformStamped>& transforms, cons
 
 void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& header, std::string child_frame_id = "")
 {
-  static tf::TransformBroadcaster br;
-  static std::vector<geometry_msgs::TransformStamped> transforms(3);
+  std::vector<geometry_msgs::TransformStamped> transforms;
 
   tf::StampedTransform tf;
   tf.frame_id_ = header.frame_id;
@@ -27,8 +30,6 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
   tf.stamp_ = header.stamp;
   if (!g_child_frame_id.empty()) child_frame_id = g_child_frame_id;
   if (child_frame_id.empty()) child_frame_id = "base_link";
-
-  transforms.clear();
 
   tf::Quaternion orientation;
   tf::quaternionMsgToTF(pose.orientation, orientation);
@@ -61,13 +62,13 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
     tf.frame_id_ = g_stabilized_frame_id;
   }
 
-  // stabilized intermediate transform (z)
+  // base_link transform (roll, pitch)
   tf.child_frame_id_ = child_frame_id;
   tf.setOrigin(position);
   tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, yaw));
   addTransform(transforms, tf);
 
-  br.sendTransform(transforms);
+  br->sendTransform(transforms);
 }
 
 void odomCallback(nav_msgs::Odometry const &odometry) {
@@ -76,6 +77,29 @@ void odomCallback(nav_msgs::Odometry const &odometry) {
 
 void poseCallback(geometry_msgs::PoseStamped const &pose) {
   sendTransform(pose.pose, pose.header);
+}
+
+void imuCallback(sensor_msgs::Imu const &imu) {
+  std::vector<geometry_msgs::TransformStamped> transforms;
+  std::string child_frame_id;
+
+  tf::StampedTransform tf;
+  tf.frame_id_ = g_stabilized_frame_id;
+  tf.stamp_ = imu.header.stamp;
+  if (!g_child_frame_id.empty()) child_frame_id = g_child_frame_id;
+  if (child_frame_id.empty()) child_frame_id = "base_link";
+
+  tf::Quaternion orientation;
+  tf::quaternionMsgToTF(imu.orientation, orientation);
+  btScalar yaw, pitch, roll;
+  btMatrix3x3(orientation).getEulerYPR(yaw, pitch, roll);
+
+  // base_link transform (roll, pitch)
+  tf.child_frame_id_ = child_frame_id;
+  tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, 0.0));
+  addTransform(transforms, tf);
+
+  br->sendTransform(transforms);
 }
 
 int main(int argc, char** argv) {
@@ -87,21 +111,26 @@ int main(int argc, char** argv) {
   ros::NodeHandle priv_nh("~");
   priv_nh.getParam("odometry_topic", g_odometry_topic);
   priv_nh.getParam("pose_topic", g_pose_topic);
+  priv_nh.getParam("imu_topic", g_imu_topic);
   priv_nh.getParam("frame_id", g_frame_id);
   priv_nh.getParam("footprint_frame_id", g_footprint_frame_id);
   priv_nh.getParam("stabilized_frame_id", g_stabilized_frame_id);
   priv_nh.getParam("child_frame_id", g_child_frame_id);
 
+  br = new tf::TransformBroadcaster;
+
   ros::NodeHandle node;
-  ros::Subscriber sub1, sub2;
+  ros::Subscriber sub1, sub2, sub3;
   if (!g_odometry_topic.empty()) sub1 = node.subscribe(g_odometry_topic, 10, &odomCallback);
   if (!g_pose_topic.empty())     sub2 = node.subscribe(g_pose_topic, 10, &poseCallback);
+  if (!g_imu_topic.empty())      sub3 = node.subscribe(g_imu_topic, 10, &imuCallback);
 
-  if (!sub1 && !sub2) {
-    ROS_FATAL("Params odometry_topic and pose_topic are empty... nothing to do for me!");
+  if (!sub1 && !sub2 && !sub3) {
+    ROS_FATAL("Params odometry_topic, pose_topic and imu_topic are empty... nothing to do for me!");
     return 1;
   }
 
   ros::spin();
+  delete br;
   return 0;
 }
