@@ -40,6 +40,7 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   , covariance_is_dirty_(true)
   , status_()
   , measurement_status_()
+  , rate_("rate")
   , gravity_("gravity")
   , zerorate_("zerorate")
 //  , heading_("heading")
@@ -70,6 +71,7 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   setSystemModel(system_model);
 
   // add default measurements
+  addMeasurement(&rate_);
   addMeasurement(&gravity_);
   addMeasurement(&zerorate_);
 //  addMeasurement(&heading_);
@@ -171,6 +173,10 @@ void PoseEstimation::update(double dt)
   // check if system and filter is initialized
   if (!system_ || !filter_) return;
 
+  // filter rate measurement first
+  ROS_DEBUG("Updating with measurement model %s", rate_.getName().c_str());
+  rate_.update(*this, Rate::Update(system_->getInput().sub(GYRO_X,GYRO_Z)));
+
   // time update step
   system_->update(*this, dt);
   updateSystemStatus(system_->getStatusFlags(), STATE_ROLLPITCH | STATE_YAW | STATE_XY_POSITION | STATE_XY_VELOCITY | STATE_Z_POSITION | STATE_Z_VELOCITY);
@@ -183,6 +189,8 @@ void PoseEstimation::update(double dt)
     if (!measurement->active(getSystemStatus())) continue;
 
     // special updates
+    if (measurement == &rate_) continue;
+
     if (measurement == &gravity_) {
       ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
       gravity_.update(*this, Gravity::Update(system_->getInput().sub(ACCEL_X, ACCEL_Z)));
@@ -436,16 +444,24 @@ void PoseEstimation::getState(nav_msgs::Odometry& state, bool with_covariances) 
       for(int j = 0; j < 3; ++j)
         state.twist.covariance[i*6+j] = covariance_(VELOCITY_X + i, VELOCITY_X + j);
 
-    // angular rate covariance (body-fixed)
+    // angular rate covariance
     SymmetricMatrix gyro_noise(quat_to_angular_rate * system_->getModel()->AdditiveNoiseSigmaGet().sub(QUATERNION_W,QUATERNION_Z,QUATERNION_W,QUATERNION_Z) * quat_to_angular_rate.transpose());
     for(int i = 0; i < 3; ++i)
       for(int j = 0; j < 3; ++j)
+#ifdef USE_RATE_SYSTEM_MODEL
+        state.twist.covariance[(i+3)*6+(j+3)] = covariance_(RATE_X + i, RATE_X + j);
+#else // USE_RATE_SYSTEM_MODEL
         state.twist.covariance[(i+3)*6+(j+3)] = covariance_(BIAS_GYRO_X + i, BIAS_GYRO_X + j) + gyro_noise(i+1,j+1);
+#endif // USE_RATE_SYSTEM_MODEL
 
     // cross velocity/angular_rate variance
     for(int i = 0; i < 3; ++i)
       for(int j = 0; j < 3; ++j)
-        state.twist.covariance[(i+3)*6+j] = state.twist.covariance[j*6+(i+3)] = covariance_(VELOCITY_X + i, BIAS_GYRO_X + j);
+#ifdef USE_RATE_SYSTEM_MODEL
+        state.twist.covariance[(i+3)*6+(j+3)] = state.twist.covariance[j*6+(i+3)] = covariance_(RATE_X + i, VELOCITY_X + j);
+#else // USE_RATE_SYSTEM_MODEL
+       state.twist.covariance[(i+3)*6+j] = state.twist.covariance[j*6+(i+3)] = covariance_(BIAS_GYRO_X + i, VELOCITY_X + j);
+#endif // USE_RATE_SYSTEM_MODEL
   }
 }
 
@@ -542,9 +558,17 @@ void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleratio
   linear_acceleration.x = input(ACCEL_X) + state_(BIAS_ACCEL_X);
   linear_acceleration.y = input(ACCEL_Y) + state_(BIAS_ACCEL_Y);
   linear_acceleration.z = input(ACCEL_Z) + state_(BIAS_ACCEL_Z);
+
+#ifdef USE_RATE_SYSTEM_MODEL
+  Rate::MeasurementVector rate_body = rate_.getModel()->PredictionGet(input, state_);
+  angular_velocity.x    = rate_body(1);
+  angular_velocity.y    = rate_body(2);
+  angular_velocity.z    = rate_body(3);
+#else // USE_RATE_SYSTEM_MODEL
   angular_velocity.x    = input(GYRO_X)  + state_(BIAS_GYRO_X);
   angular_velocity.y    = input(GYRO_Y)  + state_(BIAS_GYRO_Y);
   angular_velocity.z    = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
+#endif // USE_RATE_SYSTEM_MODEL
 }
 
 void PoseEstimation::getVelocity(tf::Vector3& vector) {
@@ -572,8 +596,12 @@ void PoseEstimation::getVelocity(geometry_msgs::Vector3Stamped& vector) {
 
 void PoseEstimation::getRate(tf::Vector3& vector) {
   getState();
+#ifdef USE_RATE_SYSTEM_MODEL
+  vector = tf::Vector3(state_(RATE_X), state_(RATE_Y), state_(RATE_Z));
+#else // USE_RATE_SYSTEM_MODEL
   const InputVector &input = system_->getInput();
   vector = tf::Vector3(input(GYRO_X)  + state_(BIAS_GYRO_Z), input(GYRO_Y)  + state_(BIAS_GYRO_Z), input(GYRO_Z) + state_(BIAS_GYRO_Z));
+#endif // USE_RATE_SYSTEM_MODEL
 }
 
 void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
@@ -584,10 +612,16 @@ void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
 
 void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
   getState();
+#ifdef USE_RATE_SYSTEM_MODEL
+  vector.x = state_(RATE_X);
+  vector.y = state_(RATE_Y);
+  vector.z = state_(RATE_Z);
+#else // USE_RATE_SYSTEM_MODEL
   const InputVector &input = system_->getInput();
   vector.x = input(GYRO_X)  + state_(BIAS_GYRO_Z);
   vector.y = input(GYRO_Y)  + state_(BIAS_GYRO_Z);
   vector.z = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
+#endif // USE_RATE_SYSTEM_MODEL
 }
 
 void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {

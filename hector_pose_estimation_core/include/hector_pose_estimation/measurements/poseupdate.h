@@ -31,6 +31,7 @@
 
 #include <hector_pose_estimation/measurement.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
 
 namespace hector_pose_estimation {
 
@@ -73,6 +74,19 @@ public:
   virtual Matrix dfGet(unsigned int i) const;
 };
 
+class TwistModel : public MeasurementModel {
+public:
+  static const unsigned int MeasurementDimension = 6;
+  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
+
+  TwistModel() : MeasurementModel(MeasurementDimension) {}
+  virtual ~TwistModel() {}
+
+  virtual ColumnVector ExpectedValueGet() const;
+  virtual Matrix dfGet(unsigned int i) const;
+};
+
 class PoseUpdate : public Measurement
 {
 public:
@@ -84,7 +98,12 @@ public:
     Update() {}
     Update(const geometry_msgs::PoseWithCovarianceStamped& pose) : pose(new geometry_msgs::PoseWithCovarianceStamped(pose)) {}
     Update(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) : pose(pose) {}
+    Update(const geometry_msgs::TwistWithCovarianceStamped& twist) : twist(new geometry_msgs::TwistWithCovarianceStamped(twist)) {}
+    Update(const geometry_msgs::TwistWithCovarianceStampedConstPtr& twist) : twist(twist) {}
+    Update(const geometry_msgs::PoseWithCovarianceStamped& pose, const geometry_msgs::TwistWithCovarianceStamped& twist) : pose(new geometry_msgs::PoseWithCovarianceStamped(pose)), twist(new geometry_msgs::TwistWithCovarianceStamped(twist)) {}
+    Update(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose, const geometry_msgs::TwistWithCovarianceStampedConstPtr& twist) : pose(pose), twist(twist) {}
     geometry_msgs::PoseWithCovarianceStampedConstPtr pose;
+    geometry_msgs::TwistWithCovarianceStampedConstPtr twist;
   };
 
   bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
@@ -93,16 +112,27 @@ private:
   PositionXYModel position_xy_model_;
   PositionZModel position_z_model_;
   YawModel yaw_model_;
+  TwistModel twist_model_;
 
   double alpha_, beta_;
   double fixed_position_xy_stddev_;
   double fixed_position_z_stddev_;
   double fixed_yaw_stddev_;
 
+  double fixed_velocity_xy_stddev_;
+  double fixed_velocity_z_stddev_;
+  double fixed_angular_rate_xy_stddev_;
+  double fixed_angular_rate_z_stddev_;
+
   double max_time_difference_;
   double max_position_xy_error_;
   double max_position_z_error_;
   double max_yaw_error_;
+
+  double max_velocity_xy_error_;
+  double max_velocity_z_error_;
+  double max_angular_rate_xy_error_;
+  double max_angular_rate_z_error_;
 
   bool jump_on_max_error_;
 

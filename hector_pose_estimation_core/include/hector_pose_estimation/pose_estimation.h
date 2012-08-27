@@ -50,6 +50,7 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/NavSatFix.h>
 
+#include "measurements/rate.h"
 #include "measurements/gravity.h"
 #include "measurements/zerorate.h"
 //#include "measurements/heading.h"
@@ -176,6 +177,7 @@ private:
 
   SystemStatusCallback status_callback_;
 
+  Rate rate_;
   Gravity gravity_;
   ZeroRate zerorate_;
 //  Heading heading_;

@@ -58,7 +58,10 @@ protected:
 
 protected:
   double gravity_;
-  double gyro_stddev_;
+  double rate_stddev_;
+#ifdef USE_RATE_SYSTEM_MODEL
+  double angular_acceleration_stddev_;
+#endif // USE_RATE_SYSTEM_MODEL
   double acceleration_stddev_;
   double velocity_stddev_;
   double acceleration_drift_;

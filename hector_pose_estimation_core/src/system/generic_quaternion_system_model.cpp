@@ -35,13 +35,21 @@ static const double GRAVITY = -9.8065;
 GenericQuaternionSystemModel::GenericQuaternionSystemModel()
 {
   gravity_ = GRAVITY;
-  gyro_stddev_ = 1.0 * M_PI/180.0;
+#ifdef USE_RATE_SYSTEM_MODEL
+  rate_stddev_ = 0.0;
+  angular_acceleration_stddev_ = 10.0 * M_PI/180.0;
+#else // USE_RATE_SYSTEM_MODEL
+  rate_stddev_ = 1.0 * M_PI/180.0;
+#endif // USE_RATE_SYSTEM_MODEL
   acceleration_stddev_ = 1.0;
   velocity_stddev_ = 0.0;
-  acceleration_drift_ = 0.0;
+  acceleration_drift_ = 1.0e-6;
   gyro_drift_ = 1.0e-2 * M_PI/180.0;
   parameters().add("gravity", gravity_);
-  parameters().add("gyro_stddev", gyro_stddev_);
+  parameters().add("rate_stddev", rate_stddev_);
+#ifdef USE_RATE_SYSTEM_MODEL
+  parameters().add("angular_acceleration_stddev", angular_acceleration_stddev_);
+#endif // USE_RATE_SYSTEM_MODEL
   parameters().add("acceleration_stddev", acceleration_stddev_);
   parameters().add("velocity_stddev", velocity_stddev_);
   parameters().add("acceleration_drift", acceleration_drift_);
@@ -51,7 +59,10 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
 bool GenericQuaternionSystemModel::init()
 {
   noise_ = 0.0;
-  noise_(QUATERNION_W,QUATERNION_W) = noise_(QUATERNION_X,QUATERNION_X) = noise_(QUATERNION_Y,QUATERNION_Y) = noise_(QUATERNION_Z,QUATERNION_Z) = pow(0.5 * gyro_stddev_, 2);
+  noise_(QUATERNION_W,QUATERNION_W) = noise_(QUATERNION_X,QUATERNION_X) = noise_(QUATERNION_Y,QUATERNION_Y) = noise_(QUATERNION_Z,QUATERNION_Z) = pow(0.5 * rate_stddev_, 2); // will be overridden in CovarianceGet() !
+#ifdef USE_RATE_SYSTEM_MODEL
+  noise_(RATE_X,RATE_X) = noise_(RATE_Y,RATE_Y) = noise_(RATE_Z,RATE_Z) = pow(angular_acceleration_stddev_, 2);
+#endif // USE_RATE_SYSTEM_MODEL
   noise_(POSITION_X,POSITION_X) = noise_(POSITION_Y,POSITION_Y) = noise_(POSITION_Z,POSITION_Z) = pow(velocity_stddev_, 2);
   noise_(VELOCITY_X,VELOCITY_X) = noise_(VELOCITY_Y,VELOCITY_Y) = noise_(VELOCITY_Z,VELOCITY_Z) = pow(acceleration_stddev_, 2);
   noise_(BIAS_ACCEL_X,BIAS_ACCEL_X) = noise_(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2);
@@ -84,9 +95,15 @@ ColumnVector GenericQuaternionSystemModel::ExpectedValueGet(double dt) const
     double abx        = u_(ACCEL_X) + x_(BIAS_ACCEL_X);
     double aby        = u_(ACCEL_Y) + x_(BIAS_ACCEL_Y);
     double abz        = u_(ACCEL_Z) + x_(BIAS_ACCEL_Z);
+#ifdef USE_RATE_SYSTEM_MODEL
+    double wnx        = x_(RATE_X);
+    double wny        = x_(RATE_Y);
+    double wnz        = x_(RATE_Z);
+#else // USE_RATE_SYSTEM_MODEL
     double wbx        = u_(GYRO_X)  + x_(BIAS_GYRO_X);
     double wby        = u_(GYRO_Y)  + x_(BIAS_GYRO_Y);
     double wbz        = u_(GYRO_Z)  + x_(BIAS_GYRO_Z);
+#endif // USE_RATE_SYSTEM_MODEL
 
     q0            = x_(QUATERNION_W);
     q1            = x_(QUATERNION_X);
@@ -102,11 +119,17 @@ ColumnVector GenericQuaternionSystemModel::ExpectedValueGet(double dt) const
 
     //--> Attitude
     //----------------------------------------------------------
+#ifdef USE_RATE_SYSTEM_MODEL
+    x_pred_(QUATERNION_W) = q0 + dt*0.5*(          (-wnx)*q1+(-wny)*q2+(-wnz)*q3);
+    x_pred_(QUATERNION_X) = q1 + dt*0.5*(( wnx)*q0          +(-wnz)*q2+( wny)*q3);
+    x_pred_(QUATERNION_Y) = q2 + dt*0.5*(( wny)*q0+( wnz)*q1          +(-wnx)*q3);
+    x_pred_(QUATERNION_Z) = q3 + dt*0.5*(( wnz)*q0+(-wny)*q1+( wnx)*q2          );
+#else // USE_RATE_SYSTEM_MODEL
     x_pred_(QUATERNION_W) = q0 + dt*0.5*(          (-wbx)*q1+(-wby)*q2+(-wbz)*q3);
     x_pred_(QUATERNION_X) = q1 + dt*0.5*(( wbx)*q0          +( wbz)*q2+(-wby)*q3);
     x_pred_(QUATERNION_Y) = q2 + dt*0.5*(( wby)*q0+(-wbz)*q1          +( wbx)*q3);
     x_pred_(QUATERNION_Z) = q3 + dt*0.5*(( wbz)*q0+( wby)*q1+(-wbx)*q2          );
-    // normalize(x_pred_);
+#endif // USE_RATE_SYSTEM_MODEL
     //----------------------------------------------------------
 
     //--> Velocity (without coriolis forces) and Position
@@ -136,11 +159,11 @@ ColumnVector GenericQuaternionSystemModel::ExpectedValueGet(double dt) const
 // unfortunately MatrixWrapper::SymmetricMatrix CovarianceGet(const MatrixWrapper::ColumnVector& u, const MatrixWrapper::ColumnVector& x) cannot be overridden
 SymmetricMatrix GenericQuaternionSystemModel::CovarianceGet(double dt) const
 {
-    double gyro_variance_4 = 0.25 * pow(gyro_stddev_, 2);
-    noise_(QUATERNION_W,QUATERNION_W) = gyro_variance_4 * (q1*q1+q2*q2+q3*q3);
-    noise_(QUATERNION_X,QUATERNION_X) = gyro_variance_4 * (q0*q0+q2*q2+q3*q3);
-    noise_(QUATERNION_Y,QUATERNION_Y) = gyro_variance_4 * (q0*q0+q1*q1+q3*q3);
-    noise_(QUATERNION_Z,QUATERNION_Z) = gyro_variance_4 * (q0*q0+q1*q1+q2*q2);
+    double rate_variance_4 = 0.25 * pow(rate_stddev_, 2);
+    noise_(QUATERNION_W,QUATERNION_W) = rate_variance_4 * (q1*q1+q2*q2+q3*q3);
+    noise_(QUATERNION_X,QUATERNION_X) = rate_variance_4 * (q0*q0+q2*q2+q3*q3);
+    noise_(QUATERNION_Y,QUATERNION_Y) = rate_variance_4 * (q0*q0+q1*q1+q3*q3);
+    noise_(QUATERNION_Z,QUATERNION_Z) = rate_variance_4 * (q0*q0+q1*q1+q2*q2);
     // return noise_ * (dt*dt);
     return noise_ * dt;
 }
@@ -155,9 +178,15 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt) const
     double abx        = u_(ACCEL_X) + x_(BIAS_ACCEL_X);
     double aby        = u_(ACCEL_Y) + x_(BIAS_ACCEL_Y);
     double abz        = u_(ACCEL_Z) + x_(BIAS_ACCEL_Z);
+#ifdef USE_RATE_SYSTEM_MODEL
+    double wnx        = x_(RATE_X);
+    double wny        = x_(RATE_Y);
+    double wnz        = x_(RATE_Z);
+#else // USE_RATE_SYSTEM_MODEL
     double wbx        = u_(GYRO_X)  + x_(BIAS_GYRO_X);
     double wby        = u_(GYRO_Y)  + x_(BIAS_GYRO_Y);
     double wbz        = u_(GYRO_Z)  + x_(BIAS_GYRO_Z);
+#endif // USE_RATE_SYSTEM_MODEL
 
     q0     = x_(QUATERNION_W);
     q1     = x_(QUATERNION_X);
@@ -167,6 +196,35 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt) const
 
     //--> Set A-Matrix
     //----------------------------------------------------------
+#ifdef USE_RATE_SYSTEM_MODEL
+    A_(QUATERNION_W,QUATERNION_X) = dt*(-0.5*wnx);
+    A_(QUATERNION_W,QUATERNION_Y) = dt*(-0.5*wny);
+    A_(QUATERNION_W,QUATERNION_Z) = dt*(-0.5*wnz);
+    A_(QUATERNION_W,RATE_X)  = -0.5*dt*q1;
+    A_(QUATERNION_W,RATE_Y)  = -0.5*dt*q2;
+    A_(QUATERNION_W,RATE_Z)  = -0.5*dt*q3;
+
+    A_(QUATERNION_X,QUATERNION_W) = dt*( 0.5*wnx);
+    A_(QUATERNION_X,QUATERNION_Y) = dt*(-0.5*wnz);
+    A_(QUATERNION_X,QUATERNION_Z) = dt*(+0.5*wny);
+    A_(QUATERNION_X,RATE_X)  =  0.5*dt*q0;
+    A_(QUATERNION_X,RATE_Y)  =  0.5*dt*q3;
+    A_(QUATERNION_X,RATE_Z)  = -0.5*dt*q2;
+
+    A_(QUATERNION_Y,QUATERNION_W) = dt*( 0.5*wny);
+    A_(QUATERNION_Y,QUATERNION_X) = dt*( 0.5*wnz);
+    A_(QUATERNION_Y,QUATERNION_Z) = dt*(-0.5*wnx);
+    A_(QUATERNION_Y,RATE_X)  = -0.5*dt*q3;
+    A_(QUATERNION_Y,RATE_Y)  =  0.5*dt*q0;
+    A_(QUATERNION_Y,RATE_Z)  =  0.5*dt*q1;
+
+    A_(QUATERNION_Z,QUATERNION_W) = dt*( 0.5*wnz);
+    A_(QUATERNION_Z,QUATERNION_X) = dt*(-0.5*wny);
+    A_(QUATERNION_Z,QUATERNION_Y) = dt*(+0.5*wnx);
+    A_(QUATERNION_Z,RATE_X)  =  0.5*dt*q2;
+    A_(QUATERNION_Z,RATE_Y)  = -0.5*dt*q1;
+    A_(QUATERNION_Z,RATE_Z)  =  0.5*dt*q0;
+#else // USE_RATE_SYSTEM_MODEL
     A_(QUATERNION_W,QUATERNION_X) = dt*(-0.5*wbx);
     A_(QUATERNION_W,QUATERNION_Y) = dt*(-0.5*wby);
     A_(QUATERNION_W,QUATERNION_Z) = dt*(-0.5*wbz);
@@ -194,6 +252,7 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt) const
     A_(QUATERNION_Z,BIAS_GYRO_X)  = -0.5*dt*q2;
     A_(QUATERNION_Z,BIAS_GYRO_Y)  = 0.5*dt*q1;
     A_(QUATERNION_Z,BIAS_GYRO_Z)  = 0.5*dt*q0;
+#endif // USE_RATE_SYSTEM_MODEL
 
   if (measurement_status_ & (STATE_XY_POSITION | STATE_XY_VELOCITY)) {
     A_(VELOCITY_X,QUATERNION_W) = dt*(-2.0*q3*aby+2.0*q2*abz+2.0*q0*abx);

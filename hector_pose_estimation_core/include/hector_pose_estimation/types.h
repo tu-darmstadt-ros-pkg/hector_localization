@@ -38,6 +38,11 @@ namespace hector_pose_estimation {
     QUATERNION_X,
     QUATERNION_Y,
     QUATERNION_Z,
+#ifdef USE_RATE_SYSTEM_MODEL
+    RATE_X,
+    RATE_Y,
+    RATE_Z,
+#endif // USE_RATE_SYSTEM_MODEL
     POSITION_X,
     POSITION_Y,
     POSITION_Z,

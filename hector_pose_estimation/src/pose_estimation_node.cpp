@@ -79,8 +79,9 @@ bool PoseEstimationNode::init() {
   linear_acceleration_bias_publisher_ = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("linear_acceleration_bias", 10, false);
   gps_pose_publisher_                 = getNodeHandle().advertise<geometry_msgs::PoseStamped>("fix/pose", 10, false);
 
-  poseupdate_subscriber_ = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
-  syscommand_subscriber_ = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
+  poseupdate_subscriber_  = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
+  twistupdate_subscriber_ = getNodeHandle().subscribe("twistupdate", 10, &PoseEstimationNode::twistupdateCallback, this);
+  syscommand_subscriber_  = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
 
   getPrivateNodeHandle().param("with_covariances", with_covariances_, false);
 
@@ -161,6 +162,10 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
 
 void PoseEstimationNode::poseupdateCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) {
   pose_estimation_->getMeasurement("poseupdate")->add(PoseUpdate::Update(pose));
+}
+
+void PoseEstimationNode::twistupdateCallback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& twist) {
+  pose_estimation_->getMeasurement("poseupdate")->add(PoseUpdate::Update(twist));
 }
 
 void PoseEstimationNode::syscommandCallback(const std_msgs::StringConstPtr& syscommand) {

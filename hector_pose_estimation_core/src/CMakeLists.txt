@@ -15,6 +15,12 @@ set(hector_pose_estimation_SOURCES
   measurements/baro.cpp
   measurements/gps.cpp
   measurements/poseupdate.cpp
+  measurements/rate.cpp
 )
+
+option(USE_RATE_SYSTEM_MODEL "Use system model with angular rates." OFF)
+if(USE_RATE_SYSTEM_MODEL)
+  add_definitions(-DUSE_RATE_SYSTEM_MODEL)
+endif(USE_RATE_SYSTEM_MODEL)
 
 rosbuild_add_library(hector_pose_estimation ${hector_pose_estimation_SOURCES})
