@@ -13,5 +13,11 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/hector_localization</url>
 
+  <depend stack="common_msgs" />
+  <depend stack="geometry" />
+  <depend stack="hector_common" />
+  <depend stack="nodelet_core" />
   <depend stack="ros" />
+  <depend stack="ros_comm" />
+
 </stack>
