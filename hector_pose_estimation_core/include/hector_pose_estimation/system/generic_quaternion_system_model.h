@@ -65,7 +65,7 @@ protected:
   double acceleration_stddev_;
   double velocity_stddev_;
   double acceleration_drift_;
-  double gyro_drift_;
+  double rate_drift_;
 
   mutable double q0,q1,q2,q3;
   mutable SymmetricMatrix_<StateDimension> noise_;

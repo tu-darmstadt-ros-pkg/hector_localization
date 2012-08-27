@@ -44,7 +44,7 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   acceleration_stddev_ = 1.0;
   velocity_stddev_ = 0.0;
   acceleration_drift_ = 1.0e-6;
-  gyro_drift_ = 1.0e-2 * M_PI/180.0;
+  rate_drift_ = 1.0e-2 * M_PI/180.0;
   parameters().add("gravity", gravity_);
   parameters().add("rate_stddev", rate_stddev_);
 #ifdef USE_RATE_SYSTEM_MODEL
@@ -53,7 +53,7 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   parameters().add("acceleration_stddev", acceleration_stddev_);
   parameters().add("velocity_stddev", velocity_stddev_);
   parameters().add("acceleration_drift", acceleration_drift_);
-  parameters().add("gyro_drift", gyro_drift_);
+  parameters().add("rate_drift", rate_drift_);
 }
 
 bool GenericQuaternionSystemModel::init()
@@ -67,7 +67,7 @@ bool GenericQuaternionSystemModel::init()
   noise_(VELOCITY_X,VELOCITY_X) = noise_(VELOCITY_Y,VELOCITY_Y) = noise_(VELOCITY_Z,VELOCITY_Z) = pow(acceleration_stddev_, 2);
   noise_(BIAS_ACCEL_X,BIAS_ACCEL_X) = noise_(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2);
   noise_(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = pow(acceleration_drift_, 2);
-  noise_(BIAS_GYRO_X,BIAS_GYRO_X) = noise_(BIAS_GYRO_Y,BIAS_GYRO_Y) = noise_(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(gyro_drift_, 2);
+  noise_(BIAS_GYRO_X,BIAS_GYRO_X) = noise_(BIAS_GYRO_Y,BIAS_GYRO_Y) = noise_(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(rate_drift_, 2);
   this->AdditiveNoiseSigmaSet(noise_);
   return true;
 }
