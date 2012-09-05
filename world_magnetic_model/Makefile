@@ -16,8 +16,8 @@ ifneq ($(MAKE),)
 else
 	cd build && make $(ROS_PARALLEL_JOBS)
 endif
-	mkdir -p include/world_magnetic_model && cp $(SOURCE_DIR)/*.h include/world_magnetic_model
-	mkdir -p model && cp $(SOURCE_DIR)/*.COF model
+	mkdir -p include/world_magnetic_model && cp $(SOURCE_DIR)/WMM_Linux/*.h include/world_magnetic_model
+	mkdir -p model && cp $(SOURCE_DIR)/WMM_Linux/*.COF model
 
 clean:
 	-rm -rf lib include model $(SOURCE_DIR)

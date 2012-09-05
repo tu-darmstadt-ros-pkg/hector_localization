@@ -29,5 +29,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-rosbuild_add_library(world_magnetic_model build/src/WMM_SubLibrary.c)
+rosbuild_add_library(world_magnetic_model build/src/WMM_Linux/GeomagnetismLibrary.c)
 
