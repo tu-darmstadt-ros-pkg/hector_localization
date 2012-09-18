@@ -47,6 +47,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/String.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
@@ -82,6 +83,9 @@ protected:
   virtual ros::NodeHandle& getNodeHandle() { return nh_; }
   virtual ros::NodeHandle& getPrivateNodeHandle() { return private_nh_; }
 
+  tf::TransformBroadcaster *getTransformBroadcaster();
+  tf::TransformListener *getTransformListener();
+
 protected:
   PoseEstimation *pose_estimation_;
 
@@ -97,9 +101,14 @@ private:
   ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_, gps_pose_publisher_;
   ros::Subscriber poseupdate_subscriber_, twistupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
+
+  std::vector<tf::StampedTransform> transforms_;
   tf::TransformBroadcaster transform_broadcaster_;
+  tf::TransformListener *transform_listener_;
 
   bool with_covariances_;
+  bool publish_world_other_transform_;
+  std::string other_frame_;
 };
 
 } // namespace hector_pose_estimation

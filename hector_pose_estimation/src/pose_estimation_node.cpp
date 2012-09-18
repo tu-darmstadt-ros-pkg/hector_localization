@@ -39,6 +39,7 @@ namespace hector_pose_estimation {
 PoseEstimationNode::PoseEstimationNode(SystemModel *system_model)
   : pose_estimation_(new PoseEstimation(system_model ? system_model : new GenericQuaternionSystemModel))
   , private_nh_("~")
+  , transform_listener_(0)
 {
   pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
   pose_estimation_->addMeasurement(new Height("height"));
@@ -50,6 +51,7 @@ PoseEstimationNode::~PoseEstimationNode()
 {
   cleanup();
   delete pose_estimation_;
+  delete transform_listener_;
 }
 
 bool PoseEstimationNode::init() {
@@ -84,6 +86,9 @@ bool PoseEstimationNode::init() {
   syscommand_subscriber_  = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
 
   getPrivateNodeHandle().param("with_covariances", with_covariances_, false);
+
+  getPrivateNodeHandle().param("publish_world_map_transform", publish_world_other_transform_, false);
+  getPrivateNodeHandle().param("map_frame", other_frame_, std::string("map"));
 
   // publish initial state
   publish();
@@ -216,12 +221,36 @@ void PoseEstimationNode::publish() {
     if (linear_acceleration_bias_publisher_) linear_acceleration_bias_publisher_.publish(linear_acceleration_msg);
   }
 
-  // if (transform_broadcaster_)
+  if (getTransformBroadcaster())
   {
-    std::vector<tf::StampedTransform> transforms(3);
-    pose_estimation_->getTransforms(transforms);
-    transform_broadcaster_.sendTransform(transforms);
+    transforms_.clear();
+
+    pose_estimation_->getTransforms(transforms_);
+
+    if (publish_world_other_transform_) {
+        tf::StampedTransform world_to_other_transform;
+        std::string nav_frame = pose_estimation_->parameters().get<std::string>("nav_frame");
+        try {
+          getTransformListener()->lookupTransform(nav_frame, other_frame_, ros::Time(), world_to_other_transform);
+          pose_estimation_->updateWorldToOtherTransform(world_to_other_transform);
+          transforms_.push_back(world_to_other_transform);
+
+        } catch (tf::TransformException& e) {
+          ROS_WARN("Could not find a transformation from %s to %s to publish the world transformation", nav_frame.c_str(), other_frame_.c_str());
+        }
+      }
+
+    getTransformBroadcaster()->sendTransform(transforms_);
   }
+}
+
+tf::TransformBroadcaster *PoseEstimationNode::getTransformBroadcaster() {
+  return &transform_broadcaster_;
+}
+
+tf::TransformListener *PoseEstimationNode::getTransformListener() {
+  if (!transform_listener_) transform_listener_ = new tf::TransformListener();
+  return transform_listener_;
 }
 
 } // namespace hector_pose_estimation

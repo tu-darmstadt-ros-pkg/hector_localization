@@ -123,7 +123,7 @@ namespace hector_pose_estimation {
 
     template <typename T>
     T& get(const std::string& key) const {
-      for(iterator it = begin(); it != end(); ++it) {
+      for(const_iterator it = begin(); it != end(); ++it) {
         if ((*it)->key == key) {
           return (*it)->as<T>();
         }

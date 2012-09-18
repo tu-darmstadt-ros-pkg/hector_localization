@@ -47,8 +47,9 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
 {
   if (!the_instance) the_instance = this;
 
-  base_frame_ = "base_link";
+  world_frame_ = "world";
   nav_frame_ = "nav";
+  base_frame_ = "base_link";
   stabilized_frame_ = "base_stabilized";
   footprint_frame_ = "base_footprint";
   global_reference_.latitude = 0.0;
@@ -57,8 +58,9 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   global_reference_.heading = 0.0;
   alignment_time_ = 0.0;
 
-  parameters().add("base_frame", base_frame_);
+  parameters().add("world_frame", world_frame_);
   parameters().add("nav_frame", nav_frame_);
+  parameters().add("base_frame", base_frame_);
   parameters().add("stabilized_frame", stabilized_frame_);
   parameters().add("footprint_frame", footprint_frame_);
   parameters().add("reference_latitude",  global_reference_.latitude);
@@ -523,6 +525,8 @@ void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, doub
 void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
 {
   getHeader(global.header);
+  global.header.frame_id = world_frame_;
+
   getGlobalPosition(global.latitude, global.longitude, global.altitude);
   global.latitude  *= 180.0/M_PI;
   global.longitude *= 180.0/M_PI;
@@ -675,7 +679,6 @@ void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms
   double y,p,r;
   transform.getBasis().getEulerYPR(y,p,r);
 
-  transforms.clear();
   std::string parent_frame = nav_frame_;
 
   if (!footprint_frame_.empty()) {
@@ -723,6 +726,17 @@ void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms
 //  transforms[2].setBasis(rotation);
 }
 
+void PoseEstimation::updateWorldToOtherTransform(tf::StampedTransform& world_to_other_transform) {
+  world_to_other_transform.frame_id_ = world_frame_;
+
+  double y,p,r;
+  world_to_other_transform.getBasis().getEulerYPR(y,p,r);
+  if (!(getSystemStatus() & STATE_ROLLPITCH))   { r = p = 0.0; }
+  if (!(getSystemStatus() & STATE_YAW))         { y = 0.0; }
+  if (!(getSystemStatus() & STATE_XY_POSITION)) { world_to_other_transform.getOrigin().setX(0.0); world_to_other_transform.getOrigin().setY(0.0); }
+  if (!(getSystemStatus() & STATE_Z_POSITION))  { world_to_other_transform.getOrigin().setZ(0.0); }
+  world_to_other_transform.getBasis().setEulerYPR(y, p, r);
+}
 
 ParameterList PoseEstimation::getParameters() const {
   ParameterList parameters = parameters_;
