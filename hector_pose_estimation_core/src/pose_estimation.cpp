@@ -52,6 +52,7 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   base_frame_ = "base_link";
   stabilized_frame_ = "base_stabilized";
   footprint_frame_ = "base_footprint";
+  // position_frame_ = "base_position";
   global_reference_.latitude = 0.0;
   global_reference_.longitude = 0.0;
   global_reference_.altitude = 0.0;
@@ -63,6 +64,7 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   parameters().add("base_frame", base_frame_);
   parameters().add("stabilized_frame", stabilized_frame_);
   parameters().add("footprint_frame", footprint_frame_);
+  parameters().add("position_frame", position_frame_);
   parameters().add("reference_latitude",  global_reference_.latitude);
   parameters().add("reference_longitude", global_reference_.longitude);
   parameters().add("reference_altitude",  global_reference_.altitude);
@@ -680,6 +682,13 @@ void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms
   transform.getBasis().getEulerYPR(y,p,r);
 
   std::string parent_frame = nav_frame_;
+
+  if(!position_frame_.empty()) {
+    tf::Transform position_transform;
+    position_transform.getBasis().setIdentity();
+    position_transform.setOrigin(tf::Point(position.x(), position.y(), position.z()));
+    transforms.push_back(tf::StampedTransform(position_transform, timestamp_, parent_frame, position_frame_ ));
+  }
 
   if (!footprint_frame_.empty()) {
     tf::Transform footprint_transform;

@@ -228,17 +228,17 @@ void PoseEstimationNode::publish() {
     pose_estimation_->getTransforms(transforms_);
 
     if (publish_world_other_transform_) {
-        tf::StampedTransform world_to_other_transform;
-        std::string nav_frame = pose_estimation_->parameters().get<std::string>("nav_frame");
-        try {
-          getTransformListener()->lookupTransform(nav_frame, other_frame_, ros::Time(), world_to_other_transform);
-          pose_estimation_->updateWorldToOtherTransform(world_to_other_transform);
-          transforms_.push_back(world_to_other_transform);
+      tf::StampedTransform world_to_other_transform;
+      std::string nav_frame = pose_estimation_->parameters().get<std::string>("nav_frame");
+      try {
+        getTransformListener()->lookupTransform(nav_frame, other_frame_, ros::Time(), world_to_other_transform);
+        pose_estimation_->updateWorldToOtherTransform(world_to_other_transform);
+        transforms_.push_back(world_to_other_transform);
 
-        } catch (tf::TransformException& e) {
-          ROS_WARN("Could not find a transformation from %s to %s to publish the world transformation", nav_frame.c_str(), other_frame_.c_str());
-        }
+      } catch (tf::TransformException& e) {
+        ROS_WARN("Could not find a transformation from %s to %s to publish the world transformation", nav_frame.c_str(), other_frame_.c_str());
       }
+    }
 
     getTransformBroadcaster()->sendTransform(transforms_);
   }

@@ -173,6 +173,7 @@ private:
   std::string base_frame_;
   std::string stabilized_frame_;
   std::string footprint_frame_;
+  std::string position_frame_;
 
   ros::Time alignment_start_;
   double alignment_time_;
