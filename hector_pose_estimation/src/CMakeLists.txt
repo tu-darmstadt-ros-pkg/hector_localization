@@ -1,0 +1,6 @@
+rosbuild_add_library(hector_pose_estimation_nodelet pose_estimation_node.cpp nodelet.cpp)
+target_link_libraries(hector_pose_estimation_nodelet hector_pose_estimation)
+rosbuild_link_boost(hector_pose_estimation_nodelet signals)
+
+rosbuild_add_executable(pose_estimation pose_estimation_node.cpp main.cpp)
+rosbuild_link_boost(pose_estimation signals)
