@@ -105,9 +105,9 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
     position_z_model_.ConditionalArgumentSet(0,state);
     yaw_model_.ConditionalArgumentSet(0,state);
 
-//    std::cout << "PoseUpdate: state = [ " << state.transpose() << " ], P = [ " << covariance << " ]" << std::endl
-//              << "     update: pose = [ " << update_pose.transpose() << " ], euler = [ " << update_euler.transpose() << " ], information = [ " << information << " ]" << std::endl;
-//    std::cout << "             dt = " << (estimator.getTimestamp() - update.pose->header.stamp).toSec() << " s" << std::endl;
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: state = [ " << state.transpose() << " ], P = [ " << covariance << " ]" << std::endl
+                                      << "update: pose = [ " << update_pose.transpose() << " ], euler = [ " << update_euler.transpose() << " ], information = [ " << information << " ]");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "dt = " << (estimator.getTimestamp() - update.pose->header.stamp).toSec() << " s");
 
     // predict update pose using the estimated velocity and degrade information
     double dt = (estimator.getTimestamp() - update.pose->header.stamp).toSec();
@@ -134,11 +134,11 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
         Iy(1,1) = Iy(2,2) = 1.0 / (fixed_position_xy_stddev_*fixed_position_xy_stddev_);
       }
 
-//      std::cout << "Position Update: " << std::endl;
-//      std::cout << "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
-//      std::cout << "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]" << std::endl;
-      /* double innovation = */ updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_xy", max_position_xy_error_);
-//      std::cout << " ==> xy = [" << position_xy_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "Position Update: ");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
+      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_xy", max_position_xy_error_);
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << position_xy_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_XY_POSITION;
     }
@@ -157,11 +157,11 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
         Iy(1,1) = 1.0 / (fixed_position_z_stddev_*fixed_position_z_stddev_);
       }
 
-//      std::cout << "Height Update: " << std::endl;
-//      std::cout << "      x = " << x(1) << ", H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
-//      std::cout << "      y = " << y(1) << ", Iy = [ " << Iy << " ]" << std::endl;
-      /* double innovation = */ updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_z", max_position_z_error_);
-//      std::cout << " ==> xy = " << position_z_model_.PredictionGet(ColumnVector(), state) << ", Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "Height Update: ");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(1) << ", H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(1) << ", Iy = [ " << Iy << " ]");
+      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_z", max_position_z_error_);
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << position_z_model_.PredictionGet(ColumnVector(), state) << ", Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_Z_POSITION;
     }
@@ -180,15 +180,15 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
         Iy(1,1) = 1.0 / (fixed_yaw_stddev_*fixed_yaw_stddev_);
       }
 
-//      std::cout << "Yaw Update: " << std::endl;
-//      std::cout << "      x = " << x(1) * 180.0/M_PI << "°, H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
-//      std::cout << "      y = " << y(1) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]" << std::endl;
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "Yaw Update: ");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(1) * 180.0/M_PI << "°, H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(1) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]");
 
       ColumnVector error(y - x);
       error(1) = error(1) - 2.0*M_PI * round(error(1) / (2.0*M_PI));
 
-      /* double innovation = */ updateInternal(covariance, state, Iy, error, H, covariance, state, "yaw", max_yaw_error_);
-//      std::cout << " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
+      double innovation = updateInternal(covariance, state, Iy, error, H, covariance, state, "yaw", max_yaw_error_);
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_YAW;
     }
@@ -206,9 +206,9 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
     // forward state vector to the individual measurement models
     twist_model_.ConditionalArgumentSet(0,state);
 
-    std::cout << "TwistUpdate:  state = [ " << state.transpose() << " ], P = [ " << covariance << " ]" << std::endl
-              << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]" << std::endl;
-    std::cout << "                dt = " << (estimator.getTimestamp() - update.twist->header.stamp).toSec() << " s" << std::endl;
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "TwistUpdate:  state = [ " << state.transpose() << " ], P = [ " << covariance << " ]" << std::endl
+              << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "                dt = " << (estimator.getTimestamp() - update.twist->header.stamp).toSec() << " s");
 
     // predict update pose using the estimated velocity and degrade information
     double dt = (estimator.getTimestamp() - update.twist->header.stamp).toSec();
@@ -254,11 +254,11 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
       Iy(6,6) = 1.0 / (fixed_angular_rate_z_stddev_*fixed_angular_rate_z_stddev_);
     }
 
-    std::cout << "Twist Update: " << std::endl;
-    std::cout << "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]" << std::endl;
-    std::cout << "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]" << std::endl;
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "Twist Update: ");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
     double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "twist", 0.0);
-    std::cout << " ==> xy = [" << twist_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation << std::endl;
+    ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << twist_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
     if (information(1,1) > 0.0 && information(2,2) > 0.0) {
       status_flags_ |= STATE_XY_VELOCITY;
@@ -282,24 +282,29 @@ double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatr
 double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error) {
   Matrix HT(H.transpose());
   SymmetricMatrix H_Px_HT(H*Px*HT);
-  SymmetricMatrix Ix(H_Px_HT.inverse());
+  SymmetricMatrix Ix(H.rows());
+  if (H_Px_HT.determinant() > 0) {
+    Ix = H_Px_HT.inverse();
+  } else {
+    Ix = 0.0;
+  }
 
-//  std::cout << "H = [" << H << "]" << std::endl;
-//  std::cout << "Ix = [" << Ix << "]" << std::endl;
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "H = [" << H << "]");
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "Ix = [" << Ix << "]");
 
   double alpha = alpha_, beta = beta_;
   if (alpha == 0.0 && beta == 0.0) {
     beta = calculateOmega(Ix, Iy);
     alpha = 1.0 - beta;
 
-    if (beta > 0.8) {
-      ROS_DEBUG_STREAM("Reducing update variance for " << text << " due to high information difference between Ix = [" << Ix << "] and Iy = [" << Iy << "]");
-      beta = 0.8;
-      alpha = 1.0 - beta;
-    }
+//    if (beta > 0.8) {
+//      ROS_DEBUG_STREAM("Reducing update variance for " << text << " due to high information difference between Ix = [" << Ix << "] and Iy = [" << Iy << "]");
+//      beta = 0.8;
+//      alpha = 1.0 - beta;
+//    }
   }
 
-//  std::cout << "alpha = " << alpha << ", beta = " << beta << std::endl;
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "alpha = " << alpha << ", beta = " << beta);
 
   if (max_error > 0.0) {
     if (error.transpose() * Ix * error > max_error * max_error) {
@@ -316,7 +321,7 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
   SymmetricMatrix Ii(Ix * (alpha - 1) + Iy * beta);
   double innovation = Ii.determinant();
 
-//  std::cout << "Ii = [" << Ii << "], innovation = " << innovation << std::endl;
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "Ii = [" << Ii << "], innovation = " << innovation);
 
   SymmetricMatrix S_1(Ii.rows());
   if (innovation > 0.0) {
@@ -330,8 +335,8 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
   Pxy = Px - Px  * HT * S_1 * H * Px; // may invalidate Px if &Pxy == &Px
    xy =  x + Pxy * HT * Iy * beta * error;
 
-//  std::cout << "K = [" << (Pxy * HT * Iy * beta) << "]" << std::endl;
-//  std::cout << "dx = [" << ( Pxy * HT * Iy * beta * error).transpose() << "]" << std::endl;
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "K = [" << (Pxy * HT * Iy * beta) << "]");
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "dx = [" << ( Pxy * HT * Iy * beta * error).transpose() << "]");
 
   return innovation;
 }

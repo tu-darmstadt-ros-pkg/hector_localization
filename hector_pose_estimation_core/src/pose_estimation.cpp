@@ -178,8 +178,10 @@ void PoseEstimation::update(double dt)
   if (!system_ || !filter_) return;
 
   // filter rate measurement first
+#ifdef USE_RATE_SYSTEM_MODEL
   ROS_DEBUG("Updating with measurement model %s", rate_.getName().c_str());
   rate_.update(*this, Rate::Update(system_->getInput().sub(GYRO_X,GYRO_Z)));
+#endif // USE_RATE_SYSTEM_MODEL
 
   // time update step
   system_->update(*this, dt);
