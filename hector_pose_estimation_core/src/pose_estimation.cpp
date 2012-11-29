@@ -704,7 +704,11 @@ void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms
 
   if (!stabilized_frame_.empty()) {
     tf::Transform stabilized_transform(transform);
+#ifdef TF_MATRIX3x3_H
     tf::Matrix3x3 rollpitch_rotation; rollpitch_rotation.setEulerYPR(0.0, p, r);
+#else
+    btMatrix3x3 rollpitch_rotation; rollpitch_rotation.setEulerYPR(0.0, p, r);
+#endif
     stabilized_transform = stabilized_transform * tf::Transform(rollpitch_rotation.inverse());
     transforms.push_back(tf::StampedTransform(stabilized_transform, timestamp_, parent_frame, stabilized_frame_));
 
