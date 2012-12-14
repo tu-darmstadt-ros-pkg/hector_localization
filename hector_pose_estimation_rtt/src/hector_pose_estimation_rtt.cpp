@@ -125,13 +125,13 @@ void PoseEstimationTaskContext::updateHook()
 
   while(height_input_.read(height_) == RTT::NewData && PoseEstimation::getMeasurement("Height"))
   {
-    Height::MeasurementVector update(1);
+    Height::Update update;
 #ifdef USE_MAV_MSGS
-    update(1) = height_.height;
+    update = height_.height;
 #else
-    update(1) = height_.point.z;
+    update = height_.point.z;
 #endif
-    PoseEstimation::getMeasurement("Height")->add(Height::Update(update));
+    PoseEstimation::getMeasurement("Height")->add(update);
   }
 
   while(gps_input_.read(gps_) == RTT::NewData && gps_velocity_input_.read(gps_velocity_) != RTT::NoData && PoseEstimation::getMeasurement("GPS"))

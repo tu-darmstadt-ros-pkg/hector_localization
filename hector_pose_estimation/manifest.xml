@@ -15,6 +15,7 @@
   <depend package="geometry_msgs" />
   <depend package="nav_msgs" />
   <!-- depend package="mav_msgs" /-->
+  <!-- depend package="hector_uav_msgs" /-->
   <depend package="tf" />
 
   <depend package="message_filters" />

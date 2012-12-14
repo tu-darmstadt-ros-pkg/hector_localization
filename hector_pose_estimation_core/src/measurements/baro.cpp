@@ -27,11 +27,15 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/baro.h>
+#include <hector_pose_estimation/pose_estimation.h>
+
+#include <boost/bind.hpp>
 
 namespace hector_pose_estimation {
 
 BaroModel::BaroModel()
 {
+  stddev_ = 1.0;
   qnh_ = 1013.25;
   parameters().add("qnh", qnh_);
 }
@@ -40,19 +44,35 @@ BaroModel::~BaroModel() {}
 
 ColumnVector BaroModel::ExpectedValueGet() const
 {
-  y_(1) = qnh_ * pow(1.0 - (0.0065 * (x_(POSITION_Z) + elevation_)) / 288.15, 5.255);
+  y_(1) = qnh_ * pow(1.0 - (0.0065 * (x_(POSITION_Z) + getElevation())) / 288.15, 5.255);
   return y_;
 }
 
 Matrix BaroModel::dfGet(unsigned int i) const
 {
-  C_(1,POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (x_(POSITION_Z) + elevation_)) / 288.15, 4.255) * (-0.0065 * (x_(POSITION_Z) + elevation_));
+  C_(1,POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (x_(POSITION_Z) + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
   return C_;
 }
 
+double BaroModel::getAltitude(const Update_<BaroModel>& update)
+{
+  return 288.15 / 0.0065 * (1.0 - pow(update.getValue()(1) / qnh_, 1.0/5.255));
+}
+
+BaroUpdate::BaroUpdate() : qnh_(0) {}
+BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { setValue(pressure); }
+BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { setValue(pressure); }
+
 void Baro::reset(const StateVector& state)
 {
-  setElevation(state(POSITION_Z) + getElevation());
+  Measurement_<BaroModel,BaroUpdate>::reset();
+  HeightBaroCommon::reset();
+}
+
+bool Baro::beforeUpdate(PoseEstimation &estimator, const Baro::Update &update) {
+  if (update.qnh() != 0) setQnh(update.qnh());
+  setElevation(resetElevation(estimator, boost::bind(&BaroModel::getAltitude, getModel(), update)));
+  return true;
 }
 
 } // namespace hector_pose_estimation

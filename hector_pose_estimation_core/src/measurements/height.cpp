@@ -27,16 +27,19 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/height.h>
+#include <hector_pose_estimation/pose_estimation.h>
+#include <ros/console.h>
+
+#include <boost/bind.hpp>
 
 namespace hector_pose_estimation {
 
 HeightModel::HeightModel()
   : MeasurementModel(MeasurementDimension)
 {
-  stddev_ = 1.0;
+  stddev_ = 10.0;
   elevation_ = 0.0;
   parameters().add("stddev", stddev_);
-  parameters().add("elevation", elevation_);
 }
 
 bool HeightModel::init()
@@ -54,7 +57,7 @@ SystemStatus HeightModel::getStatusFlags() const {
 }
 
 ColumnVector HeightModel::ExpectedValueGet() const {
-  this->y_(1) = x_(POSITION_Z) + elevation_;
+  this->y_(1) = x_(POSITION_Z) + getElevation();
   return y_;
 }
 
@@ -64,9 +67,48 @@ Matrix HeightModel::dfGet(unsigned int i) const {
   return C_;
 }
 
-void Height::reset(const StateVector& state)
+HeightBaroCommon::HeightBaroCommon(Measurement* parent)
 {
-  setElevation(state(POSITION_Z) + getElevation());
+  auto_elevation_ = true;
+  elevation_initialized_ = false;
+  parent->parameters().add("auto_elevation", auto_elevation_);
+}
+
+HeightBaroCommon::~HeightBaroCommon() {}
+
+void HeightBaroCommon::reset() {
+  elevation_initialized_ = false;
+}
+
+double HeightBaroCommon::resetElevation(PoseEstimation &estimator, boost::function<double()> altitude_func) {
+  if (!elevation_initialized_) {
+    StateVector state = estimator.getState();
+    estimator.globalReference()->altitude = altitude_func() - state(POSITION_Z);
+    estimator.globalReference()->updated();
+    elevation_initialized_ = true;
+    ROS_INFO("Set new reference altitude: %f", estimator.globalReference()->altitude);
+  }
+
+  return estimator.globalReference()->altitude;
+}
+
+void Height::reset(const StateVector& state) {
+  Measurement_<HeightModel>::reset();
+  HeightBaroCommon::reset();
+}
+
+template <typename T> struct functor_wrapper
+{
+  functor_wrapper(const T& value) : value(value) {}
+  T& operator()() { return value; }
+  const T& operator()() const { return value; }
+private:
+  T value;
+};
+
+bool Height::beforeUpdate(PoseEstimation &estimator, const Update_<HeightModel> &update) {
+  setElevation(resetElevation(estimator, functor_wrapper<double>(update.getValue()(1))));
+  return true;
 }
 
 } // namespace hector_pose_estimation

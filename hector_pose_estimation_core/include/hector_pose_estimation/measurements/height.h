@@ -57,16 +57,31 @@ protected:
   double elevation_;
 };
 
-class Height : public Measurement_<HeightModel>
+class HeightBaroCommon
 {
 public:
-  Height(const std::string& name = "height") : Measurement_<HeightModel>(name) {}
-  virtual ~Height() {}
+  HeightBaroCommon(Measurement *measurement);
+  virtual ~HeightBaroCommon();
 
-  void reset(const StateVector& state);
+  void reset();
+  double resetElevation(PoseEstimation &estimator, boost::function<double()> altitude_func);
+
+private:
+  bool auto_elevation_;
+  bool elevation_initialized_;
+};
+
+class Height : public Measurement_<HeightModel>, HeightBaroCommon
+{
+public:
+  Height(const std::string& name = "height") : Measurement_<HeightModel>(name), HeightBaroCommon(this) {}
+  virtual ~Height() {}
 
   void setElevation(double elevation) { getModel()->setElevation(elevation); }
   double getElevation() const { return getModel()->getElevation(); }
+
+  virtual void reset(const StateVector& state);
+  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
 };
 
 } // namespace hector_pose_estimation

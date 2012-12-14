@@ -33,6 +33,10 @@
 #include <bfl/wrappers/matrix/matrix_wrapper.h>
 #include "height.h"
 
+#ifdef USE_HECTOR_UAV_MSGS
+  #include <hector_uav_msgs/Altimeter.h>
+#endif
+
 namespace hector_pose_estimation {
 
 class BaroModel : public HeightModel
@@ -47,23 +51,38 @@ public:
   void setQnh(double qnh) { qnh_ = qnh; }
   double getQnh() const { return qnh_; }
 
+  double getAltitude(const Update_<BaroModel>& update);
+
 protected:
   double qnh_;
 };
 
-class Baro : public Measurement_<BaroModel>
+class BaroUpdate : public Update_<BaroModel> {
+public:
+  BaroUpdate();
+  BaroUpdate(double pressure);
+  BaroUpdate(double pressure, double qnh);
+  double qnh() const { return qnh_; }
+  BaroUpdate& qnh(double qnh) { qnh_ = qnh; return *this; }
+
+private:
+  double qnh_;
+};
+
+class Baro : public Measurement_<BaroModel,BaroUpdate>, HeightBaroCommon
 {
 public:
-  Baro(const std::string& name = "baro") : Measurement_<BaroModel>(name) {}
+  Baro(const std::string& name = "baro") : Measurement_<BaroModel,BaroUpdate>(name), HeightBaroCommon(this) {}
   virtual ~Baro() {}
-
-  void reset(const StateVector& state);
 
   void setElevation(double elevation) { getModel()->setElevation(elevation); }
   double getElevation() const { return getModel()->getElevation(); }
 
   void setQnh(double qnh) { getModel()->setQnh(qnh); }
   double getQnh() const { return getModel()->getQnh(); }
+
+  virtual void reset(const StateVector& state);
+  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
 };
 
 } // namespace hector_pose_estimation

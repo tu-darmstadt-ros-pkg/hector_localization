@@ -79,7 +79,8 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 SystemStatus GenericQuaternionSystemModel::getStatusFlags() const
 {
     SystemStatus flags = measurement_status_;
-    if (flags & STATE_XY_POSITION) flags |= STATE_XY_VELOCITY | STATE_ROLLPITCH;
+//     flags |= STATE_XY_POSITION | STATE_Z_POSITION;
+    if (flags & STATE_XY_POSITION) flags |= STATE_XY_VELOCITY;
     if (flags & STATE_Z_POSITION)  flags |= STATE_Z_VELOCITY;
     if (flags & STATE_XY_VELOCITY) flags |= STATE_ROLLPITCH;
     return flags;

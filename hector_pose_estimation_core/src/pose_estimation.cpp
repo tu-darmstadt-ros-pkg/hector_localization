@@ -608,7 +608,7 @@ void PoseEstimation::getRate(tf::Vector3& vector) {
   vector = tf::Vector3(state_(RATE_X), state_(RATE_Y), state_(RATE_Z));
 #else // USE_RATE_SYSTEM_MODEL
   const InputVector &input = system_->getInput();
-  vector = tf::Vector3(input(GYRO_X)  + state_(BIAS_GYRO_Z), input(GYRO_Y)  + state_(BIAS_GYRO_Z), input(GYRO_Z) + state_(BIAS_GYRO_Z));
+  vector = tf::Vector3(input(GYRO_X)  + state_(BIAS_GYRO_X), input(GYRO_Y)  + state_(BIAS_GYRO_Y), input(GYRO_Z) + state_(BIAS_GYRO_Z));
 #endif // USE_RATE_SYSTEM_MODEL
 }
 
@@ -626,8 +626,8 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
   vector.z = state_(RATE_Z);
 #else // USE_RATE_SYSTEM_MODEL
   const InputVector &input = system_->getInput();
-  vector.x = input(GYRO_X)  + state_(BIAS_GYRO_Z);
-  vector.y = input(GYRO_Y)  + state_(BIAS_GYRO_Z);
+  vector.x = input(GYRO_X)  + state_(BIAS_GYRO_X);
+  vector.y = input(GYRO_Y)  + state_(BIAS_GYRO_Y);
   vector.z = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
 #endif // USE_RATE_SYSTEM_MODEL
 }
@@ -773,8 +773,8 @@ GlobalReference* PoseEstimation::globalReference() {
 
 void GlobalReference::updated() {
   static const double radius_earth = 6371e3;
-  radius_north = radius_earth;
-  radius_east  = radius_earth * cos(latitude);
+  radius_north = radius_earth + altitude;
+  radius_east  = radius_north * cos(latitude);
   cos_heading = cos(heading);
   sin_heading = sin(heading);
 }

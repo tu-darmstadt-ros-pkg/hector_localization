@@ -29,6 +29,8 @@
 #ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_UPDATE_H
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_UPDATE_H
 
+#include <boost/type_traits/is_base_of.hpp>
+
 namespace hector_pose_estimation {
 
 class MeasurementUpdate
@@ -47,21 +49,32 @@ public:
   typedef typename MeasurementModel::NoiseCovariance Covariance;
 
   Update_()
-    : has_covariance_(false)
+    : y_(MeasurementModel::MeasurementDimension)
+    , has_covariance_(false)
   {}
   Update_(Vector const& y)
-    : has_covariance_(false)
+    : y_(MeasurementModel::MeasurementDimension)
+    , has_covariance_(false)
+  {
+    setValue(y);
+  }
+  Update_(double y)
+    : y_(MeasurementModel::MeasurementDimension)
+    , has_covariance_(false)
   {
     setValue(y);
   }
   virtual ~Update_() {}
 
   virtual void setValue(Vector const& y) { y_ = y; }
+  virtual void setValue(double y) { y_(1) = y; }
+
   virtual void setCovariance(Covariance const& R) { R_ = R; has_covariance_ = true; }
   virtual Vector const &getValue() const { return y_; }
   virtual Covariance const &getCovariance() const { return R_; }
 
-  virtual Vector const &operator=(Vector const& y) { setValue(y); return y; }
+  virtual Vector &operator=(Vector const& y) { setValue(y); return y_; }
+  virtual Vector &operator=(double y) { setValue(y); return y_; }
 
   virtual bool hasCovariance() const { return has_covariance_; }
 
@@ -72,17 +85,17 @@ protected:
 };
 
 namespace internal {
-  template <class ConcreteModel, class ConcreteUpdate>
+  template <class ConcreteModel, class ConcreteUpdate, class Enable = void>
   struct UpdateInspector {
     static typename ConcreteModel::MeasurementVector const& getValue(const ConcreteUpdate &update) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
     static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update) { return *static_cast<typename ConcreteModel::NoiseCovariance *>(0); }
   };
 
-  template <class ConcreteModel>
-  struct UpdateInspector<ConcreteModel, Update_<ConcreteModel> >
+  template <class ConcreteModel, class ConcreteUpdate>
+  struct UpdateInspector<ConcreteModel, ConcreteUpdate, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>,ConcreteUpdate> >::type >
   {
-    static typename ConcreteModel::MeasurementVector const& getValue(const Update_<ConcreteModel> &update) { return update.getValue(); }
-    static typename ConcreteModel::NoiseCovariance const& getCovariance(const Update_<ConcreteModel> &update) { return update.getCovariance(); }
+    static typename ConcreteModel::MeasurementVector const& getValue(const ConcreteUpdate &update) { return update.getValue(); }
+    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update) { return update.getCovariance(); }
   };
 }
 

@@ -81,7 +81,7 @@ void System::reset(const StateVector& state)
 bool System::update(PoseEstimation &estimator, double dt) {
   ROS_DEBUG("Updating with system model %s", getName().c_str());
 
-//  std::cout << "     u = [" << getInput().transpose() << "]" << std::endl;
+//  std::cout << "     dt = " << dt << ", u = [" << getInput().transpose() << "]" << std::endl;
 
   model_->set_dt(dt);
   model_->setMeasurementStatus(estimator.getMeasurementStatus());

@@ -95,7 +95,8 @@ Matrix MagneticModel::dfGet(unsigned int i) const {
 
   // return C_full_;
 
-  // dq/dyaw * dyaw*dq = 1/2 * [-qz -qy qx qw] * 2 * [-qz; -qy; qx; qw] =
+  // q = [qw qx qy qz]';
+  // dq/dyaw * dyaw*dq = 1/2 * [-qz -qy qx qw]' * 2 * [-qz; -qy; qx; qw] =
   //  [ qz*qz  qz*qy -qz*qx -qz*qw ;
   //    qy*qz  qy*qy -qy*qx -qy*qw ;
   //   -qx*qz -qx*qy  qx*qx  qx*qw ;

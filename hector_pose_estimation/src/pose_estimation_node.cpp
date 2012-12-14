@@ -30,6 +30,7 @@
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
+#include <hector_pose_estimation/measurements/baro.h>
 #include <hector_pose_estimation/measurements/height.h>
 #include <hector_pose_estimation/measurements/magnetic.h>
 #include <hector_pose_estimation/measurements/gps.h>
@@ -42,6 +43,9 @@ PoseEstimationNode::PoseEstimationNode(SystemModel *system_model)
   , transform_listener_(0)
 {
   pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
+#if defined(USE_HECTOR_UAV_MSGS)
+  pose_estimation_->addMeasurement(new Baro("baro"));
+#endif
   pose_estimation_->addMeasurement(new Height("height"));
   pose_estimation_->addMeasurement(new Magnetic("magnetic"));
   pose_estimation_->addMeasurement(new GPS("gps"));
@@ -63,7 +67,11 @@ bool PoseEstimationNode::init() {
   }
 
   imu_subscriber_        = getNodeHandle().subscribe("raw_imu", 10, &PoseEstimationNode::imuCallback, this);
-  baro_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNode::heightCallback, this);
+#if defined(USE_HECTOR_UAV_MSGS)
+  baro_subscriber_       = getNodeHandle().subscribe("altimeter", 10, &PoseEstimationNode::baroCallback, this);
+#else
+  height_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNode::heightCallback, this);
+#endif
   magnetic_subscriber_   = getNodeHandle().subscribe("magnetic", 10, &PoseEstimationNode::magneticCallback, this);
 
   gps_subscriber_.subscribe(getNodeHandle(), "fix", 10);
@@ -121,12 +129,18 @@ void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
   publish();
 }
 
-#ifdef USE_MAV_MSGS
+#if defined(USE_MAV_MSGS)
 void PoseEstimationNode::heightCallback(const mav_msgs::HeightConstPtr& height) {
   Height::MeasurementVector update(1);
   update = height->height;
   pose_estimation_->getMeasurement("height")->add(Height::Update(update));
 }
+
+#elif defined(USE_HECTOR_UAV_MSGS)
+void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& altimeter) {
+  pose_estimation_->getMeasurement("baro")->add(Baro::Update(altimeter->pressure, altimeter->qnh));
+}
+
 #else
 void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
   Height::MeasurementVector update(1);
