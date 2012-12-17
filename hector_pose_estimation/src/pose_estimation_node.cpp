@@ -168,7 +168,10 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
     GPSModel::MeasurementVector y = boost::shared_static_cast<GPS>(pose_estimation_->getMeasurement("gps"))->getVector(update);
     gps_pose.pose.position.x = y(1);
     gps_pose.pose.position.y = y(2);
-    gps_pose.pose.orientation.w = 1.0;
+    gps_pose.pose.position.z = gps->altitude - pose_estimation_->globalReference()->altitude;
+    double track = atan2(gps_velocity->vector.y, gps_velocity->vector.x);
+    gps_pose.pose.orientation.w = cos(track/2);
+    gps_pose.pose.orientation.z = sin(track/2);
     gps_pose_publisher_.publish(gps_pose);
   }
 }
