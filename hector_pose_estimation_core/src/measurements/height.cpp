@@ -107,7 +107,7 @@ private:
 };
 
 bool Height::beforeUpdate(PoseEstimation &estimator, const Update_<HeightModel> &update) {
-  setElevation(resetElevation(estimator, functor_wrapper<double>(update.getValue()(1))));
+  setElevation(resetElevation(estimator, functor_wrapper<double>(update.getVector()(1))));
   return true;
 }
 

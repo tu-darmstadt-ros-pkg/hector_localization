@@ -26,71 +26,53 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/system.h>
-#include <hector_pose_estimation/pose_estimation.h>
-#include <bfl/filter/kalmanfilter.h>
+#ifndef HECTOR_POSE_ESTIMATION_SYSTEM_INPUT_H
+#define HECTOR_POSE_ESTIMATION_SYSTEM_INPUT_H
+
+#include <boost/type_traits/is_base_of.hpp>
 
 namespace hector_pose_estimation {
 
-System::System(const std::string &name)
-  : name_(name)
-  , status_flags_(0)
-  , prior_(StateDimension)
+class SystemInput
 {
-}
+public:
+  SystemInput() {}
+  virtual ~SystemInput() {}
+};
 
-System::~System() {
-}
+template <class SystemModel>
+class Input_ : public SystemInput {
+public:
+  typedef Input_<SystemModel> Type;
+  typedef typename SystemModel::InputVector Vector;
 
-BFL::Gaussian *System::getPrior()
-{
-  getModel()->getPrior(prior_);
-  return &prior_;
-}
+  Input_()
+    : u_(SystemModel::InputDimension)
+  {}
+  Input_(Vector const& u)
+    : u_(SystemModel::InputDimension)
+  {
+    setValue(u);
+  }
+  Input_(double u)
+    : u_(SystemModel::InputDimension)
+  {
+    setValue(u);
+  }
+  virtual ~Input_() {}
 
-bool System::init()
-{
-  if (!getModel()) return false;
-  return getModel()->init();
-}
+  virtual void setValue(Vector const& u) { u_ = u; }
+  virtual void setValue(double u) { u_(1) = u; }
 
-void System::cleanup()
-{
-  getModel()->cleanup();
-}
+  virtual Vector const &getVector() const { return u_; }
 
-void System::reset()
-{
-  getModel()->reset();
-}
+  virtual Vector &operator=(Vector const& u) { setValue(u); return u_; }
+  virtual Vector &operator=(double u) { setValue(u); return u_; }
 
-void System::reset(const StateVector& state)
-{
-  getModel()->reset(state);
-}
-
-void System::updateInternal(PoseEstimation &estimator, double dt, ColumnVector const& u) {
-  ROS_DEBUG("Updating with system model %s", getName().c_str());
-
-//  std::cout << "     dt = " << dt << ", u = [" << u.transpose() << "]" << std::endl;
-
-  getModel()->set_dt(dt);
-  getModel()->setMeasurementStatus(estimator.getMeasurementStatus());
-  estimator.filter()->Update(getModel(), u);
-  updated();
-  estimator.updated();
-
-//  std::cout << "x_pred = [" << estimator.getState().transpose() << "]" << std::endl;
-//  std::cout << "P_pred = [" << estimator.getCovariance() << "]" << std::endl;
-}
-
-void System::updated() {
-  if (getModel()) status_flags_ = getModel()->getStatusFlags();
-}
-
-StateVector System::limitState(StateVector state) const {
-  getModel()->Limit(state);
-  return state;
-}
+protected:
+  Vector u_;
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_SYSTEM_INPUT_H

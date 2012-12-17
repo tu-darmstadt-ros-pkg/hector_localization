@@ -89,9 +89,9 @@ protected:
   double timer_;
 };
 
-template <class ConcreteModel, class ConcreteUpdate> class Measurement_;
+typedef boost::shared_ptr<Measurement> MeasurementPtr;
 
-template <class ConcreteModel, class ConcreteUpdate = Update_<ConcreteModel> >
+template <class ConcreteModel, class ConcreteUpdate = typename Update_<ConcreteModel>::Type >
 class Measurement_ : public Measurement {
 public:
   typedef ConcreteModel Model;
@@ -115,7 +115,6 @@ public:
   }
 
   virtual ~Measurement_() {
-    delete model_;
   }
 
   virtual bool init() { return model_->init() && Measurement::init(); }
@@ -123,17 +122,17 @@ public:
   virtual void reset() { model_->reset(); Measurement::reset(); }
   virtual void reset(const StateVector& state) { model_->reset(state); Measurement::reset(state); }
 
-  virtual Model* getModel() const { return model_; }
+  virtual Model* getModel() const { return model_.get(); }
   virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
 
-  virtual MeasurementVector const& getValue(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getValue(update); }
+  virtual MeasurementVector const& getVector(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVector(update); }
   virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update) : static_cast<NoiseCovariance const&>(model_->AdditiveNoiseSigmaGet()); }
   virtual void setNoiseCovariance(NoiseCovariance const& sigma);
 
   virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
 
 protected:
-  Model *model_;
+  boost::shared_ptr<Model> model_;
 
   Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
@@ -152,7 +151,7 @@ bool Measurement_<ConcreteModel, ConcreteUpdate>::update(PoseEstimation &estimat
   if (!beforeUpdate(estimator, update)) return false;
 
   if (update.hasCovariance()) setNoiseCovariance(getCovariance(update));
-  updateInternal(estimator, getValue(update));
+  updateInternal(estimator, getVector(update));
 
   afterUpdate(estimator);
   return true;

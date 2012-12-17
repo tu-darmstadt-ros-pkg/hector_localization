@@ -60,17 +60,6 @@ namespace hector_pose_estimation {
   typedef ColumnVector_<StateDimension> StateVector;
   typedef SymmetricMatrix_<StateDimension> StateCovariance;
 
-  enum InputIndex {
-    ACCEL_X = 1,
-    ACCEL_Y,
-    ACCEL_Z,
-    GYRO_X,
-    GYRO_Y,
-    GYRO_Z,
-  };
-  static const unsigned int InputDimension = GYRO_Z;
-  typedef ColumnVector_<InputDimension> InputVector;
-
   enum {
     STATE_ALIGNMENT = 1,
     STATE_DEGRADED = 2,

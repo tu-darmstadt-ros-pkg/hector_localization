@@ -56,7 +56,7 @@ Matrix BaroModel::dfGet(unsigned int i) const
 
 double BaroModel::getAltitude(const Update_<BaroModel>& update)
 {
-  return 288.15 / 0.0065 * (1.0 - pow(update.getValue()(1) / qnh_, 1.0/5.255));
+  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(1) / qnh_, 1.0/5.255));
 }
 
 BaroUpdate::BaroUpdate() : qnh_(0) {}

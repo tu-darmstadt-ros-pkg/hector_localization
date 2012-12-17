@@ -69,7 +69,7 @@ public:
 
   void onReset();
 
-  GPSModel::MeasurementVector const& getValue(const GPSUpdate &update);
+  GPSModel::MeasurementVector const& getVector(const GPSUpdate &update);
   bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
 
 private:

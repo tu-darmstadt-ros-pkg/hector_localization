@@ -37,11 +37,13 @@
 
 namespace hector_pose_estimation {
 
-PoseEstimationNode::PoseEstimationNode(SystemModel *system_model)
-  : pose_estimation_(new PoseEstimation(system_model ? system_model : new GenericQuaternionSystemModel))
+PoseEstimationNode::PoseEstimationNode(const SystemPtr& system)
+  : pose_estimation_(new PoseEstimation(system))
   , private_nh_("~")
   , transform_listener_(0)
 {
+  if (!system) pose_estimation_->setSystemModel(new GenericQuaternionSystemModel);
+
   pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
 #if defined(USE_HECTOR_UAV_MSGS)
   pose_estimation_->addMeasurement(new Baro("baro"));
@@ -117,15 +119,7 @@ void PoseEstimationNode::cleanup() {
 }
 
 void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
-  InputVector input(InputDimension);
-  input(ACCEL_X) = imu->linear_acceleration.x;
-  input(ACCEL_Y) = imu->linear_acceleration.y;
-  input(ACCEL_Z) = imu->linear_acceleration.z;
-  input(GYRO_X)  = imu->angular_velocity.x;
-  input(GYRO_Y)  = imu->angular_velocity.y;
-  input(GYRO_Z)  = imu->angular_velocity.z;
-
-  pose_estimation_->update(input, imu->header.stamp);
+  pose_estimation_->update(ImuInput(*imu), imu->header.stamp);
   publish();
 }
 
@@ -171,7 +165,7 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
     pose_estimation_->getHeader(gps_pose.header);
     gps_pose.header.seq = gps->header.seq;
     gps_pose.header.stamp = gps->header.stamp;
-    GPSModel::MeasurementVector y = static_cast<GPS *>(pose_estimation_->getMeasurement("gps"))->getValue(update);
+    GPSModel::MeasurementVector y = boost::shared_static_cast<GPS>(pose_estimation_->getMeasurement("gps"))->getVector(update);
     gps_pose.pose.position.x = y(1);
     gps_pose.pose.position.y = y(2);
     gps_pose.pose.orientation.w = 1.0;

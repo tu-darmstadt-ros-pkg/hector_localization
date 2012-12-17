@@ -41,7 +41,7 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
 #else // USE_RATE_SYSTEM_MODEL
   rate_stddev_ = 1.0 * M_PI/180.0;
 #endif // USE_RATE_SYSTEM_MODEL
-  acceleration_stddev_ = 1.0;
+  acceleration_stddev_ = 1.0e-2;
   velocity_stddev_ = 0.0;
   acceleration_drift_ = 1.0e-6;
   rate_drift_ = 1.0e-2 * M_PI/180.0;
@@ -93,17 +93,17 @@ ColumnVector GenericQuaternionSystemModel::ExpectedValueGet(double dt) const
 
     //--> Enhance readability
     //----------------------------------------------------------
-    double abx        = u_(ACCEL_X) + x_(BIAS_ACCEL_X);
-    double aby        = u_(ACCEL_Y) + x_(BIAS_ACCEL_Y);
-    double abz        = u_(ACCEL_Z) + x_(BIAS_ACCEL_Z);
+    double abx        = u_(ImuInput::ACCEL_X) + x_(BIAS_ACCEL_X);
+    double aby        = u_(ImuInput::ACCEL_Y) + x_(BIAS_ACCEL_Y);
+    double abz        = u_(ImuInput::ACCEL_Z) + x_(BIAS_ACCEL_Z);
 #ifdef USE_RATE_SYSTEM_MODEL
     double wnx        = x_(RATE_X);
     double wny        = x_(RATE_Y);
     double wnz        = x_(RATE_Z);
 #else // USE_RATE_SYSTEM_MODEL
-    double wbx        = u_(GYRO_X)  + x_(BIAS_GYRO_X);
-    double wby        = u_(GYRO_Y)  + x_(BIAS_GYRO_Y);
-    double wbz        = u_(GYRO_Z)  + x_(BIAS_GYRO_Z);
+    double wbx        = u_(ImuInput::GYRO_X)  + x_(BIAS_GYRO_X);
+    double wby        = u_(ImuInput::GYRO_Y)  + x_(BIAS_GYRO_Y);
+    double wbz        = u_(ImuInput::GYRO_Z)  + x_(BIAS_GYRO_Z);
 #endif // USE_RATE_SYSTEM_MODEL
 
     q0            = x_(QUATERNION_W);
@@ -176,17 +176,17 @@ Matrix GenericQuaternionSystemModel::dfGet(unsigned int i, double dt) const
 
     //--> Enhance readability
     //----------------------------------------------------------
-    double abx        = u_(ACCEL_X) + x_(BIAS_ACCEL_X);
-    double aby        = u_(ACCEL_Y) + x_(BIAS_ACCEL_Y);
-    double abz        = u_(ACCEL_Z) + x_(BIAS_ACCEL_Z);
+    double abx        = u_(ImuInput::ACCEL_X) + x_(BIAS_ACCEL_X);
+    double aby        = u_(ImuInput::ACCEL_Y) + x_(BIAS_ACCEL_Y);
+    double abz        = u_(ImuInput::ACCEL_Z) + x_(BIAS_ACCEL_Z);
 #ifdef USE_RATE_SYSTEM_MODEL
     double wnx        = x_(RATE_X);
     double wny        = x_(RATE_Y);
     double wnz        = x_(RATE_Z);
 #else // USE_RATE_SYSTEM_MODEL
-    double wbx        = u_(GYRO_X)  + x_(BIAS_GYRO_X);
-    double wby        = u_(GYRO_Y)  + x_(BIAS_GYRO_Y);
-    double wbz        = u_(GYRO_Z)  + x_(BIAS_GYRO_Z);
+    double wbx        = u_(ImuInput::GYRO_X)  + x_(BIAS_GYRO_X);
+    double wby        = u_(ImuInput::GYRO_Y)  + x_(BIAS_GYRO_Y);
+    double wbz        = u_(ImuInput::GYRO_Z)  + x_(BIAS_GYRO_Z);
 #endif // USE_RATE_SYSTEM_MODEL
 
     q0     = x_(QUATERNION_W);

@@ -39,10 +39,12 @@
 
 namespace hector_pose_estimation {
 
-PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, SystemModel *system_model)
+PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, const SystemPtr& system)
   : RTT::TaskContext(name, RTT::TaskContext::PreOperational)
-  , PoseEstimation(system_model ? system_model : new GenericQuaternionSystemModel)
+  , PoseEstimation(system)
 {
+  if (!system) setSystemModel(new GenericQuaternionSystemModel);
+
   this->addEventPort("raw_imu", imu_input_);
   this->addPort("poseupdate", pose_update_input_);
   this->addPort("magnetic", magnetic_input_);
@@ -153,15 +155,7 @@ void PoseEstimationTaskContext::updateHook()
   }
 
   while(imu_input_.read(imu_in_) == RTT::NewData) {
-    InputVector input(InputDimension);
-    input(ACCEL_X) = imu_in_.linear_acceleration.x;
-    input(ACCEL_Y) = imu_in_.linear_acceleration.y;
-    input(ACCEL_Z) = imu_in_.linear_acceleration.z;
-    input(GYRO_X)  = imu_in_.angular_velocity.x;
-    input(GYRO_Y)  = imu_in_.angular_velocity.y;
-    input(GYRO_Z)  = imu_in_.angular_velocity.z;
-
-    PoseEstimation::update(input, imu_in_.header.stamp);
+    PoseEstimation::update(ImuInput(imu_in_), imu_in_.header.stamp);
     updateOutputs();
   }
 }

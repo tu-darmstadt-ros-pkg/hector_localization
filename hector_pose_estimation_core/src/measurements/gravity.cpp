@@ -35,7 +35,7 @@ GravityModel::GravityModel()
   : MeasurementModel(MeasurementDimension)
   , gravity_(0.0)
 {
-  parameters().add("stddev", stddev_, 1.0); // 9.8065);
+  parameters().add("stddev", stddev_, 10.0);
 }
 
 bool GravityModel::init()

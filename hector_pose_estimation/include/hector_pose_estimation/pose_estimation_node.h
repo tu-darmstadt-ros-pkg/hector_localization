@@ -58,7 +58,7 @@ namespace hector_pose_estimation {
 
 class PoseEstimationNode {
 public:
-  PoseEstimationNode(SystemModel* system_model = 0);
+  PoseEstimationNode(const SystemPtr& system = SystemPtr());
   virtual ~PoseEstimationNode();
 
   virtual bool init();
