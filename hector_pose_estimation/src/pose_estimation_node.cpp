@@ -30,18 +30,24 @@
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
+#include <hector_pose_estimation/measurements/baro.h>
 #include <hector_pose_estimation/measurements/height.h>
 #include <hector_pose_estimation/measurements/magnetic.h>
 #include <hector_pose_estimation/measurements/gps.h>
 
 namespace hector_pose_estimation {
 
-PoseEstimationNode::PoseEstimationNode(SystemModel *system_model)
-  : pose_estimation_(new PoseEstimation(system_model ? system_model : new GenericQuaternionSystemModel))
+PoseEstimationNode::PoseEstimationNode(const SystemPtr& system)
+  : pose_estimation_(new PoseEstimation(system))
   , private_nh_("~")
   , transform_listener_(0)
 {
+  if (!system) pose_estimation_->setSystemModel(new GenericQuaternionSystemModel);
+
   pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
+#if defined(USE_HECTOR_UAV_MSGS)
+  pose_estimation_->addMeasurement(new Baro("baro"));
+#endif
   pose_estimation_->addMeasurement(new Height("height"));
   pose_estimation_->addMeasurement(new Magnetic("magnetic"));
   pose_estimation_->addMeasurement(new GPS("gps"));
@@ -63,7 +69,11 @@ bool PoseEstimationNode::init() {
   }
 
   imu_subscriber_        = getNodeHandle().subscribe("raw_imu", 10, &PoseEstimationNode::imuCallback, this);
-  baro_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNode::heightCallback, this);
+#if defined(USE_HECTOR_UAV_MSGS)
+  baro_subscriber_       = getNodeHandle().subscribe("altimeter", 10, &PoseEstimationNode::baroCallback, this);
+#else
+  height_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNode::heightCallback, this);
+#endif
   magnetic_subscriber_   = getNodeHandle().subscribe("magnetic", 10, &PoseEstimationNode::magneticCallback, this);
 
   gps_subscriber_.subscribe(getNodeHandle(), "fix", 10);
@@ -109,24 +119,22 @@ void PoseEstimationNode::cleanup() {
 }
 
 void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
-  InputVector input(InputDimension);
-  input(ACCEL_X) = imu->linear_acceleration.x;
-  input(ACCEL_Y) = imu->linear_acceleration.y;
-  input(ACCEL_Z) = imu->linear_acceleration.z;
-  input(GYRO_X)  = imu->angular_velocity.x;
-  input(GYRO_Y)  = imu->angular_velocity.y;
-  input(GYRO_Z)  = imu->angular_velocity.z;
-
-  pose_estimation_->update(input, imu->header.stamp);
+  pose_estimation_->update(ImuInput(*imu), imu->header.stamp);
   publish();
 }
 
-#ifdef USE_MAV_MSGS
+#if defined(USE_MAV_MSGS)
 void PoseEstimationNode::heightCallback(const mav_msgs::HeightConstPtr& height) {
   Height::MeasurementVector update(1);
   update = height->height;
   pose_estimation_->getMeasurement("height")->add(Height::Update(update));
 }
+
+#elif defined(USE_HECTOR_UAV_MSGS)
+void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& altimeter) {
+  pose_estimation_->getMeasurement("baro")->add(Baro::Update(altimeter->pressure, altimeter->qnh));
+}
+
 #else
 void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
   Height::MeasurementVector update(1);
@@ -157,10 +165,13 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
     pose_estimation_->getHeader(gps_pose.header);
     gps_pose.header.seq = gps->header.seq;
     gps_pose.header.stamp = gps->header.stamp;
-    GPSModel::MeasurementVector y = static_cast<GPS *>(pose_estimation_->getMeasurement("gps"))->getValue(update);
+    GPSModel::MeasurementVector y = boost::shared_static_cast<GPS>(pose_estimation_->getMeasurement("gps"))->getVector(update);
     gps_pose.pose.position.x = y(1);
     gps_pose.pose.position.y = y(2);
-    gps_pose.pose.orientation.w = 1.0;
+    gps_pose.pose.position.z = gps->altitude - pose_estimation_->globalReference()->altitude;
+    double track = atan2(gps_velocity->vector.y, gps_velocity->vector.x);
+    gps_pose.pose.orientation.w = cos(track/2);
+    gps_pose.pose.orientation.z = sin(track/2);
     gps_pose_publisher_.publish(gps_pose);
   }
 }

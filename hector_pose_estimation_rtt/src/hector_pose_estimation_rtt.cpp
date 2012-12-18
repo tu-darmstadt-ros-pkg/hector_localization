@@ -39,16 +39,18 @@
 
 namespace hector_pose_estimation {
 
-PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, SystemModel *system_model)
+PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, const SystemPtr& system)
   : RTT::TaskContext(name, RTT::TaskContext::PreOperational)
-  , PoseEstimation(system_model)
+  , PoseEstimation(system)
 {
+  if (!system) setSystemModel(new GenericQuaternionSystemModel);
+
   this->addEventPort("raw_imu", imu_input_);
   this->addPort("poseupdate", pose_update_input_);
   this->addPort("magnetic", magnetic_input_);
-  this->addPort("height", height_input_);
-  this->addPort("gps", gps_input_);
-  this->addPort("gps_velocity", gps_velocity_input_);
+  this->addPort("pressure_height", height_input_);
+  this->addPort("fix", gps_input_);
+  this->addPort("fix_velocity", gps_velocity_input_);
   this->addPort("state", state_output_);
   this->addPort("imu", imu_output_);
   this->addPort("pose", pose_output_);
@@ -125,13 +127,13 @@ void PoseEstimationTaskContext::updateHook()
 
   while(height_input_.read(height_) == RTT::NewData && PoseEstimation::getMeasurement("Height"))
   {
-    Height::MeasurementVector update(1);
+    Height::Update update;
 #ifdef USE_MAV_MSGS
-    update(1) = height_.height;
+    update = height_.height;
 #else
-    update(1) = height_.point.z;
+    update = height_.point.z;
 #endif
-    PoseEstimation::getMeasurement("Height")->add(Height::Update(update));
+    PoseEstimation::getMeasurement("Height")->add(update);
   }
 
   while(gps_input_.read(gps_) == RTT::NewData && gps_velocity_input_.read(gps_velocity_) != RTT::NoData && PoseEstimation::getMeasurement("GPS"))
@@ -153,18 +155,9 @@ void PoseEstimationTaskContext::updateHook()
   }
 
   while(imu_input_.read(imu_in_) == RTT::NewData) {
-    InputVector input(InputDimension);
-    input(ACCEL_X) = imu_in_.linear_acceleration.x;
-    input(ACCEL_Y) = imu_in_.linear_acceleration.y;
-    input(ACCEL_Z) = imu_in_.linear_acceleration.z;
-    input(GYRO_X)  = imu_in_.angular_velocity.x;
-    input(GYRO_Y)  = imu_in_.angular_velocity.y;
-    input(GYRO_Z)  = imu_in_.angular_velocity.z;
-
-    PoseEstimation::update(input, imu_in_.header.stamp);
+    PoseEstimation::update(ImuInput(imu_in_), imu_in_.header.stamp);
+    updateOutputs();
   }
-
-  updateOutputs();
 }
 
 void PoseEstimationTaskContext::updateOutputs()

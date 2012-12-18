@@ -34,8 +34,8 @@ namespace hector_pose_estimation {
 class PoseEstimationNodelet : public PoseEstimationNode, public nodelet::Nodelet
 {
 public:
-  PoseEstimationNodelet(SystemModel* system_model = 0)
-    : PoseEstimationNode(system_model)
+  PoseEstimationNodelet(const SystemPtr& system = SystemPtr())
+    : PoseEstimationNode(system)
   {}
 
 private:

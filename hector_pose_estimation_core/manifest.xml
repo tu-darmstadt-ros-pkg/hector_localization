@@ -12,14 +12,15 @@
 
   <depend package="roscpp" />
   <depend package="bfl_eigen" />
-  <depend package="eigen" />
   <depend package="sensor_msgs" />
   <depend package="geometry_msgs" />
   <depend package="nav_msgs" />
   <depend package="tf" />
 
+  <rosdep name="eigen" />
+
   <export>
     <rosbuild cmake_directory="${prefix}/cmake" />
-    <cpp cflags="-I${prefix}/include" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lhector_pose_estimation" />
+    <cpp cflags="`pkg-config --cflags eigen3` -I${prefix}/include" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lhector_pose_estimation" />
   </export>
 </package>

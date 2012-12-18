@@ -36,15 +36,17 @@
 namespace hector_pose_estimation {
 
   void covarianceMsgToBfl(geometry_msgs::PoseWithCovariance::_covariance_type const &msg, MatrixWrapper::SymmetricMatrix_Wrapper &bfl) {
-    bfl.resize(6,false,false);
-    for(unsigned int i = 0; i < 6; ++i)
-      for(unsigned int j = 0; j < 6; ++j)
-        bfl(i+1,j+1) = msg[i*6+j];
+    unsigned int dim = sqrt(msg.size());
+    bfl.resize(dim,false,false);
+    for(unsigned int i = 0; i < dim; ++i)
+      for(unsigned int j = 0; j < dim; ++j)
+        bfl(i+1,j+1) = msg[i*dim+j];
   }
 
   void covarianceBflToMsg(MatrixWrapper::SymmetricMatrix const &bfl, geometry_msgs::PoseWithCovariance::_covariance_type &msg) {
-    for(unsigned int i = 0; i < 6; ++i)
-      for(unsigned int j = 0; j < 6; ++j)
+    unsigned int dim = sqrt(msg.size());
+    for(unsigned int i = 0; i < dim; ++i)
+      for(unsigned int j = 0; j < dim; ++j)
         msg[i*6+j] = bfl(i+1,j+1);
   }
 

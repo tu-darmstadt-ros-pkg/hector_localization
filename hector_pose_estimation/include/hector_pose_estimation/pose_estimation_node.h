@@ -34,8 +34,10 @@
 #include <ros/ros.h>
 
 #include <sensor_msgs/Imu.h>
-#ifdef USE_MAV_MSGS
+#if defined(USE_MAV_MSGS)
   #include <mav_msgs/Height.h>
+#elif defined(USE_HECTOR_UAV_MSGS)
+  #include <hector_uav_msgs/Altimeter.h>
 #else
   #include <geometry_msgs/PointStamped.h>
 #endif
@@ -56,7 +58,7 @@ namespace hector_pose_estimation {
 
 class PoseEstimationNode {
 public:
-  PoseEstimationNode(SystemModel* system_model = 0);
+  PoseEstimationNode(const SystemPtr& system = SystemPtr());
   virtual ~PoseEstimationNode();
 
   virtual bool init();
@@ -68,8 +70,10 @@ public:
 protected:
   void imuCallback(const sensor_msgs::ImuConstPtr& imu);
 
-#ifdef USE_MAV_MSGS
+#if defined(USE_MAV_MSGS)
   void heightCallback(const mav_msgs::HeightConstPtr& height);
+#elif defined(USE_HECTOR_UAV_MSGS)
+  void baroCallback(const hector_uav_msgs::AltimeterConstPtr& altimeter);
 #else
   void heightCallback(const geometry_msgs::PointStampedConstPtr& height);
 #endif
@@ -93,7 +97,7 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
 
-  ros::Subscriber imu_subscriber_, baro_subscriber_, magnetic_subscriber_;
+  ros::Subscriber imu_subscriber_, baro_subscriber_, height_subscriber_, magnetic_subscriber_;
   message_filters::Subscriber<sensor_msgs::NavSatFix> gps_subscriber_;
   message_filters::Subscriber<geometry_msgs::Vector3Stamped> gps_velocity_subscriber_;
   message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped> *gps_synchronizer_;

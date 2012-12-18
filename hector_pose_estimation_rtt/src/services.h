@@ -41,7 +41,7 @@ private:
   System *system;
 
 public:
-  SystemService(RTT::TaskContext *owner, const System *system, const std::string& name = std::string());
+  SystemService(RTT::TaskContext *owner, const SystemPtr& system, const std::string& name = std::string());
   virtual ~SystemService();
 };
 
@@ -51,7 +51,7 @@ private:
   Measurement *measurement;
 
 public:
-  MeasurementService(RTT::TaskContext *owner, const Measurement *measurement, const std::string& name = std::string());
+  MeasurementService(RTT::TaskContext *owner, const MeasurementPtr& measurement, const std::string& name = std::string());
   virtual ~MeasurementService();
 };
 

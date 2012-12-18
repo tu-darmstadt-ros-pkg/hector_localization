@@ -30,12 +30,21 @@
 #define HECTOR_POSE_ESTIMATION_GENERIC_QUATERNION_SYSTEM_MODEL_H
 
 #include <hector_pose_estimation/system_model.h>
+#include <hector_pose_estimation/system/imu_input.h>
 
 namespace hector_pose_estimation {
+
+class GenericQuaternionSystemModel;
+template <> struct Input_<GenericQuaternionSystemModel> {
+  typedef ImuInput Type;
+};
 
 class GenericQuaternionSystemModel : public SystemModel
 {
 public:
+  static const unsigned int InputDimension = ImuInput::InputDimension;
+  typedef ImuInput::InputVector InputVector;
+
   GenericQuaternionSystemModel();
   virtual ~GenericQuaternionSystemModel();
 

@@ -30,6 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_SYSTEM_H
 
 #include "system_model.h"
+#include "system_input.h"
 
 namespace BFL { class KalmanFilter; }
 
@@ -40,14 +41,15 @@ class PoseEstimation;
 class System
 {
 public:
-  System(SystemModel *model, const std::string& name = "system");
+  System(const std::string& name);
   virtual ~System();
+
+  template <typename ConcreteModel> static boost::shared_ptr<System> create(ConcreteModel *model, const std::string& name = "system");
 
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
 
-  virtual void setModel(SystemModel *system_model);
-  virtual SystemModel *getModel() const { return model_; }
+  virtual SystemModel *getModel() const = 0;
 
   virtual bool init();
   virtual void cleanup();
@@ -60,22 +62,72 @@ public:
   virtual const ParameterList& parameters() const { return parameters_; }
 
   BFL::Gaussian *getPrior();
-  const InputVector& getInput() const { return input_; }
-  void setInput(const InputVector& input) { input_ = input; }
+  virtual const SystemInput& getInput() const = 0;
+  virtual void setInput(const SystemInput& input) = 0;
 
-  virtual bool update(PoseEstimation &estimator, double dt);
+  virtual bool update(PoseEstimation &estimator, double dt) = 0;
   virtual void updated();
-  StateVector limitState(StateVector state) const;
+  virtual StateVector limitState(StateVector state) const;
 
 protected:
-  SystemModel *model_;
+  void updateInternal(PoseEstimation &estimator, double dt, ColumnVector const& u);
+
+protected:
   std::string name_;
   ParameterList parameters_;
   SystemStatus status_flags_;
-
   BFL::Gaussian prior_;
-  InputVector input_;
 };
+
+typedef boost::shared_ptr<System> SystemPtr;
+
+template <typename ConcreteModel, typename ConcreteInput = typename Input_<ConcreteModel>::Type >
+class System_ : public System
+{
+public:
+  typedef ConcreteModel Model;
+  typedef ConcreteInput Input;
+  static const unsigned int InputDimension = Model::InputDimension;
+  typedef typename Model::InputVector InputVector;
+
+  System_(const std::string& name = "system")
+    : System(name)
+    , model_(new Model)
+  {
+    parameters_.add(model_->parameters());
+  }
+
+  System_(Model *model, const std::string& name)
+    : System(name)
+    , model_(model)
+  {
+    parameters_.add(model_->parameters());
+  }
+  virtual SystemModel *getModel() const { return model_.get(); }
+
+  virtual const Input& getInput() const { return input_; }
+  virtual void setInput(const SystemInput& input) { input_ = dynamic_cast<const Input&>(input); }
+  virtual void setInput(const Input& input) { input_ = input; }
+
+  virtual bool update(PoseEstimation &estimator, double dt);
+
+private:
+  boost::shared_ptr<Model> model_;
+  Input input_;
+};
+
+template <class ConcreteModel, class ConcreteInput>
+bool System_<ConcreteModel, ConcreteInput>::update(PoseEstimation &estimator, double dt)
+{
+  updateInternal(estimator, dt, input_.getVector());
+  return true;
+}
+
+template <typename ConcreteModel>
+SystemPtr System::create(ConcreteModel *model, const std::string& name)
+{
+  return SystemPtr(new System_<ConcreteModel>(model, name));
+}
 
 } // namespace hector_pose_estimation
 

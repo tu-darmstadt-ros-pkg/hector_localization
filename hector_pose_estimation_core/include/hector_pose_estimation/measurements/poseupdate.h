@@ -114,7 +114,9 @@ private:
   YawModel yaw_model_;
   TwistModel twist_model_;
 
-  double alpha_, beta_;
+  double fixed_alpha_, fixed_beta_;
+  bool interpret_covariance_as_information_matrix_;
+
   double fixed_position_xy_stddev_;
   double fixed_position_z_stddev_;
   double fixed_yaw_stddev_;

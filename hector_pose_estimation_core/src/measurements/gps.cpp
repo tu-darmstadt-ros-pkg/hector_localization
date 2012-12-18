@@ -86,7 +86,7 @@ void GPS::onReset() {
   reference_ = 0;
 }
 
-GPSModel::MeasurementVector const& GPS::getValue(const GPSUpdate &update) {
+GPSModel::MeasurementVector const& GPS::getVector(const GPSUpdate &update) {
   if (!reference_) {
     y_(1) = y_(2) = y_(3) = y_(4) = 0.0/0.0;
     return y_;

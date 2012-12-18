@@ -60,7 +60,8 @@ namespace hector_pose_estimation {
 class PoseEstimation
 {
 public:
-  PoseEstimation(SystemModel *system_model = 0);
+  PoseEstimation(const SystemPtr& system = SystemPtr());
+  template <typename ConcreteSystemModel> PoseEstimation(ConcreteSystemModel *system_model);
   virtual ~PoseEstimation();
 
   static PoseEstimation *Instance();
@@ -69,21 +70,24 @@ public:
   virtual void cleanup();
   virtual void reset();
 
-  virtual void update(const InputVector& input, ros::Time timestamp);
+  virtual void update(const SystemInput& input, ros::Time timestamp);
   virtual void update(double dt);
 
-  virtual System *setSystemModel(SystemModel *system_model, const std::string& name = "system");
-  virtual System *setSystem(System *system);
+  template <typename ConcreteSystemModel> const SystemPtr& setSystemModel(ConcreteSystemModel *system_model, const std::string& name = "system");
+  virtual const SystemPtr& setSystem(const SystemPtr& system);
+  virtual const SystemPtr& setSystem(System *system);
   virtual const SystemModel *getSystemModel() const;
-  virtual System *getSystem() const;
+  virtual const SystemPtr& getSystem() const;
 
-  virtual Measurement *addMeasurement(Measurement *measurement);
-  Measurement *addMeasurement(const std::string& name, Measurement *measurement);
+  virtual const MeasurementPtr& addMeasurement(const MeasurementPtr& measurement);
+  virtual const MeasurementPtr& addMeasurement(Measurement *measurement);
+  virtual const MeasurementPtr& addMeasurement(const std::string& name, const MeasurementPtr& measurement);
+  virtual MeasurementPtr getMeasurement(const std::string &name) const;
+
   template <class ConcreteMeasurementModel>
-  Measurement *addMeasurement(const std::string& name, ConcreteMeasurementModel *model) {
+  const MeasurementPtr& addMeasurement(const std::string& name, ConcreteMeasurementModel *model) {
     return addMeasurement(new Measurement_<ConcreteMeasurementModel>(model, name));
   }
-  virtual Measurement *getMeasurement(const std::string &name) const;
 
   virtual const StateVector& getState();
   virtual const StateCovariance& getCovariance();
@@ -143,18 +147,18 @@ public:
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
 
-  virtual BFL::KalmanFilter *filter() { return filter_; }
-  virtual const BFL::KalmanFilter *filter() const { return filter_; }
+  virtual BFL::KalmanFilter *filter() { return filter_.get(); }
+  virtual const BFL::KalmanFilter *filter() const { return filter_.get(); }
 
   virtual void updated();
 
 protected:
-  System *system_;
-  typedef std::vector<Measurement *> Measurements;
+  SystemPtr system_;
+  typedef std::vector<MeasurementPtr> Measurements;
   Measurements measurements_;
 
 private:
-  BFL::ExtendedKalmanFilter *filter_;
+  boost::shared_ptr<BFL::ExtendedKalmanFilter> filter_;
 
   StateVector state_;
   StateCovariance covariance_;
@@ -180,11 +184,23 @@ private:
 
   SystemStatusCallback status_callback_;
 
-  Rate rate_;
-  Gravity gravity_;
-  ZeroRate zerorate_;
-//  Heading heading_;
+  boost::shared_ptr<Rate> rate_;
+  boost::shared_ptr<Gravity> gravity_;
+  boost::shared_ptr<ZeroRate> zerorate_;
+//  boost::shared_ptr<Heading> heading_;
 };
+
+template <typename ConcreteSystemModel>
+const SystemPtr& PoseEstimation::setSystemModel(ConcreteSystemModel *new_system_model, const std::string& name) {
+  setSystem(SystemPtr());
+  if (!new_system_model || new_system_model == getSystemModel()) return getSystem();
+  return setSystem(System::create(new_system_model, name));
+}
+
+template <typename ConcreteSystemModel>
+PoseEstimation::PoseEstimation(ConcreteSystemModel *system_model) {
+  *this = PoseEstimation(System::create(system_model));
+}
 
 } // namespace hector_pose_estimation
 

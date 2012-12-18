@@ -27,6 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/system/imu_input.h>
 
 namespace hector_pose_estimation {
 
@@ -34,16 +35,16 @@ namespace {
   static PoseEstimation *the_instance = 0;
 }
 
-PoseEstimation::PoseEstimation(SystemModel *system_model)
-  : system_(0), filter_(0)
+PoseEstimation::PoseEstimation(const SystemPtr& system)
+  : system_(system)
   , state_is_dirty_(true)
   , covariance_is_dirty_(true)
   , status_()
   , measurement_status_()
-  , rate_("rate")
-  , gravity_("gravity")
-  , zerorate_("zerorate")
-//  , heading_("heading")
+  , rate_(new Rate("rate"))
+  , gravity_(new Gravity ("gravity"))
+  , zerorate_(new ZeroRate("zerorate"))
+//  , heading_(new Heading("heading"))
 {
   if (!the_instance) the_instance = this;
 
@@ -71,14 +72,11 @@ PoseEstimation::PoseEstimation(SystemModel *system_model)
   parameters().add("reference_heading",   global_reference_.heading);
   parameters().add("alignment_time", alignment_time_);
 
-  // initialize system model
-  setSystemModel(system_model);
-
   // add default measurements
-  addMeasurement(&rate_);
-  addMeasurement(&gravity_);
-  addMeasurement(&zerorate_);
-//  addMeasurement(&heading_);
+  addMeasurement(rate_);
+  addMeasurement(gravity_);
+  addMeasurement(zerorate_);
+//  addMeasurement(heading_);
 }
 
 PoseEstimation::~PoseEstimation()
@@ -112,10 +110,7 @@ bool PoseEstimation::init()
 void PoseEstimation::cleanup()
 {
   // delete filter instance
-  if (filter_) {
-    delete filter_;
-    filter_ = 0;
-  }
+  if (filter_) filter_.reset();
 
   // cleanup system
   system_->cleanup();
@@ -133,7 +128,7 @@ void PoseEstimation::reset()
   if (!system_) return;
 
   // initialize new filter
-  filter_ = new BFL::ExtendedKalmanFilter(system_->getPrior());
+  filter_.reset(new BFL::ExtendedKalmanFilter(system_->getPrior()));
   updated();
 
   // set initial status
@@ -150,7 +145,7 @@ void PoseEstimation::reset()
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->reset(getState());
 }
 
-void PoseEstimation::update(const InputVector& input, ros::Time new_timestamp)
+void PoseEstimation::update(const SystemInput& input, ros::Time new_timestamp)
 {
   ros::Duration dt;
 
@@ -178,8 +173,13 @@ void PoseEstimation::update(double dt)
   if (!system_ || !filter_) return;
 
   // filter rate measurement first
-  ROS_DEBUG("Updating with measurement model %s", rate_.getName().c_str());
-  rate_.update(*this, Rate::Update(system_->getInput().sub(GYRO_X,GYRO_Z)));
+  const ImuInput *imu = dynamic_cast<const ImuInput *>(&system_->getInput());
+#ifdef USE_RATE_SYSTEM_MODEL
+  if (imu && rate_) {
+    ROS_DEBUG("Updating with measurement model %s", rate_->getName().c_str());
+    rate_->update(*this, Rate::Update(imu->getRate()));
+  }
+#endif // USE_RATE_SYSTEM_MODEL
 
   // time update step
   system_->update(*this, dt);
@@ -189,21 +189,21 @@ void PoseEstimation::update(double dt)
   SystemStatus measurement_status = 0;
 
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
-    Measurement *measurement = *it;
+    MeasurementPtr measurement = *it;
     if (!measurement->active(getSystemStatus())) continue;
 
     // special updates
-    if (measurement == &rate_) continue;
+    if (measurement == rate_) continue;
 
-    if (measurement == &gravity_) {
-      ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
-      gravity_.update(*this, Gravity::Update(system_->getInput().sub(ACCEL_X, ACCEL_Z)));
+    if (imu && measurement == gravity_) {
+      ROS_DEBUG("Updating with pseudo measurement model %s", gravity_->getName().c_str());
+      gravity_->update(*this, Gravity::Update(imu->getAccel()));
       continue;
     }
 
-    if (measurement == &zerorate_) {
-      ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_.getName().c_str());
-      zerorate_.update(*this, ZeroRate::Update(system_->getInput().sub(GYRO_Z, GYRO_Z)));
+    if (imu && measurement == zerorate_) {
+      ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_->getName().c_str());
+      zerorate_->update(*this, ZeroRate::Update(imu->getRate()[2]));
       continue;
     }
 
@@ -229,7 +229,7 @@ void PoseEstimation::update(double dt)
 //  // pseudo updates
 //  if (gravity_.active(getSystemStatus())) {
 //    ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
-//    Gravity::Update y(system_->getInput().sub(ACCEL_X, ACCEL_Z));
+//    Gravity::Update y(imu->getAccel());
 //    // gravity_.enable();
 //    if (gravity_.update(*this, y)) measurement_status |= gravity_.getStatusFlags();
 //  } else {
@@ -238,7 +238,7 @@ void PoseEstimation::update(double dt)
 
 //  if (zerorate_.active(getSystemStatus())) {
 //    ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_.getName().c_str());
-//    ZeroRate::Update y(system_->getInput().sub(GYRO_Z, GYRO_Z));
+//    ZeroRate::Update y(imu->getRate());
 //    // zerorate_.enable();
 //    if (zerorate_.update(*this, y)) measurement_status |= zerorate_.getStatusFlags();
 //  } else {
@@ -268,20 +268,18 @@ void PoseEstimation::updated() {
   setState(system_->limitState(getState()));
 }
 
-System *PoseEstimation::setSystemModel(SystemModel *new_system_model, const std::string& name) {
-  if (!new_system_model || new_system_model == getSystemModel()) return 0;
-  return setSystem(new System(new_system_model, name));
-}
-
-System *PoseEstimation::setSystem(System *new_system) {
+const SystemPtr& PoseEstimation::setSystem(const SystemPtr& new_system) {
   if (system_) {
     cleanup();
-    delete system_;
-    system_ = 0;
+    system_.reset();
   }
 
   system_ = new_system;
   return system_;
+}
+
+const SystemPtr& PoseEstimation::setSystem(System *new_system) {
+  return setSystem(SystemPtr(new_system));
 }
 
 const SystemModel *PoseEstimation::getSystemModel() const {
@@ -289,25 +287,29 @@ const SystemModel *PoseEstimation::getSystemModel() const {
   return system_->getModel();
 }
 
-System *PoseEstimation::getSystem() const {
+const SystemPtr& PoseEstimation::getSystem() const {
   return system_;
 }
 
-Measurement *PoseEstimation::addMeasurement(Measurement *measurement) {
+const MeasurementPtr& PoseEstimation::addMeasurement(const MeasurementPtr& measurement) {
   measurements_.push_back(measurement);
   return measurement;
 }
 
-Measurement *PoseEstimation::addMeasurement(const std::string& name, Measurement *measurement) {
+const MeasurementPtr& PoseEstimation::addMeasurement(const std::string& name, const MeasurementPtr& measurement) {
 	measurement->setName(name);
 	return addMeasurement(measurement);
 }
 
-Measurement *PoseEstimation::getMeasurement(const std::string &name) const {
+const MeasurementPtr& PoseEstimation::addMeasurement(Measurement *measurement) {
+  return addMeasurement(MeasurementPtr(measurement));
+}
+
+MeasurementPtr PoseEstimation::getMeasurement(const std::string &name) const {
   for(Measurements::const_iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
     if ((*it)->getName() == name) return *it;
   }
-  return 0;
+  return MeasurementPtr();
 }
 
 const StateVector& PoseEstimation::getState() {
@@ -560,10 +562,16 @@ void PoseEstimation::getOrientation(geometry_msgs::QuaternionStamped& quaternion
 
 void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity) {
   getState();
-  const InputVector &input = system_->getInput();
-  linear_acceleration.x = input(ACCEL_X) + state_(BIAS_ACCEL_X);
-  linear_acceleration.y = input(ACCEL_Y) + state_(BIAS_ACCEL_Y);
-  linear_acceleration.z = input(ACCEL_Z) + state_(BIAS_ACCEL_Z);
+  const ImuInput *imu = dynamic_cast<const ImuInput *>(&system_->getInput());
+  if (imu) {
+    linear_acceleration.x = imu->getAccel()[0] + state_(BIAS_ACCEL_X);
+    linear_acceleration.y = imu->getAccel()[1] + state_(BIAS_ACCEL_Y);
+    linear_acceleration.z = imu->getAccel()[2] + state_(BIAS_ACCEL_Z);
+  } else {
+    linear_acceleration.x = 0.0;
+    linear_acceleration.y = 0.0;
+    linear_acceleration.z = 0.0;
+  }
 
 #ifdef USE_RATE_SYSTEM_MODEL
   Rate::MeasurementVector rate_body = rate_.getModel()->PredictionGet(input, state_);
@@ -571,9 +579,15 @@ void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleratio
   angular_velocity.y    = rate_body(2);
   angular_velocity.z    = rate_body(3);
 #else // USE_RATE_SYSTEM_MODEL
-  angular_velocity.x    = input(GYRO_X)  + state_(BIAS_GYRO_X);
-  angular_velocity.y    = input(GYRO_Y)  + state_(BIAS_GYRO_Y);
-  angular_velocity.z    = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
+  if (imu) {
+    angular_velocity.x    = imu->getRate()[0] + state_(BIAS_GYRO_X);
+    angular_velocity.y    = imu->getRate()[1] + state_(BIAS_GYRO_Y);
+    angular_velocity.z    = imu->getRate()[2] + state_(BIAS_GYRO_Z);
+  } else {
+    angular_velocity.x   = 0.0;
+    angular_velocity.y   = 0.0;
+    angular_velocity.z   = 0.0;
+  }
 #endif // USE_RATE_SYSTEM_MODEL
 }
 
@@ -605,8 +619,12 @@ void PoseEstimation::getRate(tf::Vector3& vector) {
 #ifdef USE_RATE_SYSTEM_MODEL
   vector = tf::Vector3(state_(RATE_X), state_(RATE_Y), state_(RATE_Z));
 #else // USE_RATE_SYSTEM_MODEL
-  const InputVector &input = system_->getInput();
-  vector = tf::Vector3(input(GYRO_X)  + state_(BIAS_GYRO_Z), input(GYRO_Y)  + state_(BIAS_GYRO_Z), input(GYRO_Z) + state_(BIAS_GYRO_Z));
+  const ImuInput *imu = dynamic_cast<const ImuInput *>(&system_->getInput());
+  if (imu) {
+    vector = tf::Vector3(imu->getRate()[0] + state_(BIAS_GYRO_X), imu->getRate()[1] + state_(BIAS_GYRO_Y), imu->getRate()[2] + state_(BIAS_GYRO_Z));
+  } else {
+    vector = tf::Vector3(0,0,0);
+  }
 #endif // USE_RATE_SYSTEM_MODEL
 }
 
@@ -623,10 +641,16 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
   vector.y = state_(RATE_Y);
   vector.z = state_(RATE_Z);
 #else // USE_RATE_SYSTEM_MODEL
-  const InputVector &input = system_->getInput();
-  vector.x = input(GYRO_X)  + state_(BIAS_GYRO_Z);
-  vector.y = input(GYRO_Y)  + state_(BIAS_GYRO_Z);
-  vector.z = input(GYRO_Z)  + state_(BIAS_GYRO_Z);
+  const ImuInput *imu = dynamic_cast<const ImuInput *>(&system_->getInput());
+  if (imu) {
+    vector.x = imu->getRate()[0]  + state_(BIAS_GYRO_X);
+    vector.y = imu->getRate()[1]  + state_(BIAS_GYRO_Y);
+    vector.z = imu->getRate()[2]  + state_(BIAS_GYRO_Z);
+  } else {
+    vector.x = 0.0;
+    vector.y = 0.0;
+    vector.z = 0.0;
+  }
 #endif // USE_RATE_SYSTEM_MODEL
 }
 
@@ -702,7 +726,11 @@ void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms
 
   if (!stabilized_frame_.empty()) {
     tf::Transform stabilized_transform(transform);
+#ifdef TF_MATRIX3x3_H
+    tf::Matrix3x3 rollpitch_rotation; rollpitch_rotation.setEulerYPR(0.0, p, r);
+#else
     btMatrix3x3 rollpitch_rotation; rollpitch_rotation.setEulerYPR(0.0, p, r);
+#endif
     stabilized_transform = stabilized_transform * tf::Transform(rollpitch_rotation.inverse());
     transforms.push_back(tf::StampedTransform(stabilized_transform, timestamp_, parent_frame, stabilized_frame_));
 
@@ -767,8 +795,8 @@ GlobalReference* PoseEstimation::globalReference() {
 
 void GlobalReference::updated() {
   static const double radius_earth = 6371e3;
-  radius_north = radius_earth;
-  radius_east  = radius_earth * cos(latitude);
+  radius_north = radius_earth + altitude;
+  radius_east  = radius_north * cos(latitude);
   cos_heading = cos(heading);
   sin_heading = sin(heading);
 }
