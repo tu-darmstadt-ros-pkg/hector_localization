@@ -32,7 +32,7 @@ namespace hector_pose_estimation {
 
 MagneticModel::MagneticModel()
   : MeasurementModel(MeasurementDimension)
-  , declination_(0.0), inclination_(60.0 * M_PI/180.0), magnitude_(20.0)
+  , declination_(0.0), inclination_(60.0 * M_PI/180.0), magnitude_(0.0)
   , C_full_(3,StateDimension)
 {
   parameters().add("stddev", stddev_, 1.0);
@@ -114,9 +114,42 @@ Matrix MagneticModel::dfGet(unsigned int i) const {
 
 void MagneticModel::setMagneticField(double declination, double inclination, double magnitude)
 {
-  magnetic_field_(1) = magnitude * cos(inclination_) * cos(declination_);
-  magnetic_field_(2) = magnitude * -sin(declination_);
-  magnetic_field_(3) = magnitude * -sin(inclination_) * cos(declination_);
+  double cos_inclination, sin_inclination;
+  sincos(inclination, &sin_inclination, &cos_inclination);
+
+  double cos_declination, sin_declination;
+  sincos(declination, &sin_declination, &cos_declination);
+
+  // return normalized magnetic field if magnitude is zero
+  if (magnitude == 0.0) magnitude = 1.0;
+
+  magnetic_field_(1) = magnitude * cos_inclination * cos_declination;
+  magnetic_field_(2) = magnitude * -sin_declination;
+  magnetic_field_(3) = magnitude * -sin_inclination * cos_declination;
+}
+
+const MagneticModel::MeasurementVector& MagneticModel::getNormalizedVector(const MeasurementVector& y) {
+  if (magnitude_ != 0.0) return y;
+  double c = 1.0 / y.norm();
+  if (isinf(c)) {
+    last_measurement_ = MeasurementVector(0.0);
+  } else {
+    last_measurement_ = y * c;
+  }
+
+  return last_measurement_;
+}
+
+const MagneticModel::NoiseCovariance& MagneticModel::getNormalizedCovariance(const MeasurementVector& y, const NoiseCovariance& R) {
+  if (magnitude_ != 0.0) return R;
+  double c = 1.0 / y.norm();
+  if (isinf(c)) {
+    last_measurement_covariance_ = NoiseCovariance(1.0);
+  } else {
+    last_measurement_covariance_ =  R * (c*c);
+  }
+
+  return last_measurement_covariance_;
 }
 
 } // namespace hector_pose_estimation

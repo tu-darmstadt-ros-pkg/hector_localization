@@ -141,8 +141,8 @@ void PoseEstimation::reset()
   measurement_status_ = 0;
 
   // reset system and all measurements
-  system_->reset(getState());
-  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->reset(getState());
+  system_->reset();
+  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->reset();
 }
 
 void PoseEstimation::update(const SystemInput& input, ros::Time new_timestamp)
@@ -574,7 +574,7 @@ void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleratio
   }
 
 #ifdef USE_RATE_SYSTEM_MODEL
-  Rate::MeasurementVector rate_body = rate_.getModel()->PredictionGet(input, state_);
+  Rate::MeasurementVector rate_body = rate_->getModel()->PredictionGet(0, state_);
   angular_velocity.x    = rate_body(1);
   angular_velocity.y    = rate_body(2);
   angular_velocity.z    = rate_body(3);
@@ -797,8 +797,7 @@ void GlobalReference::updated() {
   static const double radius_earth = 6371e3;
   radius_north = radius_earth + altitude;
   radius_east  = radius_north * cos(latitude);
-  cos_heading = cos(heading);
-  sin_heading = sin(heading);
+  sincos(heading, &sin_heading, &cos_heading);
 }
 
 } // namespace hector_pose_estimation

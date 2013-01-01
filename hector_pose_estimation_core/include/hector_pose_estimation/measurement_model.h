@@ -47,7 +47,6 @@ public:
   virtual bool init() { return true; }
   virtual void cleanup() { }
   virtual void reset() { }
-  virtual void reset(const StateVector& state) { reset(); }
 
   virtual SystemStatus getStatusFlags() const { return SystemStatus(0); }
   virtual bool applyStatusMask(const SystemStatus& status) { return true; }

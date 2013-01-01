@@ -31,6 +31,9 @@
 
 #include <hector_pose_estimation/matrix.h>
 
+// Use system model with angular rates.
+// #define USE_RATE_SYSTEM_MODEL
+
 namespace hector_pose_estimation {
 
   enum StateIndex {

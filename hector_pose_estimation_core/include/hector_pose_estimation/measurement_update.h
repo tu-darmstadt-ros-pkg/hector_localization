@@ -86,17 +86,17 @@ protected:
 };
 
 namespace internal {
-  template <class ConcreteModel, class ConcreteUpdate, class Enable = void>
+  template <class ConcreteModel, class ConcreteUpdate = Update_<ConcreteModel>, class Enable = void>
   struct UpdateInspector {
-    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
-    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update) { return *static_cast<typename ConcreteModel::NoiseCovariance *>(0); }
+    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const ConcreteModel*) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
+    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update, const ConcreteModel*) { return *static_cast<typename ConcreteModel::NoiseCovariance *>(0); }
   };
 
   template <class ConcreteModel, class ConcreteUpdate>
   struct UpdateInspector<ConcreteModel, ConcreteUpdate, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>,ConcreteUpdate> >::type >
   {
-    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update) { return update.getVector(); }
-    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update) { return update.getCovariance(); }
+    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const ConcreteModel*) { return update.getVector(); }
+    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update, const ConcreteModel*) { return update.getCovariance(); }
   };
 }
 

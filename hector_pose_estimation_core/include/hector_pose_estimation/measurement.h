@@ -52,7 +52,6 @@ public:
   virtual bool init();
   virtual void cleanup();
   virtual void reset();
-  virtual void reset(const StateVector& state) { reset(); }
 
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
   virtual bool active(const SystemStatus& status) { return enabled(); }
@@ -120,13 +119,12 @@ public:
   virtual bool init() { return model_->init() && Measurement::init(); }
   virtual void cleanup() { model_->cleanup(); Measurement::cleanup(); }
   virtual void reset() { model_->reset(); Measurement::reset(); }
-  virtual void reset(const StateVector& state) { model_->reset(state); Measurement::reset(state); }
 
   virtual Model* getModel() const { return model_.get(); }
   virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
 
-  virtual MeasurementVector const& getVector(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVector(update); }
-  virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update) : static_cast<NoiseCovariance const&>(model_->AdditiveNoiseSigmaGet()); }
+  virtual MeasurementVector const& getVector(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVector(update, getModel()); }
+  virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update, getModel()) : static_cast<NoiseCovariance const&>(model_->AdditiveNoiseSigmaGet()); }
   virtual void setNoiseCovariance(NoiseCovariance const& sigma);
 
   virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update);

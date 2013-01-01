@@ -64,11 +64,6 @@ void System::reset()
   getModel()->reset();
 }
 
-void System::reset(const StateVector& state)
-{
-  getModel()->reset(state);
-}
-
 void System::updateInternal(PoseEstimation &estimator, double dt, ColumnVector const& u) {
   ROS_DEBUG("Updating with system model %s", getName().c_str());
 

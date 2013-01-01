@@ -63,7 +63,7 @@ BaroUpdate::BaroUpdate() : qnh_(0) {}
 BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { setValue(pressure); }
 BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { setValue(pressure); }
 
-void Baro::reset(const StateVector& state)
+void Baro::reset()
 {
   Measurement_<BaroModel,BaroUpdate>::reset();
   HeightBaroCommon::reset();

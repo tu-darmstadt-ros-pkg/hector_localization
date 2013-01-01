@@ -52,7 +52,6 @@ public:
   virtual bool init() { return true; }
   virtual void cleanup() { }
   virtual void reset() { }
-  virtual void reset(const StateVector& state) { reset(); }
 
   ParameterList& parameters() { return parameters_; }
   const ParameterList& parameters() const { return parameters_; }

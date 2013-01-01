@@ -51,13 +51,26 @@ public:
 
   virtual void setMagneticField(double declination, double inclination, double magnitude);
 
+  virtual const MeasurementVector& getNormalizedVector(const MeasurementVector& y);
+  virtual const NoiseCovariance& getNormalizedCovariance(const MeasurementVector& y, const NoiseCovariance& R);
+
 protected:
   double stddev_;
   double declination_, inclination_, magnitude_;
   ColumnVector_<3> magnetic_field_;
 
+  MeasurementVector last_measurement_;
+  NoiseCovariance last_measurement_covariance_;
+
   mutable Matrix C_full_;
 };
+
+namespace internal {
+template <> struct UpdateInspector<MagneticModel> {
+  static const MagneticModel::MeasurementVector& getVector(const Update_<MagneticModel> &update, MagneticModel* model) { return model->getNormalizedVector(update.getVector()); }
+  static const MagneticModel::NoiseCovariance& getCovariance(const Update_<MagneticModel> &update, MagneticModel* model) { return model->getNormalizedCovariance(update.getVector(), update.getCovariance()); }
+};
+}
 
 typedef Measurement_<MagneticModel> Magnetic;
 

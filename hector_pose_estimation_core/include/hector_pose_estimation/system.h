@@ -54,7 +54,6 @@ public:
   virtual bool init();
   virtual void cleanup();
   virtual void reset();
-  virtual void reset(const StateVector& state);
 
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
 
