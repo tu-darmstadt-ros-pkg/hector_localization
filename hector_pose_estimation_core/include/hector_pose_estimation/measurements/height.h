@@ -63,7 +63,7 @@ public:
   HeightBaroCommon(Measurement *measurement);
   virtual ~HeightBaroCommon();
 
-  void reset();
+  void onReset();
   double resetElevation(PoseEstimation &estimator, boost::function<double()> altitude_func);
 
 private:
@@ -80,7 +80,7 @@ public:
   void setElevation(double elevation) { getModel()->setElevation(elevation); }
   double getElevation() const { return getModel()->getElevation(); }
 
-  virtual void reset(const StateVector& state);
+  virtual void onReset();
   virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
 };
 

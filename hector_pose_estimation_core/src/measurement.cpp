@@ -50,11 +50,12 @@ Measurement::~Measurement()
 
 bool Measurement::init()
 {
-  return true;
+  return onInit();
 }
 
 void Measurement::cleanup()
 {
+  onCleanup();
 }
 
 void Measurement::reset()

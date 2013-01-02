@@ -33,6 +33,7 @@
 #include "system.h"
 #include "measurement.h"
 #include "parameters.h"
+#include "global_reference.h"
 
 #include <bfl/filter/extendedkalmanfilter.h>
 
@@ -126,6 +127,7 @@ public:
   virtual void getOrientation(tf::Stamped<tf::Quaternion>& quaternion);
   virtual void getOrientation(geometry_msgs::Quaternion& pose);
   virtual void getOrientation(geometry_msgs::QuaternionStamped& pose);
+  virtual void getOrientation(double &yaw, double &pitch, double &roll);
   virtual void getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity);
   virtual void getVelocity(tf::Vector3& vector);
   virtual void getVelocity(tf::Stamped<tf::Vector3>& vector);

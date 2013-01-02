@@ -92,13 +92,13 @@ GPSModel::MeasurementVector const& GPS::getVector(const GPSUpdate &update) {
     return y_;
   }
 
-  double north = reference_->radius_north * (update.latitude  - reference_->latitude);
-  double east  = reference_->radius_east  * (update.longitude - reference_->longitude);
+  double north = reference_->radius().north * (update.latitude  - reference_->position().latitude);
+  double east  = reference_->radius().east  * (update.longitude - reference_->position().longitude);
 
-  y_(1) = north * reference_->cos_heading + east * reference_->sin_heading;
-  y_(2) = north * reference_->sin_heading - east * reference_->cos_heading;
-  y_(3) = update.velocity_north * reference_->cos_heading + update.velocity_east * reference_->sin_heading;
-  y_(4) = update.velocity_north * reference_->sin_heading - update.velocity_east * reference_->cos_heading;
+  y_(1) = north * reference_->heading().cos + east * reference_->heading().sin;
+  y_(2) = north * reference_->heading().sin - east * reference_->heading().cos;
+  y_(3) = update.velocity_north * reference_->heading().cos + update.velocity_east * reference_->heading().sin;
+  y_(4) = update.velocity_north * reference_->heading().sin - update.velocity_east * reference_->heading().cos;
 
   last_ = update;
   return y_;
@@ -109,20 +109,16 @@ bool GPS::beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update) {
   if (timedout()) reference_ = 0;
 
   // find new reference position
-  if (!reference_) {
+  if (reference_ != estimator.globalReference()) {
     reference_ = estimator.globalReference();
-    reference_->latitude  = update.latitude;
-    reference_->longitude = update.longitude;
-    reference_->updated();
+    reference_->setPosition(update.latitude, update.longitude);
 
     StateVector state = estimator.getState();
-    double north =  state(POSITION_X) * reference_->cos_heading + state(POSITION_Y) * reference_->sin_heading;
-    double east  =  state(POSITION_X) * reference_->sin_heading - state(POSITION_Y) * reference_->cos_heading;
-    reference_->latitude  = update.latitude  - north / reference_->radius_north;
-    reference_->longitude = update.longitude - east  / reference_->radius_east;
-    reference_->updated();
+    double north = state(POSITION_X) * reference_->heading().cos + state(POSITION_Y) * reference_->heading().sin;
+    double east  = state(POSITION_X) * reference_->heading().sin - state(POSITION_Y) * reference_->heading().cos;
+    reference_->setPosition(update.latitude  - north / reference_->radius().north, update.longitude - east  / reference_->radius().east);
 
-    ROS_INFO("Set new GPS reference position: %f/%f", reference_->latitude * 180.0/M_PI, reference_->longitude * 180.0/M_PI);
+    ROS_INFO("Set new GPS reference position to %f/%f", reference_->position().latitude * 180.0/M_PI, reference_->position().longitude * 180.0/M_PI);
   }
 
   return true;

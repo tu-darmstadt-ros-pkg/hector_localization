@@ -87,17 +87,6 @@ namespace hector_pose_estimation {
     return os << getSystemStatusString(status);
   }
 
-  struct GlobalReference {
-    double latitude;
-    double longitude;
-    double altitude;
-    double heading;
-
-    double radius_north, radius_east;
-    double cos_heading, sin_heading;
-    void updated();
-  };
-
 } // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_TYPES_H

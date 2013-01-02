@@ -30,6 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_MAGNETIC_H
 
 #include <hector_pose_estimation/measurement.h>
+>#include <hector_pose_estimation/global_reference.h>
 #include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
@@ -49,30 +50,42 @@ public:
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
 
-  virtual void setMagneticField(double declination, double inclination, double magnitude);
+  double getMagneticHeading(const MeasurementVector& y) const;
+  double getTrueHeading(const MeasurementVector& y) const;
 
-  virtual const MeasurementVector& getNormalizedVector(const MeasurementVector& y);
-  virtual const NoiseCovariance& getNormalizedCovariance(const MeasurementVector& y, const NoiseCovariance& R);
+  void setReference(const GlobalReference::Heading &reference_heading);
+  bool hasMagnitude() const { return magnitude_ != 0.0; }
 
 protected:
   double stddev_;
   double declination_, inclination_, magnitude_;
-  ColumnVector_<3> magnetic_field_;
+  void updateMagneticField();
 
-  MeasurementVector last_measurement_;
-  NoiseCovariance last_measurement_covariance_;
-
+  MeasurementVector magnetic_field_north_;
+  MeasurementVector magnetic_field_reference_;
   mutable Matrix C_full_;
 };
 
-namespace internal {
-template <> struct UpdateInspector<MagneticModel> {
-  static const MagneticModel::MeasurementVector& getVector(const Update_<MagneticModel> &update, MagneticModel* model) { return model->getNormalizedVector(update.getVector()); }
-  static const MagneticModel::NoiseCovariance& getCovariance(const Update_<MagneticModel> &update, MagneticModel* model) { return model->getNormalizedCovariance(update.getVector(), update.getCovariance()); }
-};
-}
+class Magnetic : public Measurement_<MagneticModel>
+{
+public:
+  Magnetic(const std::string& name = "height");
+  virtual ~Magnetic() {}
 
-typedef Measurement_<MagneticModel> Magnetic;
+  virtual void onReset();
+
+  virtual MeasurementVector const& getVector(const Update &update);
+  virtual NoiseCovariance const& getCovariance(const Update &update);
+
+  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+
+private:
+  bool auto_heading_;
+  GlobalReference *reference_;
+
+  MeasurementVector y_;
+  NoiseCovariance R_;
+};
 
 } // namespace hector_pose_estimation
 

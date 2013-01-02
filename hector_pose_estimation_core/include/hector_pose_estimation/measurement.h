@@ -74,7 +74,10 @@ public:
 protected:
   virtual Queue& queue() = 0;
   void updateInternal(PoseEstimation &estimator, ColumnVector const& y);
+
+  virtual bool onInit() { return true; }
   virtual void onReset() { }
+  virtual void onCleanup() { }
 
 protected:
   std::string name_;

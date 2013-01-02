@@ -30,6 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_GPS_H
 
 #include <hector_pose_estimation/measurement.h>
+#include <hector_pose_estimation/global_reference.h>
 #include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {

@@ -33,6 +33,7 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
+#include <boost/type_traits/remove_const.hpp>
 
 namespace ros {
   class NodeHandle;
@@ -66,12 +67,14 @@ namespace hector_pose_estimation {
   template <typename T>
   class TypedParameter : public Parameter {
   public:
-    T& value;
-    TypedParameter(const std::string& key, T &value) : Parameter(key), value(value) {}
+    typedef typename boost::remove_const<T>::type param_type;
+
+    param_type& value;
+    TypedParameter(const std::string& key, param_type &value) : Parameter(key), value(value) {}
     TypedParameter(const Parameter& other) : Parameter(other), value(dynamic_cast<const TypedParameter<T> &>(other).value) {}
 
     ParameterPtr clone() { return ParameterPtr(new TypedParameter<T>(*this)); }
-    const char *type() const { return typeid(T).name(); }
+    const char *type() const { return typeid(param_type).name(); }
   };
 
   class ParameterList : public std::list<ParameterPtr> {

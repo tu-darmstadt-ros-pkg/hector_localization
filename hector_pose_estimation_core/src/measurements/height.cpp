@@ -76,25 +76,23 @@ HeightBaroCommon::HeightBaroCommon(Measurement* parent)
 
 HeightBaroCommon::~HeightBaroCommon() {}
 
-void HeightBaroCommon::reset() {
+void HeightBaroCommon::onReset() {
   elevation_initialized_ = false;
 }
 
 double HeightBaroCommon::resetElevation(PoseEstimation &estimator, boost::function<double()> altitude_func) {
   if (!elevation_initialized_) {
     StateVector state = estimator.getState();
-    estimator.globalReference()->altitude = altitude_func() - state(POSITION_Z);
-    estimator.globalReference()->updated();
+    estimator.globalReference()->setAltitude(altitude_func() - state(POSITION_Z));
     elevation_initialized_ = true;
-    ROS_INFO("Set new reference altitude: %f", estimator.globalReference()->altitude);
+    ROS_INFO("Set new reference altitude to %f", estimator.globalReference()->position().altitude);
   }
 
-  return estimator.globalReference()->altitude;
+  return estimator.globalReference()->position().altitude;
 }
 
-void Height::reset(const StateVector& state) {
-  Measurement_<HeightModel>::reset();
-  HeightBaroCommon::reset();
+void Height::onReset() {
+  HeightBaroCommon::onReset();
 }
 
 template <typename T> struct functor_wrapper

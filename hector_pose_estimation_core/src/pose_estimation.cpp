@@ -54,10 +54,6 @@ PoseEstimation::PoseEstimation(const SystemPtr& system)
   stabilized_frame_ = "base_stabilized";
   footprint_frame_ = "base_footprint";
   // position_frame_ = "base_position";
-  global_reference_.latitude = 0.0;
-  global_reference_.longitude = 0.0;
-  global_reference_.altitude = 0.0;
-  global_reference_.heading = 0.0;
   alignment_time_ = 0.0;
 
   parameters().add("world_frame", world_frame_);
@@ -66,10 +62,7 @@ PoseEstimation::PoseEstimation(const SystemPtr& system)
   parameters().add("stabilized_frame", stabilized_frame_);
   parameters().add("footprint_frame", footprint_frame_);
   parameters().add("position_frame", position_frame_);
-  parameters().add("reference_latitude",  global_reference_.latitude);
-  parameters().add("reference_longitude", global_reference_.longitude);
-  parameters().add("reference_altitude",  global_reference_.altitude);
-  parameters().add("reference_heading",   global_reference_.heading);
+  parameters().add(global_reference_.parameters());
   parameters().add("alignment_time", alignment_time_);
 
   // add default measurements
@@ -91,6 +84,9 @@ PoseEstimation *PoseEstimation::Instance() {
 
 bool PoseEstimation::init()
 {
+  // initialize global reference
+  globalReference()->updated();
+
   // check if system is initialized
   if (!system_) return false;
 
@@ -519,11 +515,11 @@ void PoseEstimation::getPosition(geometry_msgs::PointStamped& point) {
 
 void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, double &altitude) {
   getState();
-  double north =  state_(POSITION_X) * globalReference()->cos_heading - state_(POSITION_Y) * globalReference()->sin_heading;
-  double east  = -state_(POSITION_X) * globalReference()->sin_heading - state_(POSITION_Y) * globalReference()->cos_heading;
-  latitude  = global_reference_.latitude  + north / globalReference()->radius_north;
-  longitude = global_reference_.longitude + east  / globalReference()->radius_east;
-  altitude  = global_reference_.altitude  + state_(POSITION_Z);
+  double north =  state_(POSITION_X) * globalReference()->heading().cos - state_(POSITION_Y) * globalReference()->heading().sin;
+  double east  = -state_(POSITION_X) * globalReference()->heading().sin - state_(POSITION_Y) * globalReference()->heading().cos;
+  latitude  = global_reference_.position().latitude  + north / globalReference()->radius().north;
+  longitude = global_reference_.position().longitude + east  / globalReference()->radius().east;
+  altitude  = global_reference_.position().altitude  + state_(POSITION_Z);
 }
 
 void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
@@ -558,6 +554,16 @@ void PoseEstimation::getOrientation(geometry_msgs::Quaternion& quaternion) {
 void PoseEstimation::getOrientation(geometry_msgs::QuaternionStamped& quaternion) {
   getHeader(quaternion.header);
   getOrientation(quaternion.quaternion);
+}
+
+void PoseEstimation::getOrientation(double &yaw, double &pitch, double &roll) {
+  tf::Quaternion quaternion;
+  getOrientation(quaternion);
+#ifdef TF_MATRIX3x3_H
+  tf::Matrix3x3(quaternion).getRPY(roll, pitch, yaw);
+#else
+  btMatrix3x3(quaternion).getRPY(roll, pitch, yaw);
+#endif
 }
 
 void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity) {
@@ -793,11 +799,41 @@ GlobalReference* PoseEstimation::globalReference() {
   return &global_reference_;
 }
 
+GlobalReference::GlobalReference() {
+  parameters().add("reference_latitude",  position_.latitude);
+  parameters().add("reference_longitude", position_.longitude);
+  parameters().add("reference_altitude",  position_.altitude);
+  parameters().add("reference_heading",   heading_.value);
+}
+
+ParameterList& GlobalReference::parameters() {
+  return parameters_;
+}
+
 void GlobalReference::updated() {
   static const double radius_earth = 6371e3;
-  radius_north = radius_earth + altitude;
-  radius_east  = radius_north * cos(latitude);
-  sincos(heading, &sin_heading, &cos_heading);
+  radius_.north = radius_earth + position_.altitude;
+  radius_.east  = radius_.north * cos(position_.latitude);
+  sincos(heading_.value, &heading_.sin, &heading_.cos);
+}
+
+GlobalReference& GlobalReference::setPosition(double latitude, double longitude) {
+  position_.latitude = latitude;
+  position_.longitude = longitude;
+  updated();
+  return *this;
+}
+
+GlobalReference& GlobalReference::setHeading(double heading) {
+  heading_.value = heading;
+  updated();
+  return *this;
+}
+
+GlobalReference& GlobalReference::setAltitude(double altitude) {
+  position_.altitude = altitude;
+  updated();
+  return *this;
 }
 
 } // namespace hector_pose_estimation

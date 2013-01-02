@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2011, Johannes Meyer and Martin Nowara, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,52 +26,56 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/baro.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#ifndef HECTOR_POSE_ESTIMATION_GLOBAL_REFERENCE_H
+#define HECTOR_POSE_ESTIMATION_GLOBAL_REFERENCE_H
 
-#include <boost/bind.hpp>
+#include <hector_pose_estimation/parameters.h>
 
 namespace hector_pose_estimation {
 
-BaroModel::BaroModel()
-{
-  stddev_ = 1.0;
-  qnh_ = 1013.25;
-  parameters().add("qnh", qnh_);
-}
+  class GlobalReference {
+  public:
+    struct Position {
+      Position() : latitude(0.0), longitude(0.0), altitude(0.0) {}
+      double latitude;
+      double longitude;
+      double altitude;
+    };
 
-BaroModel::~BaroModel() {}
+    struct Heading {
+      Heading() : value(0.0), cos(1.0), sin(0.0) {}
+      double value;
+      double cos;
+      double sin;
+      operator double() const { return value; }
+    };
 
-ColumnVector BaroModel::ExpectedValueGet() const
-{
-  y_(1) = qnh_ * pow(1.0 - (0.0065 * (x_(POSITION_Z) + getElevation())) / 288.15, 5.255);
-  return y_;
-}
+    struct Radius {
+      double north;
+      double east;
+    };
 
-Matrix BaroModel::dfGet(unsigned int i) const
-{
-  C_(1,POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (x_(POSITION_Z) + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
-  return C_;
-}
+    const Position& position() const { return position_; }
+    const Heading& heading() const { return heading_; }
+    const Radius& radius() const { return radius_; }
 
-double BaroModel::getAltitude(const Update_<BaroModel>& update)
-{
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(1) / qnh_, 1.0/5.255));
-}
+    GlobalReference& setPosition(double latitude, double longitude);
+    GlobalReference& setHeading(double heading);
+    GlobalReference& setAltitude(double altitude);
 
-BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { setValue(pressure); }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { setValue(pressure); }
+    GlobalReference();
+    ParameterList& parameters();
 
-void Baro::onReset()
-{
-  HeightBaroCommon::onReset();
-}
+    void updated();
 
-bool Baro::beforeUpdate(PoseEstimation &estimator, const Baro::Update &update) {
-  if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(estimator, boost::bind(&BaroModel::getAltitude, getModel(), update)));
-  return true;
-}
+  private:
+    Position position_;
+    Heading heading_;
+    Radius radius_;
+
+    ParameterList parameters_;
+  };
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_GLOBAL_REFERENCE_H

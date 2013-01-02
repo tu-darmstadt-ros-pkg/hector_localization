@@ -81,7 +81,7 @@ public:
   void setQnh(double qnh) { getModel()->setQnh(qnh); }
   double getQnh() const { return getModel()->getQnh(); }
 
-  virtual void reset();
+  virtual void onReset();
   virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
 };
 
