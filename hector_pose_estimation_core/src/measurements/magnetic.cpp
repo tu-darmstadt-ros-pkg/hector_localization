@@ -192,7 +192,7 @@ bool Magnetic::beforeUpdate(PoseEstimation &estimator, const Magnetic::Update &u
     if (auto_heading_) {
       double yaw, pitch, roll;
       estimator.getOrientation(yaw, pitch, roll);
-      reference_->setHeading(getModel()->getTrueHeading(update.getVector()) - yaw);
+      reference_->setHeading(getModel()->getTrueHeading(update.getVector()) - (-yaw));
       ROS_INFO("Set new reference heading to %.1f degress", reference_->heading() * 180.0 / M_PI);
     }
   }
