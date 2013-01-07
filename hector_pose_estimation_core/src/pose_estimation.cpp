@@ -799,41 +799,4 @@ GlobalReference* PoseEstimation::globalReference() {
   return &global_reference_;
 }
 
-GlobalReference::GlobalReference() {
-  parameters().add("reference_latitude",  position_.latitude);
-  parameters().add("reference_longitude", position_.longitude);
-  parameters().add("reference_altitude",  position_.altitude);
-  parameters().add("reference_heading",   heading_.value);
-}
-
-ParameterList& GlobalReference::parameters() {
-  return parameters_;
-}
-
-void GlobalReference::updated() {
-  static const double radius_earth = 6371e3;
-  radius_.north = radius_earth + position_.altitude;
-  radius_.east  = radius_.north * cos(position_.latitude);
-  sincos(heading_.value, &heading_.sin, &heading_.cos);
-}
-
-GlobalReference& GlobalReference::setPosition(double latitude, double longitude) {
-  position_.latitude = latitude;
-  position_.longitude = longitude;
-  updated();
-  return *this;
-}
-
-GlobalReference& GlobalReference::setHeading(double heading) {
-  heading_.value = heading;
-  updated();
-  return *this;
-}
-
-GlobalReference& GlobalReference::setAltitude(double altitude) {
-  position_.altitude = altitude;
-  updated();
-  return *this;
-}
-
 } // namespace hector_pose_estimation

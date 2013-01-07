@@ -51,6 +51,7 @@ namespace hector_pose_estimation {
     };
 
     struct Radius {
+      Radius() : north(0.0), east(0.0) {}
       double north;
       double east;
     };
@@ -63,15 +64,29 @@ namespace hector_pose_estimation {
     GlobalReference& setHeading(double heading);
     GlobalReference& setAltitude(double altitude);
 
+    bool hasPosition() const { return has_position_; }
+    bool hasHeading() const  { return has_heading_; }
+    bool hasAltitude() const { return has_altitude_; }
+
+    void fromWGS84(double latitude, double longitude, double &x, double &y);
+    void toWGS84(double x, double y, double &latitude, double &longitude);
+    void fromNorthEast(double north, double east, double &x, double &y);
+    void toNorthEast(double x, double y, double &north, double &east);
+
     GlobalReference();
     ParameterList& parameters();
 
     void updated();
+    void reset();
 
   private:
     Position position_;
     Heading heading_;
     Radius radius_;
+
+    bool has_position_;
+    bool has_heading_;
+    bool has_altitude_;
 
     ParameterList parameters_;
   };

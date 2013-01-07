@@ -1,4 +1,5 @@
 set(hector_pose_estimation_SOURCES
+  global_reference.cpp
   pose_estimation.cpp
   parameters.cpp
   system.cpp

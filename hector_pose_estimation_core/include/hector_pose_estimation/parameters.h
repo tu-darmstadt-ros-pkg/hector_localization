@@ -33,7 +33,7 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
-#include <boost/type_traits/remove_const.hpp>
+#include <boost/type_traits.hpp>
 
 namespace ros {
   class NodeHandle;
@@ -67,7 +67,7 @@ namespace hector_pose_estimation {
   template <typename T>
   class TypedParameter : public Parameter {
   public:
-    typedef typename boost::remove_const<T>::type param_type;
+    typedef typename boost::remove_reference<typename boost::remove_const<T>::type>::type param_type;
 
     param_type& value;
     TypedParameter(const std::string& key, param_type &value) : Parameter(key), value(value) {}
