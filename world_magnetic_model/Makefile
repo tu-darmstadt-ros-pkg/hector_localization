@@ -21,5 +21,4 @@ endif
 
 clean:
 	-rm -rf lib include model $(SOURCE_DIR)
-wipe: clean
 	-rm -rf build
