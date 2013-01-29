@@ -36,33 +36,6 @@
 
 namespace hector_pose_estimation {
 
-  enum StateIndex {
-    QUATERNION_W = 1,
-    QUATERNION_X,
-    QUATERNION_Y,
-    QUATERNION_Z,
-#ifdef USE_RATE_SYSTEM_MODEL
-    RATE_X,
-    RATE_Y,
-    RATE_Z,
-#endif // USE_RATE_SYSTEM_MODEL
-    POSITION_X,
-    POSITION_Y,
-    POSITION_Z,
-    VELOCITY_X,
-    VELOCITY_Y,
-    VELOCITY_Z,
-    BIAS_ACCEL_X,
-    BIAS_ACCEL_Y,
-    BIAS_ACCEL_Z,
-    BIAS_GYRO_X,
-    BIAS_GYRO_Y,
-    BIAS_GYRO_Z,
-  };
-  static const unsigned int StateDimension = BIAS_GYRO_Z;
-  typedef ColumnVector_<StateDimension> StateVector;
-  typedef SymmetricMatrix_<StateDimension> StateCovariance;
-
   enum {
     STATE_ALIGNMENT = 1,
     STATE_DEGRADED = 2,

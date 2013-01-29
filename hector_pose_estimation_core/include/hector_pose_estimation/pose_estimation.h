@@ -30,6 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_H
 
 #include "types.h"
+#include "state.h"
 #include "system.h"
 #include "measurement.h"
 #include "parameters.h"
@@ -90,7 +91,10 @@ public:
     return addMeasurement(new Measurement_<ConcreteMeasurementModel>(model, name));
   }
 
-  virtual const StateVector& getState();
+  virtual const State& getState() const;
+  virtual State& getState();
+
+  virtual const StateVector& getStateVector();
   virtual const StateCovariance& getCovariance();
   virtual void setState(const StateVector& state);
   virtual void setCovariance(const StateCovariance& covariance);
@@ -162,13 +166,7 @@ protected:
 private:
   boost::shared_ptr<BFL::ExtendedKalmanFilter> filter_;
 
-  StateVector state_;
-  StateCovariance covariance_;
-  bool state_is_dirty_;
-  bool covariance_is_dirty_;
-
-  SystemStatus status_;
-  SystemStatus measurement_status_;
+  State state_;
   ParameterList parameters_;
 
   GlobalReference global_reference_;
