@@ -29,89 +29,132 @@
 #ifndef HECTOR_POSE_ESTIMATION_MATRIX_H
 #define HECTOR_POSE_ESTIMATION_MATRIX_H
 
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
+#include <Eigen/Geometry>
 #include <stdexcept>
 
 namespace hector_pose_estimation {
+  using Eigen::Dynamic;
+  using Eigen::Lower;
+  using Eigen::Upper;
 
-  using namespace MatrixWrapper;
+  typedef double ScalarType;
+  typedef Eigen::DenseIndex IndexType;
+  typedef Eigen::Matrix<ScalarType,Dynamic,1> ColumnVector;
+  typedef Eigen::Matrix<ScalarType,1,Dynamic> RowVector;
+  typedef Eigen::Matrix<ScalarType,Dynamic,Dynamic> Matrix;
+  typedef Eigen::Quaternion<ScalarType> Quaternion;
 
-  template <unsigned int dim>
-  class ColumnVector_ : public ColumnVector {
+  using Eigen::VectorBlock;
+  typedef VectorBlock<ColumnVector,3>       VectorBlock3;
+  typedef VectorBlock<ColumnVector,4>       VectorBlock4;
+  typedef VectorBlock<const ColumnVector,3> ConstVectorBlock3;
+  typedef VectorBlock<const ColumnVector,4> ConstVectorBlock4;
+
+  using Eigen::Block;
+  typedef Eigen::Block<Matrix,Dynamic,Dynamic> MatrixBlock;
+
+  template <int _Rows>
+  class ColumnVector_ : public Eigen::Matrix<ScalarType,_Rows,1> {
   public:
-    ColumnVector_() : ColumnVector(dim) {}
-    ColumnVector_(double value) : ColumnVector(dim, value) {}
-    ColumnVector_(const ColumnVector_<dim>& other) : ColumnVector(other) {}
-    ColumnVector_(const ColumnVector& other) : ColumnVector(other)
-    {
-      if (other.rows() != dim) {
-        std::cerr << (int)dim << " != " << (int)other.rows() << std::endl;
-        throw std::runtime_error("Illegal vector assignment");
-      }
-    }
-//    ColumnVector_<dim>& operator=(const ColumnVector& other) {
-//      if (other.rows() != dim) throw std::runtime_error("Illegal vector assignment");
-//      static_cast<ColumnVector &>(*this) = other;
-//      return *this;
-//    }
+    typedef Eigen::Matrix<ScalarType,_Rows,1> Base;
+    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
+    typedef typename Eigen::internal::traits<Base>::Index Index;
+
+    ColumnVector_() {}
+    ColumnVector_(Scalar value) { this->setConstant(value); }
+    ColumnVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,_Rows,1>(x, y, z) {}
+    template <typename Derived> ColumnVector_(const Eigen::MatrixBase<Derived>& other) : Eigen::Matrix<ScalarType,_Rows,1>(other) {}
   };
 
-  template <unsigned int dim>
-  class RowVector_ : public RowVector {
+  template <int _Cols>
+  class RowVector_ : public Eigen::Matrix<ScalarType,1,_Cols> {
   public:
-    RowVector_() : RowVector(dim) {}
-    RowVector_(double value) : RowVector(dim, value) {}
-    RowVector_(const RowVector_<dim>& other) : RowVector(other) {}
-    RowVector_(const RowVector& other) : RowVector(other) {
-      if (other.columns() != dim) {
-        std::cerr << (int)dim << " != " << (int)other.columns() << std::endl;
-        throw std::runtime_error("Illegal vector assignment");
-      }
-    }
-//    RowVector_<dim>& operator=(const RowVector& other)  {
-//      if (other.columns() != dim) throw std::runtime_error("Illegal vector assignment");
-//      static_cast<RowVector &>(*this) = other;
-//      return *this;
-//    }
+    typedef Eigen::Matrix<ScalarType,1,_Cols> Base;
+    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
+    typedef typename Eigen::internal::traits<Base>::Index Index;
+
+    RowVector_() {}
+    RowVector_(Scalar value) { this->setConstant(value); }
+    RowVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,1,_Cols>(x, y, z) {}
+    template <typename Derived> RowVector_(const Eigen::MatrixBase<Derived>& other) : Eigen::Matrix<ScalarType,1,_Cols>(other) {}
   };
 
-  template <unsigned int m, unsigned int n>
-  class Matrix_ : public Matrix {
+  template <int _Rows, int _Cols>
+  class Matrix_ : public Eigen::Matrix<ScalarType,_Rows,_Cols> {
   public:
-    Matrix_() : Matrix(m, n) {}
-    Matrix_(double value) : Matrix(m, RowVector_<n>(value)) {}
-    Matrix_(const RowVector_<n> &row_value) : Matrix(m, row_value) {}
-    Matrix_(const Matrix_<m,n>& other) : Matrix(other) {}
-    Matrix_(const Matrix& other) : Matrix(other) {
-      if (other.rows() != m || other.columns() != n) {
-        std::cerr << (int)m << "x" << (int)n << " != " << (int)other.rows() << "x" << (int)other.columns() << std::endl;
-        throw std::runtime_error("Illegal matrix assignment");
-      }
-    }
-//    Matrix_<m,n>& operator=(const Matrix& other) {
-//      if (other.rows() != m || other.columns() != n) throw std::runtime_error("Illegal matrix assignment");
-//      static_cast<Matrix &>(*this) = other;
-//      return *this;
-//    }
+    typedef Eigen::Matrix<ScalarType,_Rows,_Cols> Base;
+    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
+    typedef typename Eigen::internal::traits<Base>::Index Index;
+
+    Matrix_() {}
+    Matrix_(Scalar value) { this->setConstant(value); }
+    template <typename Derived> Matrix_(const Eigen::MatrixBase<Derived>& other) : Eigen::Matrix<ScalarType,_Rows,_Cols>(other) {}
+
+  protected:
+    explicit Matrix_(Index rows, Index cols) : Eigen::Matrix<ScalarType,_Rows,_Cols>(rows, cols) {}
   };
 
-  template <unsigned int dim>
-  class SymmetricMatrix_ : public SymmetricMatrix {
-  public:
-    SymmetricMatrix_() : SymmetricMatrix(dim) {}
-    SymmetricMatrix_(double value) : SymmetricMatrix(dim, RowVector_<dim>(value)) {}
-    SymmetricMatrix_(const SymmetricMatrix_<dim>& other) : SymmetricMatrix(other) {}
-    SymmetricMatrix_(const SymmetricMatrix& other) : SymmetricMatrix(other) {
-      if (other.rows() != dim || other.columns() != dim) {
-         std::cerr << (int)dim << "x" << (int)dim << " != " << (int)other.rows() << "x" << (int)other.columns() << std::endl;
-         throw std::runtime_error("Illegal matrix assignment");
-      }
-    }
-//    SymmetricMatrix_<dim>& operator=(const SymmetricMatrix& other) {
-//      if (other.rows() != dim || other.columns() != dim) throw std::runtime_error("Illegal matrix assignment");
-//      static_cast<SymmetricMatrix &>(*this) = other;
+//  namespace internal {
+//    template <int _Dimension> struct SymmetricMatrixHelper {
+//      SymmetricMatrixHelper() {}
+//      SymmetricMatrixHelper(Index dim) : storage_(dim,dim) {}
+//      template <typename Derived> SymmetricMatrixHelper(const Eigen::MatrixBase<Derived>& other) : storage_(other) {}
+
+//      typedef Eigen::Matrix<ScalarType,_Dimension,_Dimension> StorageType;
+//      typedef Eigen::SelfAdjointView<StorageType,Upper> SelfAdjointViewType;
+//      StorageType storage_;
+//    };
+//  }
+
+//  template <int _Dimension>
+//  class SymmetricMatrix_ : public internal::SymmetricMatrixHelper<_Dimension>, public internal::SymmetricMatrixHelper<_Dimension>::SelfAdjointViewType {
+//  public:
+//    typedef typename internal::SymmetricMatrixHelper<_Dimension>::StorageType Base;
+
+//    // Constructors
+//    SymmetricMatrix_() : internal::SymmetricMatrixHelper<_Dimension>::SelfAdjointViewType(storage_) {}
+//    SymmetricMatrix_(Scalar value) : internal::SymmetricMatrixHelper<_Dimension>::SelfAdjointViewType(storage_) { storage_.setConstant(value); }
+//    SymmetricMatrix_(Index dim, Scalar value) : internal::SymmetricMatrixHelper<_Dimension>(dim), internal::SymmetricMatrixHelper<_Dimension>::SelfAdjointViewType(storage_) { storage_.setConstant(value); }
+//    SymmetricMatrix_(Index dim) : internal::SymmetricMatrixHelper<_Dimension>(dim), internal::SymmetricMatrixHelper<_Dimension>::SelfAdjointViewType(storage_) {}
+//    template <typename Derived> SymmetricMatrix_(const Eigen::MatrixBase<Derived>& other) : internal::SymmetricMatrixHelper<_Dimension>(other), internal::SymmetricMatrixHelper<_Dimension>::SelfAdjointViewType(storage_) {}
+
+//    SymmetricMatrix_& setZero() {
+//      storage_.setZero();
 //      return *this;
 //    }
+//  };
+
+  template <int _Dimension>
+  class SymmetricMatrix_ : public Matrix_<_Dimension,_Dimension> /* , public Eigen::SelfAdjointView<typename Matrix_<_Dimension,_Dimension>::Base,Upper> */ {
+  public:
+    typedef Eigen::Matrix<ScalarType,_Dimension,_Dimension> Base;
+    typedef Eigen::SelfAdjointView<typename Matrix_<_Dimension,_Dimension>::Base,Upper> SelfAdjointViewType;
+    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
+    typedef typename Eigen::internal::traits<Base>::Index Index;
+
+    // Constructors
+    SymmetricMatrix_() /* : SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ {}
+    SymmetricMatrix_(Scalar value) /* : SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ { this->setConstant(value); }
+    template <typename Derived> SymmetricMatrix_(const Eigen::MatrixBase<Derived>& other) : Matrix_<_Dimension,_Dimension>(other) /* , SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ {}
+
+    SymmetricMatrix_& setZero() {
+      this->setZero();
+      return *this;
+    }
+
+    // using SelfAdjointViewType::operator();
+
+  protected:
+    explicit SymmetricMatrix_(Index dim) : Matrix_<_Dimension,_Dimension>(dim, dim) /*, SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ {}
+  };
+
+  class SymmetricMatrix : public SymmetricMatrix_<Dynamic> {
+  public:
+    // Constructors
+    SymmetricMatrix() : SymmetricMatrix_<Dynamic>() {}
+    SymmetricMatrix(Index dim) : SymmetricMatrix_<Dynamic>(dim) {}
+    SymmetricMatrix(Index dim, Scalar value) : SymmetricMatrix_<Dynamic>(dim) { this->setConstant(value); }
+    template <typename Derived> SymmetricMatrix(const Eigen::MatrixBase<Derived>& other) : SymmetricMatrix_<Dynamic>(other) {}
   };
 
 } // namespace hector_pose_estimation

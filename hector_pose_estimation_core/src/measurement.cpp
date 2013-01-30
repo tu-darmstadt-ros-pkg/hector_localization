@@ -27,7 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/filter.h>
 #include <ros/console.h>
 
 namespace hector_pose_estimation {
@@ -86,25 +86,25 @@ void Measurement::add(const MeasurementUpdate& update) {
   queue().push(update);
 }
 
-void Measurement::process(PoseEstimation &estimator) {
+void Measurement::process(Filter &filter, State &state) {
   while(!(queue().empty())) {
-    update(estimator, queue().pop());
+    update(filter, state, queue().pop());
   }
 
   // check for timeout
   if (timedout()) status_flags_ = 0;
 }
 
-void Measurement::updateInternal(PoseEstimation &estimator, ColumnVector const& y) {
+void Measurement::updateInternal(Filter &filter, State &state, const ColumnVector &y, const SymmetricMatrix &R) {
   ROS_DEBUG("Updating with measurement %s", getName().c_str());
 
 //  std::cout << "[" << getName() << "] x_prior   = [" << estimator.getState().transpose() << "]" << std::endl;
 //  std::cout << "[" << getName() << "] P_prior   = [" << estimator.getCovariance() << "]" << std::endl;
 //  std::cout << "[" << getName() << "] update    = [" << y.transpose() << "]" << std::endl;
-
-  estimator.filter()->Update(getModel(), y);
+  filter.update(state, getModel(), y, R);
+//  estimator.filter()->Update(getModel(), y);
   updated();
-  estimator.updated();
+//  estimator.updated();
 
 //  std::cout << "[" << getName() << "] expected  = [" << getModel()->ExpectedValueGet().transpose() << "]" << std::endl;
 //  std::cout << "[" << getName() << "] R         = [" << getModel()->CovarianceGet() << "]" << std::endl;

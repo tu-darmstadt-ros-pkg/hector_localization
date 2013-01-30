@@ -30,11 +30,9 @@
 #define HECTOR_POSE_ESTIMATION_SYSTEM_MODEL_H
 
 #include <hector_pose_estimation/types.h>
+#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation/input.h>
 #include <hector_pose_estimation/parameters.h>
-
-#include <bfl/model/analyticsystemmodel_gaussianuncertainty.h>
-#include <bfl/pdf/analyticconditionalgaussian_additivenoise.h>
-#include <bfl/pdf/gaussian.h>
 
 #include <string>
 
@@ -42,7 +40,7 @@ namespace hector_pose_estimation {
 
 class PoseEstimation;
 
-class SystemModel : public BFL::AnalyticConditionalGaussianAdditiveNoise, public BFL::AnalyticSystemModelGaussianUncertainty {
+class SystemModel {
 public:
   SystemModel();
   virtual ~SystemModel();
@@ -56,48 +54,19 @@ public:
   ParameterList& parameters() { return parameters_; }
   const ParameterList& parameters() const { return parameters_; }
 
-  void set_dt(double dt) { dt_ = dt; }
-  double get_dt() const { return dt_; }
+  virtual void getPrior(State &state) const;
 
-  virtual void setMeasurementStatus(const SystemStatus& status) { measurement_status_ = status; }
-  virtual SystemStatus getStatusFlags() const { return measurement_status_; }
+  virtual bool prepareUpdate(const State& state, const Inputs& inputs, double dt) { return true; }
+  virtual void afterUpdate() {}
 
-  virtual void getPrior(BFL::Gaussian &prior) const;
+  virtual void getExpectedValue(State::Vector& x_pred, const State& state, const Inputs& inputs, double dt) {}
+  virtual void getStateJacobian(Block<Matrix,Dynamic,Dynamic>& A, const State& state, const Inputs& inputs, double dt) {}
+  virtual void getInputJacobian(Block<Matrix,Dynamic,Dynamic>& A, const State& state, const Inputs& inputs, double dt) {}
 
-  virtual SymmetricMatrix CovarianceGet(double dt) const;
-  virtual SymmetricMatrix CovarianceGet() const {
-    return CovarianceGet(dt_);
-  }
+  virtual bool limitState(State& x) const { return false; }
 
-  virtual ColumnVector ExpectedValueGet(double dt) const {
-    return ExpectedValueGet();
-  }
-  virtual ColumnVector ExpectedValueGet() const {
-    return ExpectedValueGet(dt_);
-  }
-
-  virtual Matrix dfGet(unsigned int i, double dt) const {
-    return dfGet(i);
-  }
-  virtual Matrix dfGet(unsigned int i) const {
-    return dfGet(i, dt_);
-  }
-
-  virtual void Limit(StateVector& x) const {
-  }
-
-  virtual double getGravity() const { return 0.0; }
-
-protected:
-  double dt_;
+private:
   ParameterList parameters_;
-
-protected:
-  const StateVector& x_;
-  const ColumnVector& u_;
-  mutable StateVector x_pred_;
-  mutable Matrix A_;
-  SystemStatus measurement_status_;
 };
 
 } // namespace hector_pose_estimation

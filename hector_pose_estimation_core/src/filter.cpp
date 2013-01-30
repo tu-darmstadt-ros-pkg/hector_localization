@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,58 +26,57 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_GPS_H
-#define HECTOR_POSE_ESTIMATION_GPS_H
-
-#include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/global_reference.h>
+#include <hector_pose_estimation/filter.h>
+#include <hector_pose_estimation/pose_estimation.h>
 
 namespace hector_pose_estimation {
 
-class GPSModel : public MeasurementModel {
-public:
-  static const unsigned int MeasurementDimension = 4;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
-  GPSModel();
-  virtual ~GPSModel();
-
-  virtual bool init();
-  virtual SystemStatus getStatusFlags() const;
-
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
-
-protected:
-  double position_stddev_;
-  double velocity_stddev_;
-};
-
-struct GPSUpdate : public MeasurementUpdate {
-  double latitude;
-  double longitude;
-  double velocity_north;
-  double velocity_east;
-};
-
-class GPS : public Measurement_<GPSModel,GPSUpdate>
+Filter::Filter()
 {
-public:
-  GPS(const std::string& name = "gps");
-  virtual ~GPS();
+}
 
-  void onReset();
+Filter::~Filter()
+{
+}
 
-  GPSModel::MeasurementVector const& getVector(const GPSUpdate &update);
-  bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
+void Filter::predict(State& state, const Systems& systems, const Inputs& inputs, double dt) {
+  SystemStatus system_status = 0;
 
-private:
-  GlobalReference *reference_;
-  GPSUpdate last_;
-  GPSModel::MeasurementVector y_;
-};
+  for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
+    const SystemPtr& system = *it;
+    predict(state, system, inputs, dt);
+    system_status |= system->getStatusFlags();
+  }
+
+  state.setSystemStatus(system_status);
+}
+
+void Filter::predict(State& state, const SystemPtr& system, const Inputs& inputs, double dt) {
+  system->update(*this, state, inputs, dt);
+}
+
+void Filter::predict(State &state, SystemModel *system, const Inputs &inputs, const SymmetricMatrix &Q, double dt) {
+
+}
+
+void Filter::update(State& state, const Measurements& measurements) {
+  SystemStatus measurement_status = 0;
+
+  for(Measurements::iterator it = measurements.begin(); it != measurements.end(); it++) {
+    const MeasurementPtr& measurement = *it;
+    update(state, measurement);
+    measurement_status |= measurement->getStatusFlags();
+  }
+
+  state.setMeasurementStatus(measurement_status);
+}
+
+void Filter::update(State& state, const MeasurementPtr& measurement) {
+  measurement->process(*this, state);
+}
+
+void Filter::update(State& state, MeasurementModel* model, const ColumnVector& y, const SymmetricMatrix& R) {
+
+}
 
 } // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_GPS_H

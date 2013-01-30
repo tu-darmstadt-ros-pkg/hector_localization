@@ -31,59 +31,47 @@
 namespace hector_pose_estimation {
 
 SystemModel::SystemModel()
-  : BFL::AnalyticConditionalGaussianAdditiveNoise(StateDimension, 2)
-  , BFL::AnalyticSystemModelGaussianUncertainty(this)
-  , dt_(0.0)
-  , x_(static_cast<const StateVector&>(ConditionalArgumentGet(0)))
-  , u_(static_cast<const ColumnVector&>(ConditionalArgumentGet(1)))
-  , x_pred_(StateDimension)
-  , A_(StateDimension,StateDimension)
-  , measurement_status_(0)
 {
-  A_ = 0.0;
-  for(unsigned int i = 1; i <= StateDimension; i++) A_(i,i) = 1.0;
-  AdditiveNoiseMuSet(StateVector(0.0));
-  AdditiveNoiseSigmaSet(SymmetricMatrix_<StateDimension>(0.0));
 }
 
 SystemModel::~SystemModel()
 {
 }
 
-void SystemModel::getPrior(BFL::Gaussian &prior) const {
-  StateVector mu = 0;
-  mu(QUATERNION_W) = 1.0;
-  StateCovariance cov = 0;
-  cov(QUATERNION_W,QUATERNION_W) = 0.25 * 1.0;
-  cov(QUATERNION_X,QUATERNION_X) = 0.25 * 1.0;
-  cov(QUATERNION_Y,QUATERNION_Y) = 0.25 * 1.0;
-  cov(QUATERNION_Z,QUATERNION_Z) = 0.25 * 1.0;
-#ifdef USE_RATE_SYSTEM_MODEL
-  cov(RATE_X,RATE_X) = pow(0.0 * M_PI/180.0, 2);
-  cov(RATE_Y,RATE_Y) = pow(0.0 * M_PI/180.0, 2);
-  cov(RATE_Z,RATE_Z) = pow(0.0 * M_PI/180.0, 2);
-#endif // USE_RATE_SYSTEM_MODEL
-  cov(POSITION_X,POSITION_X) = 0.0;
-  cov(POSITION_Y,POSITION_Y) = 0.0;
-  cov(POSITION_Z,POSITION_Z) = 0.0;
-  cov(VELOCITY_X,VELOCITY_X) = 0.0;
-  cov(VELOCITY_Y,VELOCITY_Y) = 0.0;
-  cov(VELOCITY_Z,VELOCITY_Z) = 0.0;
-  cov(BIAS_ACCEL_X,BIAS_ACCEL_X) = 0.0;
-  cov(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = 0.0;
-  cov(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = 0.0;
-  cov(BIAS_GYRO_X,BIAS_GYRO_X) = pow(5.0 * M_PI/180.0, 2);
-  cov(BIAS_GYRO_Y,BIAS_GYRO_Y) = pow(5.0 * M_PI/180.0, 2);
-  cov(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(5.0 * M_PI/180.0, 2);
+void SystemModel::getPrior(State &state) const {
+//  StateVector mu = 0;
+//  mu(QUATERNION_W) = 1.0;
+//  StateCovariance cov = 0;
+//  cov(QUATERNION_W,QUATERNION_W) = 0.25 * 1.0;
+//  cov(QUATERNION_X,QUATERNION_X) = 0.25 * 1.0;
+//  cov(QUATERNION_Y,QUATERNION_Y) = 0.25 * 1.0;
+//  cov(QUATERNION_Z,QUATERNION_Z) = 0.25 * 1.0;
+//#ifdef USE_RATE_SYSTEM_MODEL
+//  cov(RATE_X,RATE_X) = pow(0.0 * M_PI/180.0, 2);
+//  cov(RATE_Y,RATE_Y) = pow(0.0 * M_PI/180.0, 2);
+//  cov(RATE_Z,RATE_Z) = pow(0.0 * M_PI/180.0, 2);
+//#endif // USE_RATE_SYSTEM_MODEL
+//  cov(POSITION_X,POSITION_X) = 0.0;
+//  cov(POSITION_Y,POSITION_Y) = 0.0;
+//  cov(POSITION_Z,POSITION_Z) = 0.0;
+//  cov(VELOCITY_X,VELOCITY_X) = 0.0;
+//  cov(VELOCITY_Y,VELOCITY_Y) = 0.0;
+//  cov(VELOCITY_Z,VELOCITY_Z) = 0.0;
+//  cov(BIAS_ACCEL_X,BIAS_ACCEL_X) = 0.0;
+//  cov(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = 0.0;
+//  cov(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = 0.0;
+//  cov(BIAS_GYRO_X,BIAS_GYRO_X) = pow(5.0 * M_PI/180.0, 2);
+//  cov(BIAS_GYRO_Y,BIAS_GYRO_Y) = pow(5.0 * M_PI/180.0, 2);
+//  cov(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(5.0 * M_PI/180.0, 2);
 
-  prior.ExpectedValueSet(mu);
-  prior.CovarianceSet(cov);
+//  prior.ExpectedValueSet(mu);
+//  prior.CovarianceSet(cov);
 }
 
-SymmetricMatrix SystemModel::CovarianceGet(double dt) const
-{
-//  return this->AdditiveNoiseSigmaGet() * (dt*dt);
-  return this->AdditiveNoiseSigmaGet() * dt;
-}
+//SymmetricMatrix SystemModel::CovarianceGet(double dt) const
+//{
+////  return this->AdditiveNoiseSigmaGet() * (dt*dt);
+//  return this->AdditiveNoiseSigmaGet() * dt;
+//}
 
 } // namespace hector_pose_estimation

@@ -26,58 +26,63 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_GPS_H
-#define HECTOR_POSE_ESTIMATION_GPS_H
+#ifndef HECTOR_POSE_ESTIMATION_INPUT_H
+#define HECTOR_POSE_ESTIMATION_INPUT_H
 
-#include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/global_reference.h>
+#include <hector_pose_estimation/collection.h>
 
 namespace hector_pose_estimation {
 
-class GPSModel : public MeasurementModel {
-public:
-  static const unsigned int MeasurementDimension = 4;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
-  GPSModel();
-  virtual ~GPSModel();
-
-  virtual bool init();
-  virtual SystemStatus getStatusFlags() const;
-
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
-
-protected:
-  double position_stddev_;
-  double velocity_stddev_;
-};
-
-struct GPSUpdate : public MeasurementUpdate {
-  double latitude;
-  double longitude;
-  double velocity_north;
-  double velocity_east;
-};
-
-class GPS : public Measurement_<GPSModel,GPSUpdate>
+class Input
 {
 public:
-  GPS(const std::string& name = "gps");
-  virtual ~GPS();
+  Input() {}
+  virtual ~Input() {}
 
-  void onReset();
-
-  GPSModel::MeasurementVector const& getVector(const GPSUpdate &update);
-  bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
+  virtual const std::string& getName() const { return name_; }
+  virtual void setName(const std::string& name) { name_ = name; }
 
 private:
-  GlobalReference *reference_;
-  GPSUpdate last_;
-  GPSModel::MeasurementVector y_;
+  std::string name_;
+};
+
+typedef boost::shared_ptr<Input> InputPtr;
+typedef boost::weak_ptr<Input> InputWPtr;
+typedef Collection<Input> Inputs;
+
+template <class SystemModel>
+class Input_ : public Input {
+public:
+  typedef Input_<SystemModel> Type;
+  typedef typename SystemModel::InputVector Vector;
+
+  Input_()
+    : u_(SystemModel::InputDimension)
+  {}
+  Input_(Vector const& u)
+    : u_(SystemModel::InputDimension)
+  {
+    setValue(u);
+  }
+  Input_(double u)
+    : u_(SystemModel::InputDimension)
+  {
+    setValue(u);
+  }
+  virtual ~Input_() {}
+
+  virtual void setValue(Vector const& u) { u_ = u; }
+  virtual void setValue(double u) { u_(1) = u; }
+
+  virtual Vector const &getVector() const { return u_; }
+
+  virtual Vector &operator=(Vector const& u) { setValue(u); return u_; }
+  virtual Vector &operator=(double u) { setValue(u); return u_; }
+
+protected:
+  Vector u_;
 };
 
 } // namespace hector_pose_estimation
 
-#endif // HECTOR_POSE_ESTIMATION_GPS_H
+#endif // HECTOR_POSE_ESTIMATION_INPUT_H

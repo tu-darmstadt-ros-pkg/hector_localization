@@ -29,17 +29,18 @@
 #ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 
-#include <bfl/model/analyticmeasurementmodel_gaussianuncertainty.h>
-#include <bfl/pdf/analyticconditionalgaussian_additivenoise.h>
-
 #include <hector_pose_estimation/parameters.h>
 #include <hector_pose_estimation/types.h>
+#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation/input.h>
 
 #include <string>
 
 namespace hector_pose_estimation {
 
-class MeasurementModel : public BFL::AnalyticConditionalGaussianAdditiveNoise, public BFL::AnalyticMeasurementModelGaussianUncertainty {
+class MeasurementUpdate;
+
+class MeasurementModel {
 public:
   MeasurementModel(unsigned int dimension, unsigned int conditional_arguments = 0);
   virtual ~MeasurementModel();
@@ -54,19 +55,14 @@ public:
   ParameterList& parameters() { return parameters_; }
   const ParameterList& parameters() const { return parameters_; }
 
-  virtual ColumnVector ExpectedValueGet() const = 0;
-  virtual Matrix dfGet(unsigned int i) const = 0;
+  virtual bool prepareUpdate(const State& state, const MeasurementUpdate& update) { return true; }
 
-  using BFL::AnalyticConditionalGaussianAdditiveNoise::CovarianceGet;
-  using BFL::AnalyticMeasurementModelGaussianUncertainty::CovarianceGet;
+  virtual void getExpectedValue(State::Vector& x_pred, const State& state, const Input& input, double dt) {}
+  virtual void getStateJacobian(Block<Matrix,Dynamic,Dynamic>& A, const State& state, const Input& input, double dt) {}
+  virtual void getInputJacobian(Block<Matrix,Dynamic,Dynamic>& A, const State& state, const Input& input, double dt) {}
 
 protected:
   ParameterList parameters_;
-  const StateVector& x_;
-  const ColumnVector& u_;
-  mutable ColumnVector y_;
-  mutable Matrix C_;
-  mutable Matrix D_;
 };
 
 } // namespace hector_pose_estimation

@@ -30,7 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_QUEUE_H
 
 #include <boost/array.hpp>
-#include "measurement_update.h"
+#include <hector_pose_estimation/measurement_update.h>
 
 namespace hector_pose_estimation {
 

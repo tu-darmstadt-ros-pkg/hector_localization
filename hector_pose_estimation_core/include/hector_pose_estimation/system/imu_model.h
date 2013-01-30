@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,58 +26,45 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_BFL_CONVERSIONS_H
-#define HECTOR_POSE_ESTIMATION_BFL_CONVERSIONS_H
+#ifndef HECTOR_POSE_ESTIMATION_IMU_MODEL_H
+#define HECTOR_POSE_ESTIMATION_IMU_MODEL_H
 
-#include <geometry_msgs/PoseWithCovariance.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
-#include <bfl/wrappers/matrix/vector_wrapper.h>
+#include <hector_pose_estimation/system_model.h>
+#include <hector_pose_estimation/system.h>
 
 namespace hector_pose_estimation {
 
-  void covarianceMsgToBfl(geometry_msgs::PoseWithCovariance::_covariance_type const &msg, MatrixWrapper::SymmetricMatrix_Wrapper &bfl) {
-    unsigned int dim = sqrt(msg.size());
-    bfl.resize(dim,false,false);
-    for(unsigned int i = 0; i < dim; ++i)
-      for(unsigned int j = 0; j < dim; ++j)
-        bfl(i+1,j+1) = msg[i*dim+j];
-  }
+class ImuDriftModel : public SystemModel
+{
+public:
+  enum AugmentedStateIndex {
+    ACCEL_X = 0,
+    ACCEL_Y,
+    ACCEL_Z,
+    GYRO_X,
+    GYRO_Y,
+    GYRO_Z,
+    AugmentedStateDimension
+  };
+  // static const unsigned int StateAugmentation = GYRO_Z;
+  typedef ColumnVector_<AugmentedStateDimension> AugmentedState;
+  struct InputVector {};
 
-  void covarianceBflToMsg(MatrixWrapper::SymmetricMatrix const &bfl, geometry_msgs::PoseWithCovariance::_covariance_type &msg) {
-    unsigned int dim = sqrt(msg.size());
-    for(unsigned int i = 0; i < dim; ++i)
-      for(unsigned int j = 0; j < dim; ++j)
-        msg[i*6+j] = bfl(i+1,j+1);
-  }
+};
 
-  void pointMsgToBfl(geometry_msgs::Point const &msg, MatrixWrapper::ColumnVector_Wrapper &bfl) {
-    bfl.resize(3);
-    bfl(1) = msg.x;
-    bfl(2) = msg.y;
-    bfl(3) = msg.z;
-  }
+class ImuDrift : public System_<ImuDriftModel>
+{
+public:
+  ImuDrift();
+  virtual ~ImuDrift();
 
-  void pointBflToMsg(MatrixWrapper::ColumnVector_Wrapper const &bfl, geometry_msgs::Point &msg) {
-    msg.x = bfl(1);
-    msg.y = bfl(2);
-    msg.z = bfl(3);
-  }
+  typename ImuDriftModel::AugmentedState::ConstFixedSegmentReturnType<3>::Type getAccelBias() const { return bias_.segment<3>(ImuDriftModel::ACCEL_X); }
+  typename ImuDriftModel::AugmentedState::ConstFixedSegmentReturnType<3>::Type getGyroBias()  const { return bias_.segment<3>(ImuDriftModel::GYRO_X); }
 
-  void quaternionMsgToBfl(geometry_msgs::Quaternion const &msg, MatrixWrapper::ColumnVector_Wrapper &bfl) {
-    bfl.resize(4);
-    bfl(1) = msg.w;
-    bfl(2) = msg.x;
-    bfl(3) = msg.y;
-    bfl(4) = msg.z;
-  }
+private:
+  ImuDriftModel::AugmentedState bias_;
+};
 
-  void quaternionBflToMsg(MatrixWrapper::ColumnVector_Wrapper const &bfl, geometry_msgs::Quaternion &msg) {
-    msg.w = bfl(1);
-    msg.x = bfl(2);
-    msg.y = bfl(3);
-    msg.z = bfl(4);
-  }
+}
 
-} // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_BFL_CONVERSIONS_H
+#endif // HECTOR_POSE_ESTIMATION_IMU_MODEL_H

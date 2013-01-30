@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,58 +26,4 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_GPS_H
-#define HECTOR_POSE_ESTIMATION_GPS_H
 
-#include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/global_reference.h>
-
-namespace hector_pose_estimation {
-
-class GPSModel : public MeasurementModel {
-public:
-  static const unsigned int MeasurementDimension = 4;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
-  GPSModel();
-  virtual ~GPSModel();
-
-  virtual bool init();
-  virtual SystemStatus getStatusFlags() const;
-
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
-
-protected:
-  double position_stddev_;
-  double velocity_stddev_;
-};
-
-struct GPSUpdate : public MeasurementUpdate {
-  double latitude;
-  double longitude;
-  double velocity_north;
-  double velocity_east;
-};
-
-class GPS : public Measurement_<GPSModel,GPSUpdate>
-{
-public:
-  GPS(const std::string& name = "gps");
-  virtual ~GPS();
-
-  void onReset();
-
-  GPSModel::MeasurementVector const& getVector(const GPSUpdate &update);
-  bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
-
-private:
-  GlobalReference *reference_;
-  GPSUpdate last_;
-  GPSModel::MeasurementVector y_;
-};
-
-} // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_GPS_H

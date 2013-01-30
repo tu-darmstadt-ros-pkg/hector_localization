@@ -2,10 +2,16 @@ set(hector_pose_estimation_SOURCES
   global_reference.cpp
   pose_estimation.cpp
   parameters.cpp
+  types.cpp
+  state.cpp
+
+  filter.cpp
+  filter/ekf.cpp
+
   system.cpp
   system_model.cpp
-  types.cpp
   system/generic_quaternion_system_model.cpp
+
   measurement.cpp
   measurement_model.cpp
   measurements/gravity.cpp

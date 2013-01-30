@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,58 +26,71 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_GPS_H
-#define HECTOR_POSE_ESTIMATION_GPS_H
+#ifndef HECTOR_POSE_ESTIMATION_COLLECTION_H
+#define HECTOR_POSE_ESTIMATION_COLLECTION_H
 
-#include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/global_reference.h>
+#include <vector>
+#include <map>
+
+#include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
 
 namespace hector_pose_estimation {
 
-class GPSModel : public MeasurementModel {
+template <typename T>
+class Collection {
 public:
-  static const unsigned int MeasurementDimension = 4;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
+  typedef boost::shared_ptr<T> Ptr;
+  typedef boost::weak_ptr<T> WPtr;
+  typedef std::vector<Ptr> ListType;
+  typedef std::map<std::string, WPtr> MapType;
+  typedef typename ListType::const_iterator iterator;
+  typedef typename ListType::const_iterator const_iterator;
 
-  GPSModel();
-  virtual ~GPSModel();
+  const Ptr& add(const Ptr& p) {
+    list_.push_back(p);
+    map_[p->getName()] = p;
+    return p;
+  }
 
-  virtual bool init();
-  virtual SystemStatus getStatusFlags() const;
+  template <typename Derived> Ptr add(Derived *p) { return add(Ptr(p)); }
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  template <typename Derived> const Ptr& create() {
+    Derived *p = new Derived();
+    return add(p);
+  }
 
-protected:
-  double position_stddev_;
-  double velocity_stddev_;
-};
+  template <typename Derived> const Ptr& create(const std::string& name) {
+    Derived *p = new Derived(name);
+    return add(p);
+  }
 
-struct GPSUpdate : public MeasurementUpdate {
-  double latitude;
-  double longitude;
-  double velocity_north;
-  double velocity_east;
-};
+  Ptr get(std::size_t index) const {
+    if (index >= size()) return Ptr();
+    return list_[index];
 
-class GPS : public Measurement_<GPSModel,GPSUpdate>
-{
-public:
-  GPS(const std::string& name = "gps");
-  virtual ~GPS();
+  }
 
-  void onReset();
+  Ptr get(const std::string& name) const {
+    if (!map_.count(name)) return Ptr();
+    return map_.at(name).lock();
+  }
 
-  GPSModel::MeasurementVector const& getVector(const GPSUpdate &update);
-  bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
+  bool empty()           const { return list_.empty(); }
+  std::size_t size()     const { return list_.size(); }
+  const_iterator begin() const { return list_.begin(); }
+  const_iterator end()   const { return list_.end(); }
+
+  void clear() {
+    map_.clear();
+    list_.clear();
+  }
 
 private:
-  GlobalReference *reference_;
-  GPSUpdate last_;
-  GPSModel::MeasurementVector y_;
+  ListType list_;
+  MapType map_;
 };
 
-} // namespace hector_pose_estimation
+}
 
-#endif // HECTOR_POSE_ESTIMATION_GPS_H
+#endif // HECTOR_POSE_ESTIMATION_COLLECTION_H

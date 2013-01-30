@@ -30,7 +30,6 @@
 #define HECTOR_POSE_ESTIMATION_HEIGHT_H
 
 #include <hector_pose_estimation/measurement.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 

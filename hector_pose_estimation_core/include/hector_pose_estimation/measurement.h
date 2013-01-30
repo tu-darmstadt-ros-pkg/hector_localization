@@ -29,20 +29,23 @@
 #ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_H
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_H
 
-#include <bfl/filter/kalmanfilter.h>
-#include "measurement_model.h"
-#include "measurement_update.h"
-#include "queue.h"
+#include <hector_pose_estimation/measurement_model.h>
+#include <hector_pose_estimation/measurement_update.h>
+#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation/queue.h>
+#include <hector_pose_estimation/collection.h>
 
 namespace hector_pose_estimation {
 
-class PoseEstimation;
+class Filter;
 
 class Measurement
 {
 public:
   Measurement(const std::string& name);
   virtual ~Measurement();
+
+  template <typename ConcreteModel> static boost::shared_ptr<Measurement> create(ConcreteModel *model, const std::string& name);
 
   virtual const std::string& getName() const { return name_; }
   void setName(const std::string& name) { name_ = name; }
@@ -60,8 +63,8 @@ public:
   virtual const ParameterList& parameters() const { return parameters_; }
 
   virtual void add(const MeasurementUpdate &update);
-  virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update) = 0;
-  virtual void process(PoseEstimation &estimator);
+  virtual bool update(Filter &filter, State &state, const MeasurementUpdate &update) = 0;
+  virtual void process(Filter &filter, State &state);
 
   bool enabled() const { return enabled_; }
   void enable() { enabled_ = true; }
@@ -73,7 +76,7 @@ public:
 
 protected:
   virtual Queue& queue() = 0;
-  void updateInternal(PoseEstimation &estimator, ColumnVector const& y);
+  void updateInternal(Filter &filter, State &state, ColumnVector const& y, const SymmetricMatrix &R);
 
   virtual bool onInit() { return true; }
   virtual void onReset() { }
@@ -92,6 +95,8 @@ protected:
 };
 
 typedef boost::shared_ptr<Measurement> MeasurementPtr;
+typedef boost::weak_ptr<Measurement> MeasurementWPtr;
+typedef Collection<Measurement> Measurements;
 
 template <class ConcreteModel, class ConcreteUpdate = typename Update_<ConcreteModel>::Type >
 class Measurement_ : public Measurement {
@@ -130,7 +135,7 @@ public:
   virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update, getModel()) : static_cast<NoiseCovariance const&>(model_->AdditiveNoiseSigmaGet()); }
   virtual void setNoiseCovariance(NoiseCovariance const& sigma);
 
-  virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
+  virtual bool update(Filter &filter, State &state, const MeasurementUpdate &update);
 
 protected:
   boost::shared_ptr<Model> model_;
@@ -138,23 +143,28 @@ protected:
   Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
 
-  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update) { return true; }
-  virtual void afterUpdate(PoseEstimation &estimator) { }
+  virtual bool beforeUpdate(State &state, const Update &update) { return true; }
+  virtual void afterUpdate(State &state) { }
 };
 
+template <typename ConcreteModel>
+MeasurementPtr Measurement::create(ConcreteModel *model, const std::string& name)
+{
+  return MeasurementPtr(new Measurement_<ConcreteModel>(model, name));
+}
+
 template <class ConcreteModel, class ConcreteUpdate>
-bool Measurement_<ConcreteModel, ConcreteUpdate>::update(PoseEstimation &estimator, const MeasurementUpdate &update_)
+bool Measurement_<ConcreteModel, ConcreteUpdate>::update(Filter &filter, State &state, const MeasurementUpdate &update_)
 {
   if (!enabled()) return false;
   if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
 
   Update const &update = dynamic_cast<Update const &>(update_);
-  if (!beforeUpdate(estimator, update)) return false;
+  if (!prepareUpdate(state, update)) return false;
 
-  if (update.hasCovariance()) setNoiseCovariance(getCovariance(update));
-  updateInternal(estimator, getVector(update));
+  updateInternal(filter, state, getVector(update), getCovariance(update));
 
-  afterUpdate(estimator);
+  afterUpdate(state);
   return true;
 }
 

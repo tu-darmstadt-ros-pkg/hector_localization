@@ -26,60 +26,63 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/system_input.h>
-#include <hector_pose_estimation/matrix.h>
-#include <sensor_msgs/Imu.h>
-
 #ifndef HECTOR_POSE_ESTIMATION_IMU_INPUT_H
 #define HECTOR_POSE_ESTIMATION_IMU_INPUT_H
 
+#include <hector_pose_estimation/input.h>
+#include <hector_pose_estimation/matrix.h>
+
+#include <sensor_msgs/Imu.h>
+
 namespace hector_pose_estimation {
 
-class ImuInput : public SystemInput
+class ImuInput : public Input
 {
 public:
   enum InputIndex {
-    ACCEL_X = 1,
+    ACCEL_X = 0,
     ACCEL_Y,
     ACCEL_Z,
     GYRO_X,
     GYRO_Y,
-    GYRO_Z
+    GYRO_Z,
+    InputDimension
   };
-  static const unsigned int InputDimension = GYRO_Z;
+  // static const unsigned int InputDimension = GYRO_Z;
   typedef ColumnVector_<InputDimension> InputVector;
 
   ImuInput()
     : u_(InputDimension)
   {}
   ImuInput(InputVector const& u)
-    : u_(InputDimension)
   {
-    setValue(u);
+    *this = u;
   }
   ImuInput(const sensor_msgs::Imu& imu)
-    : u_(InputDimension)
   {
-    setValue(imu);
+    *this = imu;
   }
   virtual ~ImuInput() {}
 
-  virtual void setValue(InputVector const& u) { u_ = u; }
-  virtual void setValue(const sensor_msgs::Imu& imu) {
+  virtual ImuInput &operator=(InputVector const& u) {
+    u_ = u;
+    return *this;
+  }
+
+  virtual ImuInput &operator=(const sensor_msgs::Imu& imu) {
     u_(ACCEL_X) = imu.linear_acceleration.x;
     u_(ACCEL_Y) = imu.linear_acceleration.y;
     u_(ACCEL_Z) = imu.linear_acceleration.z;
     u_(GYRO_X)  = imu.angular_velocity.x;
     u_(GYRO_Y)  = imu.angular_velocity.y;
     u_(GYRO_Z)  = imu.angular_velocity.z;
+    return *this;
   }
 
   virtual InputVector const &getVector() const { return u_; }
-  virtual ColumnVector_<3> getAccel() const { return u_.sub(ACCEL_X, ACCEL_Z); }
-  virtual ColumnVector_<3> getRate() const { return u_.sub(GYRO_X, GYRO_Z); }
 
-  virtual InputVector &operator=(InputVector const& u) { setValue(u); return u_; }
-  virtual InputVector &operator=(const sensor_msgs::Imu& imu) { setValue(imu); return u_; }
+  virtual typename InputVector::ConstFixedSegmentReturnType<3>::Type getAccel() const { return u_.segment<3>(ACCEL_X); }
+  virtual typename InputVector::ConstFixedSegmentReturnType<3>::Type getRate() const  { return u_.segment<3>(GYRO_X); }
 
 protected:
   InputVector u_;

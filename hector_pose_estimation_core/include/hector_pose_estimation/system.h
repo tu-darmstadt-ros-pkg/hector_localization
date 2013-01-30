@@ -29,14 +29,14 @@
 #ifndef HECTOR_POSE_ESTIMATION_SYSTEM_H
 #define HECTOR_POSE_ESTIMATION_SYSTEM_H
 
-#include "system_model.h"
-#include "system_input.h"
-
-namespace BFL { class KalmanFilter; }
+#include <hector_pose_estimation/system_model.h>
+#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation/input.h>
+#include <hector_pose_estimation/collection.h>
 
 namespace hector_pose_estimation {
 
-class PoseEstimation;
+class Filter;
 
 class System
 {
@@ -60,25 +60,21 @@ public:
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
 
-  BFL::Gaussian *getPrior();
-  virtual const SystemInput& getInput() const = 0;
-  virtual void setInput(const SystemInput& input) = 0;
+  virtual void getPrior(State &state) const;
 
-  virtual bool update(PoseEstimation &estimator, double dt) = 0;
+  virtual bool update(Filter &filter, State &state, const Inputs &inputs, double dt);
   virtual void updated();
-  virtual StateVector limitState(StateVector state) const;
-
-protected:
-  void updateInternal(PoseEstimation &estimator, double dt, ColumnVector const& u);
+  virtual bool limitState(State& state) const;
 
 protected:
   std::string name_;
   ParameterList parameters_;
   SystemStatus status_flags_;
-  BFL::Gaussian prior_;
 };
 
 typedef boost::shared_ptr<System> SystemPtr;
+typedef boost::weak_ptr<System> SystemWPtr;
+typedef Collection<System> Systems;
 
 template <typename ConcreteModel, typename ConcreteInput = typename Input_<ConcreteModel>::Type >
 class System_ : public System
@@ -105,22 +101,13 @@ public:
   virtual SystemModel *getModel() const { return model_.get(); }
 
   virtual const Input& getInput() const { return input_; }
-  virtual void setInput(const SystemInput& input) { input_ = dynamic_cast<const Input&>(input); }
+  virtual void setInput(const hector_pose_estimation::Input& input) { input_ = dynamic_cast<const Input&>(input); }
   virtual void setInput(const Input& input) { input_ = input; }
-
-  virtual bool update(PoseEstimation &estimator, double dt);
 
 private:
   boost::shared_ptr<Model> model_;
   Input input_;
 };
-
-template <class ConcreteModel, class ConcreteInput>
-bool System_<ConcreteModel, ConcreteInput>::update(PoseEstimation &estimator, double dt)
-{
-  updateInternal(estimator, dt, input_.getVector());
-  return true;
-}
 
 template <typename ConcreteModel>
 SystemPtr System::create(ConcreteModel *model, const std::string& name)

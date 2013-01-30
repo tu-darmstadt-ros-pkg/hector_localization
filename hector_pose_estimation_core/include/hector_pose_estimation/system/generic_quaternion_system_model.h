@@ -57,13 +57,13 @@ public:
   virtual SymmetricMatrix CovarianceGet(double dt) const;
   virtual Matrix dfGet(unsigned int i, double dt) const;
 
-  virtual void Limit(StateVector& x) const;
+  virtual bool limitState(State &x) const;
 
   void setGravity(double gravity) { gravity_ = gravity; }
   double getGravity() const { return gravity_; }
 
 protected:
-  static void normalize(StateVector& x);
+  static void normalize(State &x);
 
 protected:
   double gravity_;
@@ -77,7 +77,7 @@ protected:
   double rate_drift_;
 
   mutable double q0,q1,q2,q3;
-  mutable SymmetricMatrix_<StateDimension> noise_;
+  mutable SymmetricMatrix_<State::StateDimension> noise_;
 };
 
 } // namespace hector_pose_estimation

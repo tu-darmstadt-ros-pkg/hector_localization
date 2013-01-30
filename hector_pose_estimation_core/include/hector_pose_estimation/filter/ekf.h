@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,53 +26,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_SYSTEM_INPUT_H
-#define HECTOR_POSE_ESTIMATION_SYSTEM_INPUT_H
+#ifndef HECTOR_POSE_ESTIMATION_FILTER_EKF_H
+#define HECTOR_POSE_ESTIMATION_FILTER_EKF_H
 
-#include <boost/type_traits/is_base_of.hpp>
+#include <hector_pose_estimation/filter.h>
 
 namespace hector_pose_estimation {
 
-class SystemInput
-{
-public:
-  SystemInput() {}
-  virtual ~SystemInput() {}
-};
-
-template <class SystemModel>
-class Input_ : public SystemInput {
-public:
-  typedef Input_<SystemModel> Type;
-  typedef typename SystemModel::InputVector Vector;
-
-  Input_()
-    : u_(SystemModel::InputDimension)
-  {}
-  Input_(Vector const& u)
-    : u_(SystemModel::InputDimension)
-  {
-    setValue(u);
-  }
-  Input_(double u)
-    : u_(SystemModel::InputDimension)
-  {
-    setValue(u);
-  }
-  virtual ~Input_() {}
-
-  virtual void setValue(Vector const& u) { u_ = u; }
-  virtual void setValue(double u) { u_(1) = u; }
-
-  virtual Vector const &getVector() const { return u_; }
-
-  virtual Vector &operator=(Vector const& u) { setValue(u); return u_; }
-  virtual Vector &operator=(double u) { setValue(u); return u_; }
-
-protected:
-  Vector u_;
-};
 
 } // namespace hector_pose_estimation
 
-#endif // HECTOR_POSE_ESTIMATION_SYSTEM_INPUT_H
+#endif // HECTOR_POSE_ESTIMATION_FILTER_EKF_H

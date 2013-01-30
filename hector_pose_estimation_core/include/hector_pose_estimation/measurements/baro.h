@@ -30,8 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_BARO_H
 
 #include <hector_pose_estimation/measurement.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
-#include "height.h"
+#include <hector_pose_estimation/measurements/height.h>
 
 #ifdef USE_HECTOR_UAV_MSGS
   #include <hector_uav_msgs/Altimeter.h>

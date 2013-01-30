@@ -28,8 +28,6 @@
 
 #include <hector_pose_estimation/measurements/poseupdate.h>
 #include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/bfl_conversions.h>
-#include <Eigen/Geometry>
 
 namespace hector_pose_estimation {
 
