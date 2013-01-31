@@ -105,8 +105,15 @@ public:
   virtual SystemModel *getModel() const { return model_.get(); }
 
   virtual const Input& getInput() const { return input_; }
-  virtual void setInput(const SystemInput& input) { input_ = dynamic_cast<const Input&>(input); }
   virtual void setInput(const Input& input) { input_ = input; }
+  virtual void setInput(const SystemInput& input) {
+    try {
+      input_ = dynamic_cast<const Input&>(input);
+    } catch(std::bad_cast& e) {
+      std::cerr << "In system " << getName() << ": " << e.what() << std::endl;
+      std::cerr << "Expected type " << std::string(typeid(Input).name()) << ", you gave me " << std::string(typeid(input).name()) << std::endl;
+    }
+  }
 
   virtual bool update(PoseEstimation &estimator, double dt);
 

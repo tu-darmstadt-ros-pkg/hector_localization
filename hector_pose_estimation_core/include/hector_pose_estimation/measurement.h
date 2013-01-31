@@ -148,11 +148,15 @@ bool Measurement_<ConcreteModel, ConcreteUpdate>::update(PoseEstimation &estimat
   if (!enabled()) return false;
   if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
 
-  Update const &update = dynamic_cast<Update const &>(update_);
-  if (!beforeUpdate(estimator, update)) return false;
+  try {
+    Update const &update = dynamic_cast<Update const &>(update_);
+    if (!beforeUpdate(estimator, update)) return false;
 
-  if (update.hasCovariance()) setNoiseCovariance(getCovariance(update));
-  updateInternal(estimator, getVector(update));
+    if (update.hasCovariance()) setNoiseCovariance(getCovariance(update));
+    updateInternal(estimator, getVector(update));
+  } catch(std::bad_cast& e) {
+    std::cerr << "In measurement " << getName() << ": " << e.what() << std::endl;
+  }
 
   afterUpdate(estimator);
   return true;
