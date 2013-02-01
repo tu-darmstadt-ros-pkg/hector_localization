@@ -94,11 +94,11 @@ bool PoseEstimation::init()
 
   // initialize systems
   for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it)
-    if (!(*it)->init()) return false;
+    if (!(*it)->init(*this, state_)) return false;
 
   // initialize measurements
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)
-    if (!(*it)->init()) return false;
+    if (!(*it)->init(*this, state_)) return false;
 
   // reset (or initialize) filter and measurements
   reset();
@@ -135,12 +135,12 @@ void PoseEstimation::reset()
 
   // reset systems and measurements
   for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it) {
-    (*it)->reset();
+    (*it)->reset(state_);
     (*it)->getPrior(state());
   }
 
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
-    (*it)->reset();
+    (*it)->reset(state_);
   }
 
   // initialize new filter
@@ -182,7 +182,7 @@ void PoseEstimation::update(double dt)
 #endif // USE_RATE_SYSTEM_MODEL
 
   // time update step
-  filter_->predict(state_, systems_, inputs_, dt);
+  filter_->predict(state_, systems_, dt);
 
   // measurement updates
   filter_->update(state_, measurements_);
@@ -273,18 +273,18 @@ void PoseEstimation::updated() {
 
 const SystemPtr& PoseEstimation::addSystem(const SystemPtr& system, const std::string& name) {
   if (!name.empty() && system->getName().empty()) system->setName(name);
-  return systems_.add(system);
+  return systems_.add(system, system->getName());
 }
 
 InputPtr PoseEstimation::addInput(const InputPtr& input, const std::string& name)
 {
   if (!name.empty()) input->setName(name);
-  return inputs_.add(input);
+  return inputs_.add(input, input->getName());
 }
 
 const MeasurementPtr& PoseEstimation::addMeasurement(const MeasurementPtr& measurement, const std::string& name) {
   if (!name.empty()) measurement->setName(name);
-  return measurements_.add(measurement);
+  return measurements_.add(measurement, measurement->getName());
 }
 
 const State::Vector& PoseEstimation::getStateVector() {
@@ -517,12 +517,12 @@ void PoseEstimation::getOrientation(double &yaw, double &pitch, double &roll) {
 
 void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity) {
   boost::shared_ptr<const ImuInput> input = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
-  boost::shared_ptr<const ImuDrift> drift = boost::shared_dynamic_cast<const ImuDrift>(getSystem("imu"));
+  boost::shared_ptr<const ImuModel> drift = boost::shared_dynamic_cast<const ImuModel>(getSystem("imu"));
 
   if (input) {
-    linear_acceleration.x = input->getAccel().x();
-    linear_acceleration.y = input->getAccel().y();
-    linear_acceleration.z = input->getAccel().z();
+    linear_acceleration.x = input->getAcceleration().x();
+    linear_acceleration.y = input->getAcceleration().y();
+    linear_acceleration.z = input->getAcceleration().z();
   } else {
     linear_acceleration.x = 0.0;
     linear_acceleration.y = 0.0;
@@ -530,9 +530,9 @@ void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleratio
   }
 
   if (drift) {
-    linear_acceleration.x += drift->getAccelBias().x();
-    linear_acceleration.y += drift->getAccelBias().y();
-    linear_acceleration.z += drift->getAccelBias().z();
+    linear_acceleration.x += drift->getAccelerationBias().x();
+    linear_acceleration.y += drift->getAccelerationBias().y();
+    linear_acceleration.z += drift->getAccelerationBias().z();
   }
 
   getRate(angular_velocity);
@@ -581,7 +581,7 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
 
   } else {
     boost::shared_ptr<const ImuInput> input = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
-    boost::shared_ptr<const ImuDrift> drift = boost::shared_dynamic_cast<const ImuDrift>(getSystem("imu"));
+    boost::shared_ptr<const ImuModel> drift = boost::shared_dynamic_cast<const ImuModel>(getSystem("imu"));
 
     if (input) {
       vector.x = input->getRate().x();
@@ -607,15 +607,15 @@ void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
 }
 
 void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration) {
-  boost::shared_ptr<const ImuDrift> drift = boost::shared_dynamic_cast<const ImuDrift>(getSystem("imu"));
+  boost::shared_ptr<const ImuModel> drift = boost::shared_dynamic_cast<const ImuModel>(getSystem("imu"));
 
   if (drift) {
     angular_velocity.x = drift->getGyroBias().x();
     angular_velocity.y = drift->getGyroBias().y();
     angular_velocity.z = drift->getGyroBias().z();
-    linear_acceleration.x = drift->getAccelBias().x();
-    linear_acceleration.y = drift->getAccelBias().y();
-    linear_acceleration.z = drift->getAccelBias().z();
+    linear_acceleration.x = drift->getAccelerationBias().x();
+    linear_acceleration.y = drift->getAccelerationBias().y();
+    linear_acceleration.z = drift->getAccelerationBias().z();
   } else {
     angular_velocity.x = 0.0;
     angular_velocity.y = 0.0;

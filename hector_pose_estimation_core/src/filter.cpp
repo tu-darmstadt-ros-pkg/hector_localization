@@ -39,23 +39,23 @@ Filter::~Filter()
 {
 }
 
-void Filter::predict(State& state, const Systems& systems, const Inputs& inputs, double dt) {
+void Filter::predict(State& state, const Systems& systems, double dt) {
   SystemStatus system_status = 0;
 
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
-    predict(state, system, inputs, dt);
+    predict(state, system, dt);
     system_status |= system->getStatusFlags();
   }
 
   state.setSystemStatus(system_status);
 }
 
-void Filter::predict(State& state, const SystemPtr& system, const Inputs& inputs, double dt) {
-  system->update(*this, state, inputs, dt);
+void Filter::predict(State& state, const SystemPtr& system, double dt) {
+  system->update(*this, state, dt);
 }
 
-void Filter::predict(State &state, SystemModel *system, const Inputs &inputs, const SymmetricMatrix &Q, double dt) {
+void Filter::predict(State &state, SystemModel *system, const SymmetricMatrix &Q, double dt) {
 
 }
 

@@ -36,8 +36,12 @@ namespace hector_pose_estimation {
 class Input
 {
 public:
+  template <class Model> struct traits;
+
   Input() {}
   virtual ~Input() {}
+
+  virtual int getDimension() const = 0;
 
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
@@ -50,37 +54,55 @@ typedef boost::shared_ptr<Input> InputPtr;
 typedef boost::weak_ptr<Input> InputWPtr;
 typedef Collection<Input> Inputs;
 
-template <class SystemModel>
+template <int _Dimension> class Input_;
+template <class Model>
+struct Input::traits {
+  static const int Dimension = 0;
+  typedef Input_<Dimension> Type;
+  typedef ColumnVector_<0> Vector;
+  typedef SymmetricMatrix_<0> Variance;
+};
+
+template <int _Dimension>
 class Input_ : public Input {
 public:
-  typedef Input_<SystemModel> Type;
-  typedef typename SystemModel::InputVector Vector;
+  static const int Dimension = _Dimension;
+  typedef Input_<Dimension> Type;
+  typedef ColumnVector_<Dimension> Vector;
+  typedef SymmetricMatrix_<Dimension> Variance;
 
-  Input_()
-    : u_(SystemModel::InputDimension)
-  {}
-  Input_(Vector const& u)
-    : u_(SystemModel::InputDimension)
-  {
-    setValue(u);
-  }
-  Input_(double u)
-    : u_(SystemModel::InputDimension)
-  {
-    setValue(u);
-  }
+  Input_() {}
+  template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u) : u_(u) {}
+  template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u, const Variance& Q) : u_(u), Q_(new Variance(Q)) {}
+  Input_(double u) { *this = u; }
+  Input_(double u, const Variance& Q) : Q_(new Variance(Q)) { *this = u; }
   virtual ~Input_() {}
 
-  virtual void setValue(Vector const& u) { u_ = u; }
-  virtual void setValue(double u) { u_(1) = u; }
+  virtual int getDimension() const { return Dimension; }
 
   virtual Vector const &getVector() const { return u_; }
+  virtual Vector& u() { return u_; }
 
-  virtual Vector &operator=(Vector const& u) { setValue(u); return u_; }
-  virtual Vector &operator=(double u) { setValue(u); return u_; }
+  virtual Variance &setVariance(const Variance &other) {
+    if (!Q_) Q_.reset(new Variance);
+    *Q_ = other;
+    return *Q_;
+  }
+
+  virtual bool hasVariance() const { return Q_; }
+  virtual Variance const &getVariance() { if (!Q_) Q_.reset(new Variance); return *Q_; }
+  virtual Variance const &getVariance() const { return *Q_; }
+  virtual Variance& Q() { if (!Q_) Q_.reset(new Variance); return *Q_; }
+
+  template <typename Derived> Vector &operator=(const Eigen::MatrixBase<Derived>& other) {
+    u_ = other;
+    return u_;
+  }
+  virtual Vector &operator=(double u) { u_.setZero(); u_(0) = u; return u_; }
 
 protected:
   Vector u_;
+  boost::shared_ptr<Variance> Q_;
 };
 
 } // namespace hector_pose_estimation

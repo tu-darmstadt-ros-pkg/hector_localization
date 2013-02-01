@@ -50,7 +50,7 @@ namespace hector_pose_estimation {
 
     STATE_ALL = -1
   };
-  typedef unsigned int SystemStatus;
+  typedef int SystemStatus;
 
   static const char* const SystemStatusStrings[] = {
     "ALIGNMENT", "DEGRADED", "READY", "ROLLPITCH", "YAW", "XY_VELOCITY", "XY_POSITION", "Z_VELOCITY", "Z_POSITION"

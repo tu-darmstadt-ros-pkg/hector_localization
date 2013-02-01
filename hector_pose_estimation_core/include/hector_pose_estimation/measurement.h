@@ -52,9 +52,9 @@ public:
 
   virtual MeasurementModel* getModel() const { return 0; }
 
-  virtual bool init();
+  virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
-  virtual void reset();
+  virtual void reset(State& state);
 
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
   virtual bool active(const SystemStatus& status) { return enabled(); }
@@ -78,7 +78,7 @@ protected:
   virtual Queue& queue() = 0;
   void updateInternal(Filter &filter, State &state, ColumnVector const& y, const SymmetricMatrix &R);
 
-  virtual bool onInit() { return true; }
+  virtual bool onInit(PoseEstimation& estimator, State& state) { return true; }
   virtual void onReset() { }
   virtual void onCleanup() { }
 
@@ -103,7 +103,7 @@ class Measurement_ : public Measurement {
 public:
   typedef ConcreteModel Model;
   typedef ConcreteUpdate Update;
-  static const unsigned int MeasurementDimension = Model::MeasurementDimension;
+  static const int MeasurementDimension = Model::MeasurementDimension;
   typedef typename Model::MeasurementVector MeasurementVector;
   typedef typename Model::NoiseCovariance NoiseCovariance;
 
@@ -124,9 +124,9 @@ public:
   virtual ~Measurement_() {
   }
 
-  virtual bool init() { return model_->init() && Measurement::init(); }
+  virtual bool init(PoseEstimation& estimator, State& state) { return model_->init(estimator, state) && Measurement::init(estimator, state); }
   virtual void cleanup() { model_->cleanup(); Measurement::cleanup(); }
-  virtual void reset() { model_->reset(); Measurement::reset(); }
+  virtual void reset(State& state) { model_->reset(state); Measurement::reset(); }
 
   virtual Model* getModel() const { return model_.get(); }
   virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }

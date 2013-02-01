@@ -26,8 +26,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_IMU_INPUT_H
-#define HECTOR_POSE_ESTIMATION_IMU_INPUT_H
+#ifndef HECTOR_POSE_ESTIMATION_IMvector_INPUT_H
+#define HECTOR_POSE_ESTIMATION_IMvector_INPUT_H
 
 #include <hector_pose_estimation/input.h>
 #include <hector_pose_estimation/matrix.h>
@@ -36,7 +36,7 @@
 
 namespace hector_pose_estimation {
 
-class ImuInput : public Input
+class ImuInput : public Input_<6>
 {
 public:
   enum InputIndex {
@@ -45,31 +45,14 @@ public:
     ACCEL_Z,
     GYRO_X,
     GYRO_Y,
-    GYRO_Z,
-    InputDimension
+    GYRO_Z
   };
-  // static const unsigned int InputDimension = GYRO_Z;
-  typedef ColumnVector_<InputDimension> InputVector;
 
-  ImuInput()
-    : u_(InputDimension)
-  {}
-  ImuInput(InputVector const& u)
-  {
-    *this = u;
-  }
-  ImuInput(const sensor_msgs::Imu& imu)
-  {
-    *this = imu;
-  }
+  ImuInput() {}
+  ImuInput(const sensor_msgs::Imu& imu) { *this = imu; }
   virtual ~ImuInput() {}
 
-  virtual ImuInput &operator=(InputVector const& u) {
-    u_ = u;
-    return *this;
-  }
-
-  virtual ImuInput &operator=(const sensor_msgs::Imu& imu) {
+  ImuInput &operator=(const sensor_msgs::Imu& imu) {
     u_(ACCEL_X) = imu.linear_acceleration.x;
     u_(ACCEL_Y) = imu.linear_acceleration.y;
     u_(ACCEL_Z) = imu.linear_acceleration.z;
@@ -79,15 +62,10 @@ public:
     return *this;
   }
 
-  virtual InputVector const &getVector() const { return u_; }
-
-  virtual typename InputVector::ConstFixedSegmentReturnType<3>::Type getAccel() const { return u_.segment<3>(ACCEL_X); }
-  virtual typename InputVector::ConstFixedSegmentReturnType<3>::Type getRate() const  { return u_.segment<3>(GYRO_X); }
-
-protected:
-  InputVector u_;
+  typename Vector::ConstFixedSegmentReturnType<3>::Type getAcceleration() const { return u_.segment<3>(ACCEL_X); }
+  typename Vector::ConstFixedSegmentReturnType<3>::Type getRate() const  { return u_.segment<3>(GYRO_X); }
 };
 
 } // namespace hector_pose_estimation
 
-#endif // HECTOR_POSE_ESTIMATION_IMU_INPUT_H
+#endif // HECTOR_POSE_ESTIMATION_IMvector_INPUT_H

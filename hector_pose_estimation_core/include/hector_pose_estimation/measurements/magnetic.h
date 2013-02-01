@@ -36,7 +36,7 @@ namespace hector_pose_estimation {
 
 class MagneticModel : public MeasurementModel {
 public:
-  static const unsigned int MeasurementDimension = 3;
+  static const int MeasurementDimension = 3;
   typedef ColumnVector_<MeasurementDimension> MeasurementVector;
   typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 

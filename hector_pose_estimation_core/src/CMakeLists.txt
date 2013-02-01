@@ -11,6 +11,7 @@ set(hector_pose_estimation_SOURCES
   system.cpp
   system_model.cpp
   system/generic_quaternion_system_model.cpp
+  system/imu_model.cpp
 
   measurement.cpp
   measurement_model.cpp

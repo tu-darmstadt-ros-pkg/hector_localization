@@ -40,9 +40,9 @@ public:
   Filter();
   virtual ~Filter();
 
-  void predict(State& state, const Systems& systems, const Inputs& inputs, double dt);
-  void predict(State& state, const SystemPtr& system, const Inputs& inputs, double dt);
-  void predict(State& state, SystemModel* system, const Inputs& inputs, const SymmetricMatrix& Q, double dt);
+  void predict(State& state, const Systems& systems, double dt);
+  void predict(State& state, const SystemPtr& system, double dt);
+  void predict(State& state, SystemModel* system, const SymmetricMatrix& Q, double dt);
 
   void update(State& state, const Measurements& measurements);
   void update(State& state, const MeasurementPtr& measurement);

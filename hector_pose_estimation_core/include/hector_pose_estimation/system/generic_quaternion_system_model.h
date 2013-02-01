@@ -31,53 +31,53 @@
 
 #include <hector_pose_estimation/system_model.h>
 #include <hector_pose_estimation/system/imu_input.h>
+#include <hector_pose_estimation/system/imu_model.h>
 
 namespace hector_pose_estimation {
 
 class GenericQuaternionSystemModel;
-template <> struct Input_<GenericQuaternionSystemModel> {
+template <> struct Input::traits<GenericQuaternionSystemModel> {
   typedef ImuInput Type;
+  static const int Dimension = ImuInput::Dimension;
+  typedef ImuInput::Vector Vector;
+  typedef ImuInput::Variance Variance;
 };
 
-class GenericQuaternionSystemModel : public SystemModel
+class GenericQuaternionSystemModel : public TimeContinuousSystemModel_<GenericQuaternionSystemModel>
 {
 public:
-  static const unsigned int InputDimension = ImuInput::InputDimension;
-  typedef ImuInput::InputVector InputVector;
+  static const int StateDimension = State::StateDimension;
 
   GenericQuaternionSystemModel();
   virtual ~GenericQuaternionSystemModel();
 
-  virtual std::string getName() const { return "GenericQuaternionSystemModel"; }
-  virtual bool init();
+  virtual bool init(PoseEstimation& estimator, State& state);
 
-  virtual SystemStatus getStatusFlags() const;
+  virtual void getPrior(State &state);
 
-  virtual ColumnVector ExpectedValueGet(double dt) const;
-  virtual SymmetricMatrix CovarianceGet(double dt) const;
-  virtual Matrix dfGet(unsigned int i, double dt) const;
+  virtual bool prepareUpdate(State& state, double dt);
+  virtual void afterUpdate(State &state);
 
-  virtual bool limitState(State &x) const;
+  virtual void getDerivative(StateVector& x_dot, const State& state);
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init);
+  virtual void getInputJacobian(InputMatrix& A, const State& state, bool init);
 
   void setGravity(double gravity) { gravity_ = gravity; }
   double getGravity() const { return gravity_; }
 
 protected:
-  static void normalize(State &x);
-
-protected:
   double gravity_;
   double rate_stddev_;
-#ifdef USE_RATE_SYSTEM_MODEL
   double angular_acceleration_stddev_;
-#endif // USE_RATE_SYSTEM_MODEL
   double acceleration_stddev_;
   double velocity_stddev_;
-  double acceleration_drift_;
-  double rate_drift_;
 
-  mutable double q0,q1,q2,q3;
-  mutable SymmetricMatrix_<State::StateDimension> noise_;
+  boost::shared_ptr<ImuInput> imu_;
+  boost::shared_ptr<ImuModel> imu_model_;
+
+  ColumnVector_<3> rate;
+  ColumnVector_<3> acceleration;
 };
 
 } // namespace hector_pose_estimation

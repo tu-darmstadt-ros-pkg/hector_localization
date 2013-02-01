@@ -39,15 +39,20 @@
 namespace hector_pose_estimation {
 
 class MeasurementUpdate;
+class PoseEstimation;
 
 class MeasurementModel {
 public:
-  MeasurementModel(unsigned int dimension, unsigned int conditional_arguments = 0);
+  template <class Model> struct traits;
+
+  MeasurementModel(int dimension, int conditional_arguments = 0);
   virtual ~MeasurementModel();
 
-  virtual bool init() { return true; }
+  virtual int getDimension() const { return 0; }
+
+  virtual bool init(PoseEstimation& estimator, State& state) { return true; }
   virtual void cleanup() { }
-  virtual void reset() { }
+  virtual void reset(State& state) { }
 
   virtual SystemStatus getStatusFlags() const { return SystemStatus(0); }
   virtual bool applyStatusMask(const SystemStatus& status) { return true; }
@@ -55,7 +60,8 @@ public:
   ParameterList& parameters() { return parameters_; }
   const ParameterList& parameters() const { return parameters_; }
 
-  virtual bool prepareUpdate(const State& state, const MeasurementUpdate& update) { return true; }
+  virtual bool prepareUpdate(State& state, const MeasurementUpdate& update) { return true; }
+  virtual void afterUpdate(State& state) {}
 
   virtual void getExpectedValue(State::Vector& x_pred, const State& state, const Input& input, double dt) {}
   virtual void getStateJacobian(Block<Matrix,Dynamic,Dynamic>& A, const State& state, const Input& input, double dt) {}
@@ -63,6 +69,13 @@ public:
 
 protected:
   ParameterList parameters_;
+};
+
+template <class Model>
+struct MeasurementModel::traits {
+  static const int Dimension = Model::MeasurementDimension;
+  typedef ColumnVector_<Dimension> Vector;
+  typedef SymmetricMatrix_<Dimension> Covariance;
 };
 
 } // namespace hector_pose_estimation

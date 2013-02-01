@@ -37,32 +37,33 @@
 
 namespace hector_pose_estimation {
 
-template <typename T>
+template <typename T, typename key_type = std::string>
 class Collection {
 public:
   typedef boost::shared_ptr<T> Ptr;
   typedef boost::weak_ptr<T> WPtr;
   typedef std::vector<Ptr> ListType;
-  typedef std::map<std::string, WPtr> MapType;
+  typedef std::map<key_type, WPtr> MapType;
   typedef typename ListType::const_iterator iterator;
   typedef typename ListType::const_iterator const_iterator;
 
-  const Ptr& add(const Ptr& p) {
+  const Ptr& add(const Ptr& p, const key_type& key) {
     list_.push_back(p);
-    map_[p->getName()] = p;
+    map_[key] = p;
     return p;
   }
 
-  template <typename Derived> Ptr add(Derived *p) { return add(Ptr(p)); }
+  template <typename Derived> boost::shared_ptr<Derived> add(Derived *p) { return boost::shared_static_cast<Derived>(add(Ptr(p), p->getName())); }
+  template <typename Derived> boost::shared_ptr<Derived> add(Derived *p, const key_type& key) { return boost::shared_static_cast<Derived>(add(Ptr(p), key)); }
 
   template <typename Derived> const Ptr& create() {
     Derived *p = new Derived();
     return add(p);
   }
 
-  template <typename Derived> const Ptr& create(const std::string& name) {
-    Derived *p = new Derived(name);
-    return add(p);
+  template <typename Derived> const Ptr& create(const key_type& key) {
+    Derived *p = new Derived();
+    return add(p, key);
   }
 
   Ptr get(std::size_t index) const {
@@ -71,9 +72,19 @@ public:
 
   }
 
-  Ptr get(const std::string& name) const {
-    if (!map_.count(name)) return Ptr();
-    return map_.at(name).lock();
+  Ptr get(const key_type& key) const {
+    if (!map_.count(key)) return Ptr();
+    return map_.at(key).lock();
+  }
+
+  template <typename Derived>
+  boost::shared_ptr<Derived> getType(std::size_t index) const {
+    return boost::shared_dynamic_cast<Derived>(get(index));
+  }
+
+  template <typename Derived>
+  boost::shared_ptr<Derived> getType(const key_type& key) const {
+    return boost::shared_dynamic_cast<Derived>(get(key));
   }
 
   bool empty()           const { return list_.empty(); }

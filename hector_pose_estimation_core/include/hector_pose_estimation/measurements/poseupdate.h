@@ -37,7 +37,7 @@ namespace hector_pose_estimation {
 
 class PositionXYModel : public MeasurementModel {
 public:
-  static const unsigned int MeasurementDimension = 2;
+  static const int MeasurementDimension = 2;
   typedef ColumnVector_<MeasurementDimension> MeasurementVector;
   typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
@@ -50,7 +50,7 @@ public:
 
 class PositionZModel : public MeasurementModel {
 public:
-  static const unsigned int MeasurementDimension = 1;
+  static const int MeasurementDimension = 1;
   typedef ColumnVector_<MeasurementDimension> MeasurementVector;
   typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
@@ -63,7 +63,7 @@ public:
 
 class YawModel : public MeasurementModel {
 public:
-  static const unsigned int MeasurementDimension = 1;
+  static const int MeasurementDimension = 1;
   typedef ColumnVector_<MeasurementDimension> MeasurementVector;
   typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 
@@ -76,7 +76,7 @@ public:
 
 class TwistModel : public MeasurementModel {
 public:
-  static const unsigned int MeasurementDimension = 6;
+  static const int MeasurementDimension = 6;
   typedef ColumnVector_<MeasurementDimension> MeasurementVector;
   typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 

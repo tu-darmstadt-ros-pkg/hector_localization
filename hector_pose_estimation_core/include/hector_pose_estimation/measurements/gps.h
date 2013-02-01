@@ -36,7 +36,7 @@ namespace hector_pose_estimation {
 
 class GPSModel : public MeasurementModel {
 public:
-  static const unsigned int MeasurementDimension = 4;
+  static const int MeasurementDimension = 4;
   typedef ColumnVector_<MeasurementDimension> MeasurementVector;
   typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 

@@ -35,7 +35,7 @@ namespace hector_pose_estimation {
 
 class ZeroRateModel : public MeasurementModel {
 public:
-  static const unsigned int MeasurementDimension = 1;
+  static const int MeasurementDimension = 1;
   typedef ColumnVector_<MeasurementDimension> MeasurementVector;
   typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
 

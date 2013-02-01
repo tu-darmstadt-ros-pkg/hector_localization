@@ -48,21 +48,25 @@ Measurement::~Measurement()
 {
 }
 
-bool Measurement::init()
+bool Measurement::init(PoseEstimation& estimator, State& state)
 {
-  return onInit();
+  if (!getModel()) return false;
+  if (!onInit(estimator, state)) return false;
+  return getModel()->init(estimator, state);
 }
 
 void Measurement::cleanup()
 {
   onCleanup();
+  if (getModel()) getModel()->cleanup();
 }
 
-void Measurement::reset()
+void Measurement::reset(State& state)
 {
   queue().clear();
   timer_ = 0;
   onReset();
+  if (getModel()) getModel()->reset(state);
 }
 
 void Measurement::increase_timer(double dt) {

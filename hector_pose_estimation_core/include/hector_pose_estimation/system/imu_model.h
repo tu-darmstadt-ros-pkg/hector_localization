@@ -34,35 +34,36 @@
 
 namespace hector_pose_estimation {
 
-class ImuDriftModel : public SystemModel
+class ImuModel : public TimeContinuousSystemModel_<ImuModel,6>
 {
 public:
-  enum AugmentedStateIndex {
-    ACCEL_X = 0,
-    ACCEL_Y,
-    ACCEL_Z,
-    GYRO_X,
-    GYRO_Y,
-    GYRO_Z,
-    AugmentedStateDimension
+  enum StateIndex {
+    BIAS_ACCEL_X = 0,
+    BIAS_ACCEL_Y,
+    BIAS_ACCEL_Z,
+    BIAS_GYRO_X,
+    BIAS_GYRO_Y,
+    BIAS_GYRO_Z
   };
-  // static const unsigned int StateAugmentation = GYRO_Z;
-  typedef ColumnVector_<AugmentedStateDimension> AugmentedState;
-  struct InputVector {};
 
-};
+  ImuModel();
+  virtual ~ImuModel();
 
-class ImuDrift : public System_<ImuDriftModel>
-{
-public:
-  ImuDrift();
-  virtual ~ImuDrift();
+  virtual bool init(PoseEstimation& estimator, State& state);
 
-  typename ImuDriftModel::AugmentedState::ConstFixedSegmentReturnType<3>::Type getAccelBias() const { return bias_.segment<3>(ImuDriftModel::ACCEL_X); }
-  typename ImuDriftModel::AugmentedState::ConstFixedSegmentReturnType<3>::Type getGyroBias()  const { return bias_.segment<3>(ImuDriftModel::GYRO_X); }
+  virtual void getPrior(State &state);
+
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init);
+
+  ConstVectorBlock3 getAccelerationBias() const { return drift_->getSegment<3>(BIAS_ACCEL_X); }
+  ConstVectorBlock3 getGyroBias() const { return drift_->getSegment<3>(BIAS_GYRO_X); }
 
 private:
-  ImuDriftModel::AugmentedState bias_;
+  SubStatePtr drift_;
+
+  double acceleration_drift_;
+  double rate_drift_;
 };
 
 }

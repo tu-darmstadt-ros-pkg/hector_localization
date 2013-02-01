@@ -51,9 +51,9 @@ public:
 
   virtual SystemModel *getModel() const = 0;
 
-  virtual bool init();
+  virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
-  virtual void reset();
+  virtual void reset(State& state);
 
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
 
@@ -62,7 +62,7 @@ public:
 
   virtual void getPrior(State &state) const;
 
-  virtual bool update(Filter &filter, State &state, const Inputs &inputs, double dt);
+  virtual bool update(Filter &filter, State &state, double dt);
   virtual void updated();
   virtual bool limitState(State& state) const;
 
@@ -76,14 +76,13 @@ typedef boost::shared_ptr<System> SystemPtr;
 typedef boost::weak_ptr<System> SystemWPtr;
 typedef Collection<System> Systems;
 
-template <typename ConcreteModel, typename ConcreteInput = typename Input_<ConcreteModel>::Type >
+template <typename ConcreteModel>
 class System_ : public System
 {
 public:
   typedef ConcreteModel Model;
-  typedef ConcreteInput Input;
-  static const unsigned int InputDimension = Model::InputDimension;
-  typedef typename Model::InputVector InputVector;
+  typedef typename Input::traits<ConcreteModel>::Type InputType;
+  typedef typename Input::traits<ConcreteModel>::Vector InputVector;
 
   System_(const std::string& name = "system")
     : System(name)
@@ -98,15 +97,19 @@ public:
   {
     parameters_.add(model_->parameters());
   }
+
+  virtual ~System_() {}
+
   virtual SystemModel *getModel() const { return model_.get(); }
+  virtual int getDimension() const { return model_->getDimension(); }
 
   virtual const Input& getInput() const { return input_; }
-  virtual void setInput(const hector_pose_estimation::Input& input) { input_ = dynamic_cast<const Input&>(input); }
-  virtual void setInput(const Input& input) { input_ = input; }
+  virtual void setInput(const Input& input) { input_ = dynamic_cast<const InputType&>(input); }
+  virtual void setInput(const InputType& input) { input_ = input; }
 
 private:
   boost::shared_ptr<Model> model_;
-  Input input_;
+  InputType input_;
 };
 
 template <typename ConcreteModel>

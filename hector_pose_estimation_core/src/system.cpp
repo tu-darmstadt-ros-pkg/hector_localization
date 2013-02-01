@@ -45,24 +45,24 @@ void System::getPrior(State &state) const
   getModel()->getPrior(state);
 }
 
-bool System::init()
+bool System::init(PoseEstimation& estimator, State& state)
 {
   if (!getModel()) return false;
-  return getModel()->init();
+  return getModel()->init(estimator, state);
 }
 
 void System::cleanup()
 {
-  getModel()->cleanup();
+  if (getModel()) getModel()->cleanup();
 }
 
-void System::reset()
+void System::reset(State& state)
 {
-  getModel()->reset();
+  if (getModel()) getModel()->reset(state);
 }
 
-bool System::update(Filter &filter, State &state, const Inputs &inputs, double dt) {
-  if (!getModel()->prepareUpdate(state, inputs, dt)) return false;
+bool System::update(Filter &filter, State &state, double dt) {
+  if (!getModel()->prepareUpdate(state, dt)) return false;
 
   ROS_DEBUG("Updating with system model %s", getName().c_str());
 
@@ -72,18 +72,18 @@ bool System::update(Filter &filter, State &state, const Inputs &inputs, double d
 //  getModel()->setMeasurementStatus(estimator.getMeasurementStatus());
 //  estimator.filter()->Update(getModel(), u);
   SymmetricMatrix Q;
-  filter.predict(state, getModel(), inputs, Q, dt);
+  filter.predict(state, getModel(), Q, dt);
   updated();
 //  estimator.updated();
 
 //  std::cout << "x_pred = [" << state.getVector().transpose() << "]" << std::endl;
 //  std::cout << "P_pred = [" << state.getCovariance() << "]" << std::endl;
 
+  getModel()->afterUpdate(state);
   return true;
 }
 
 void System::updated() {
-  getModel()->afterUpdate();
 }
 
 bool System::limitState(State &state) const {

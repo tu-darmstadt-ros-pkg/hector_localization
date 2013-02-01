@@ -30,9 +30,10 @@
 #define HECTOR_POSE_ESTIMATION_STATE_H
 
 #include <hector_pose_estimation/types.h>
-#include <hector_pose_estimation/global_reference.h>
 
 #include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
 
 #include <ros/time.h>
 #include <tf/transform_datatypes.h>
@@ -48,13 +49,18 @@
 
 namespace hector_pose_estimation {
 
+class SystemModel;
+class SubState;
+typedef boost::shared_ptr<SubState> SubStatePtr;
+typedef boost::weak_ptr<SubState> SubStateWPtr;
+
 class State {
 public:
-  enum Index {
-    QUATERNION_W = 0,
-    QUATERNION_X,
+  enum StateIndex {
+    QUATERNION_X = 0,
     QUATERNION_Y,
     QUATERNION_Z,
+    QUATERNION_W,
 #ifdef USE_RATE_SYSTEM_MODEL
     RATE_X, // body frame
     RATE_Y, // body frame
@@ -68,7 +74,7 @@ public:
     VELOCITY_Z, // body frame
     StateDimension
   };
-  static const unsigned int Dimension = StateDimension;
+  static const int Dimension = StateDimension;
   typedef ColumnVector Vector;
   typedef SymmetricMatrix Covariance;
 
@@ -77,6 +83,64 @@ public:
   typedef VectorBlock<Vector,3> PositionType;
   typedef VectorBlock<Vector,3> VelocityType;
   typedef VectorBlock<Vector,3> AccelerationType;
+
+  typedef std::vector<SubStatePtr> SubStates;
+
+public:
+  State();
+  State(const Vector &vector, const Covariance& covariance);
+  virtual ~State();
+
+  virtual void reset();
+  virtual void updated();
+  virtual double normalize();
+
+  virtual const Vector& getVector() const { return state_; }
+  virtual const Covariance& getCovariance() const { return covariance_; }
+  template <int Size> VectorBlock<const Vector, Size> getSegment(IndexType start) const { return state_.segment<Size>(start); }
+
+  virtual Vector& x() { return state_; }
+  virtual Covariance& P() { return covariance_; }
+
+  virtual SystemStatus getSystemStatus() const { return system_status_; }
+  virtual SystemStatus getMeasurementStatus() const { return measurement_status_; }
+
+  virtual bool inSystemStatus(SystemStatus test_status) const;
+  virtual bool setSystemStatus(SystemStatus new_status);
+  virtual bool setMeasurementStatus(SystemStatus new_status);
+  virtual bool updateSystemStatus(SystemStatus set, SystemStatus clear);
+  virtual bool updateMeasurementStatus(SystemStatus set, SystemStatus clear);
+
+  typedef boost::function<bool(SystemStatus&)> SystemStatusCallback;
+  virtual void addSystemStatusCallback(const SystemStatusCallback& callback);
+
+  virtual OrientationType& orientation() { return orientation_; }
+  virtual const OrientationType& getOrientation() const { return orientation_; }
+  virtual RateType& rate() { return rate_; }
+  virtual const RateType& getRate() const { return rate_; }
+  virtual PositionType& position() { return position_; }
+  virtual const PositionType& getPosition() const { return position_; }
+  virtual VelocityType& velocity() { return velocity_; }
+  virtual const VelocityType& getVelocity() const { return velocity_; }
+  virtual AccelerationType& acceleration() { return acceleration_; }
+  virtual const AccelerationType& getAcceleration() const { return acceleration_; }
+
+  virtual void setRate(const ConstVectorBlock3& rate);
+  virtual void setAcceleration(const ConstVectorBlock3& acceleration);
+
+  virtual IndexType getOrientationIndex() const { return QUATERNION_X; }
+#ifdef USE_RATE_SYSTEM_MODEL
+  virtual IndexType getRateIndex() const { return RATE_X; }
+#else
+  virtual IndexType getRateIndex() const { return IndexType(-1); }
+#endif
+  virtual IndexType getPositionIndex() const { return POSITION_X; }
+  virtual IndexType getVelocityIndex() const { return VELOCITY_X; }
+  virtual IndexType getAccelerationIndex() const { return IndexType(-1); }
+
+  const SubStatePtr& addSubState(const SystemModel *model);
+  const SubStates& getSubStates() const { return substates_; }
+  SubStatePtr sub(const SystemModel *model) const;
 
 private:
   Vector state_;
@@ -93,53 +157,48 @@ private:
   boost::shared_ptr<ColumnVector> acceleration_storage_;
   AccelerationType acceleration_;
 
+  std::vector<SystemStatusCallback> status_callbacks_;
+
+  SubStates substates_;
+  std::map<const SystemModel *, SubStateWPtr> substate_map_;
+};
+
+class SubState
+{
 public:
-  State();
-  State(const Vector &vector, const Covariance& covariance);
-  virtual ~State();
+  typedef ColumnVector Vector;
+  typedef SymmetricMatrix Covariance;
+  typedef Matrix CrossVariance;
+
+public:
+  SubState(int dimension);
+  virtual ~SubState();
+
+  virtual int getDimension() const { return dimension_; }
 
   virtual void reset();
   virtual void updated();
 
-  virtual const Vector& getVector();
-  virtual const Covariance& getCovariance();
-  virtual void setState(const Vector& state);
-  virtual void setCovariance(const Covariance& covariance);
+  virtual const Vector& getVector() const { return state_; }
+  virtual const Covariance& getCovariance() const { return covariance_; }
+  template <int Size> VectorBlock<const Vector, Size> getSegment(IndexType start) const { return state_.segment<Size>(start); }
 
-  virtual SystemStatus getSystemStatus() const { return system_status_; }
-  virtual SystemStatus getMeasurementStatus() const { return measurement_status_; }
+  virtual Vector& x() { return state_; }
+  virtual Covariance& P() { return covariance_; }
+  virtual CrossVariance& S() { return cross_variance_; }
 
-  virtual bool inSystemStatus(SystemStatus test_status) const;
-  virtual bool setSystemStatus(SystemStatus new_status);
-  virtual bool setMeasurementStatus(SystemStatus new_status);
-  virtual bool updateSystemStatus(SystemStatus set, SystemStatus clear);
-  virtual bool updateMeasurementStatus(SystemStatus set, SystemStatus clear);
-
-  typedef boost::function<bool(SystemStatus&)> SystemStatusCallback;
-  virtual void addSystemStatusCallback(const SystemStatusCallback& callback);
-
-  virtual const OrientationType& getOrientation() const { return orientation_; }
-  virtual const RateType& getRate() const { return rate_; }
-  virtual const PositionType& getPosition() const { return position_; }
-  virtual const VelocityType& getVelocity() const { return velocity_; }
-  virtual const AccelerationType& getAcceleration() const { return acceleration_; }
-
-  virtual void setRate(const ConstVectorBlock3& rate);
-  virtual void setAcceleration(const ConstVectorBlock3& acceleration);
-
-  virtual Index getOrientationIndex() const { return QUATERNION_W; }
-#ifdef USE_RATE_SYSTEM_MODEL
-  virtual Index getRateIndex() const { return RATE_X; }
-#else
-  virtual Index getRateIndex() const { return Index(-1); }
-#endif
-  virtual Index getPositionIndex() const { return POSITION_X; }
-  virtual Index getVelocityIndex() const { return VELOCITY_X; }
-  virtual Index getAccelerationIndex() const { return Index(-1); }
+  virtual void normalize();
 
 private:
-  std::vector<SystemStatusCallback> status_callbacks_;
+  const int dimension_;
+  Vector state_;
+  Covariance covariance_;
+  CrossVariance cross_variance_;
 };
+
+SubStatePtr State::sub(const SystemModel *model) const {
+  return substate_map_.count(model) ? substate_map_.at(model).lock() : SubStatePtr();
+}
 
 } // namespace hector_pose_estimation
 

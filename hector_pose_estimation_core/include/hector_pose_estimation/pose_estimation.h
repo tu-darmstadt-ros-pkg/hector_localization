@@ -88,6 +88,8 @@ public:
   MeasurementPtr getMeasurement(std::size_t index) const { return measurements_.get(index); }
   MeasurementPtr getMeasurement(const std::string &name) const { return measurements_.get(name); }
 
+  template <class InputType> boost::shared_ptr<InputType> registerInput(const std::string& name = std::string());
+  template <class InputType> boost::shared_ptr<InputType> getInputType(const std::string& name) const { return inputs_.getType<InputType>(name); }
   InputPtr addInput(const InputPtr& input, const std::string& name = std::string());
   InputPtr addInput(Input *input) { return addInput(InputPtr(input)); }
   InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
@@ -197,8 +199,18 @@ const SystemPtr& PoseEstimation::addSystem(ConcreteSystemModel *model, const std
 }
 
 template <class ConcreteMeasurementModel>
-const MeasurementPtr& addMeasurement(ConcreteMeasurementModel *model, const std::string& name) {
+const MeasurementPtr& PoseEstimation::addMeasurement(ConcreteMeasurementModel *model, const std::string& name) {
   return addMeasurement(Measurement::create(model, name));
+}
+
+template <class InputType>
+boost::shared_ptr<InputType> PoseEstimation::registerInput(const std::string& name) {
+  boost::shared_ptr<InputType> input = getInputType<InputType>(name);
+  if (input) return input;
+
+  input.reset(new InputType());
+  if (!addInput(boost::shared_static_cast<Input>(input), name)) input.reset();
+  return input;
 }
 
 } // namespace hector_pose_estimation
