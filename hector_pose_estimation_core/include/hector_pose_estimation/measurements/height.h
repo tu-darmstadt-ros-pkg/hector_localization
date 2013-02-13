@@ -33,20 +33,16 @@
 
 namespace hector_pose_estimation {
 
-class HeightModel : public MeasurementModel {
+class HeightModel : public MeasurementModel_<HeightModel,1> {
 public:
-  static const int MeasurementDimension = 1;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   HeightModel();
   virtual ~HeightModel();
 
-  virtual bool init();
   virtual SystemStatus getStatusFlags() const;
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
 
   void setElevation(double elevation) { elevation_ = elevation; }
   double getElevation() const { return elevation_; }
@@ -63,7 +59,7 @@ public:
   virtual ~HeightBaroCommon();
 
   void onReset();
-  double resetElevation(PoseEstimation &estimator, boost::function<double()> altitude_func);
+  double resetElevation(const State &state, boost::function<double()> altitude_func);
 
 private:
   bool auto_elevation_;
@@ -80,7 +76,7 @@ public:
   double getElevation() const { return getModel()->getElevation(); }
 
   virtual void onReset();
-  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+  virtual bool beforeUpdate(State &state, const Update &update);
 };
 
 } // namespace hector_pose_estimation

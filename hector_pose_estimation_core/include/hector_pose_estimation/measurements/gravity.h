@@ -33,16 +33,13 @@
 
 namespace hector_pose_estimation {
 
-class GravityModel : public MeasurementModel {
+class GravityModel : public MeasurementModel_<GravityModel,3> {
 public:
-  static const int MeasurementDimension = 3;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
+  using MeasurementModel_<GravityModel,3>::MeasurementVector;
+  using MeasurementModel_<GravityModel,3>::NoiseVariance;
 
   GravityModel();
   virtual ~GravityModel();
-
-  virtual bool init();
 
   virtual void setGravity(double gravity) { gravity_ = gravity; }
   virtual double getGravity() const { return gravity_; }
@@ -50,8 +47,9 @@ public:
   bool applyStatusMask(const SystemStatus &status) const;
   virtual SystemStatus getStatusFlags() const;
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
 
 protected:
   double stddev_;

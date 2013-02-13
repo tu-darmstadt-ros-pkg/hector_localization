@@ -28,6 +28,7 @@
 
 #include <hector_pose_estimation/measurements/height.h>
 #include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/global_reference.h>
 #include <ros/console.h>
 
 #include <boost/bind.hpp>
@@ -35,19 +36,10 @@
 namespace hector_pose_estimation {
 
 HeightModel::HeightModel()
-  : MeasurementModel(MeasurementDimension)
 {
   stddev_ = 10.0;
   elevation_ = 0.0;
   parameters().add("stddev", stddev_);
-}
-
-bool HeightModel::init()
-{
-  NoiseCovariance noise = 0.0;
-  noise(1,1) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-  return true;
 }
 
 HeightModel::~HeightModel() {}
@@ -56,15 +48,23 @@ SystemStatus HeightModel::getStatusFlags() const {
   return STATE_Z_POSITION;
 }
 
-ColumnVector HeightModel::ExpectedValueGet() const {
-  this->y_(1) = x_(POSITION_Z) + getElevation();
-  return y_;
+void HeightModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
+{
+  if (init) {
+    R(0,0) = pow(stddev_, 2);
+  }
 }
 
-Matrix HeightModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
-  C_(1,POSITION_Z) = 1.0;
-  return C_;
+void HeightModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
+{
+  y_pred(0) = state.getPosition().z() + getElevation();
+}
+
+void HeightModel::getStateJacobian(MeasurementMatrix& C, const State& state)
+{
+  if (state.getPositionIndex() >= 0) {
+    C(0,State::POSITION_Z) = 1.0;
+  }
 }
 
 HeightBaroCommon::HeightBaroCommon(Measurement* parent)
@@ -80,15 +80,14 @@ void HeightBaroCommon::onReset() {
   elevation_initialized_ = false;
 }
 
-double HeightBaroCommon::resetElevation(PoseEstimation &estimator, boost::function<double()> altitude_func) {
+double HeightBaroCommon::resetElevation(const State &state, boost::function<double()> altitude_func) {
   if (!elevation_initialized_) {
-    StateVector state = estimator.getState();
-    estimator.globalReference()->setAltitude(altitude_func() - state(POSITION_Z));
+    GlobalReference::Instance()->setAltitude(altitude_func() - state.getPosition().z());
     elevation_initialized_ = true;
-    ROS_INFO("Set new reference altitude to %f", estimator.globalReference()->position().altitude);
+    ROS_INFO("Set new reference altitude to %f", GlobalReference::Instance()->position().altitude);
   }
 
-  return estimator.globalReference()->position().altitude;
+  return  GlobalReference::Instance()->position().altitude;
 }
 
 void Height::onReset() {
@@ -104,8 +103,8 @@ private:
   T value;
 };
 
-bool Height::beforeUpdate(PoseEstimation &estimator, const Update_<HeightModel> &update) {
-  setElevation(resetElevation(estimator, functor_wrapper<double>(update.getVector()(1))));
+bool Height::beforeUpdate(State &state, const Update_<HeightModel> &update) {
+  setElevation(resetElevation(state, functor_wrapper<double>(update.getVector()(0))));
   return true;
 }
 

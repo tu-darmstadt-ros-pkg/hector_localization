@@ -100,7 +100,7 @@ public:
 
   virtual ~System_() {}
 
-  virtual SystemModel *getModel() const { return model_.get(); }
+  virtual Model *getModel() const { return model_.get(); }
   virtual int getDimension() const { return model_->getDimension(); }
 
   virtual const Input& getInput() const { return input_; }

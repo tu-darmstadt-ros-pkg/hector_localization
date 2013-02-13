@@ -43,6 +43,12 @@ GlobalReference::GlobalReference()
   reset();
 }
 
+GlobalReference *GlobalReference::Instance()
+{
+  static GlobalReference *instance = new GlobalReference();
+  return instance;
+}
+
 void GlobalReference::reset()
 {
   position_ = Position();

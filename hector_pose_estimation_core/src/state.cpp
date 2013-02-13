@@ -34,7 +34,7 @@ namespace hector_pose_estimation {
 State::State()
   : state_(StateDimension)
   , covariance_(StateDimension)
-  , orientation_(state_.segment<4>(QUATERNION_W))
+  , orientation_(state_.segment<4>(QUATERNION_X))
 #ifdef USE_RATE_SYSTEM_MODEL
   , rate_(state_.segment<3>(RATE_X))
 #else
@@ -51,7 +51,7 @@ State::State()
 State::State(const Vector &vector, const Covariance& covariance)
   : state_(vector)
   , covariance_(covariance)
-  , orientation_(state_.segment<4>(QUATERNION_W))
+  , orientation_(state_.segment<4>(QUATERNION_X))
 #ifdef USE_RATE_SYSTEM_MODEL
   , rate_(state_.segment<3>(RATE_X))
 #else

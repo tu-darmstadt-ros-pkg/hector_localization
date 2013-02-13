@@ -196,7 +196,7 @@ private:
   CrossVariance cross_variance_;
 };
 
-SubStatePtr State::sub(const SystemModel *model) const {
+inline SubStatePtr State::sub(const SystemModel *model) const {
   return substate_map_.count(model) ? substate_map_.at(model).lock() : SubStatePtr();
 }
 

@@ -39,29 +39,30 @@ public:
   MeasurementUpdate() {}
   virtual ~MeasurementUpdate() {}
 
-  virtual bool hasCovariance() const { return false; }
+  virtual bool hasVariance() const { return false; }
 };
 
 template <class MeasurementModel>
 class Update_ : public MeasurementUpdate {
 public:
+  static const int MeasurementDimension = MeasurementModel::MeasurementDimension;
   typedef Update_<MeasurementModel> Type;
   typedef typename MeasurementModel::MeasurementVector Vector;
-  typedef typename MeasurementModel::NoiseCovariance Covariance;
+  typedef typename MeasurementModel::NoiseVariance Variance;
 
   Update_()
-    : y_(MeasurementModel::MeasurementDimension)
-    , has_covariance_(false)
+    : y_(MeasurementDimension)
+    , has_variance_(false)
   {}
   Update_(Vector const& y)
-    : y_(MeasurementModel::MeasurementDimension)
-    , has_covariance_(false)
+    : y_(MeasurementDimension)
+    , has_variance_(false)
   {
     setValue(y);
   }
   Update_(double y)
     : y_(MeasurementModel::MeasurementDimension)
-    , has_covariance_(false)
+    , has_variance_(false)
   {
     setValue(y);
   }
@@ -70,33 +71,33 @@ public:
   virtual void setValue(Vector const& y) { y_ = y; }
   virtual void setValue(double y) { y_(1) = y; }
 
-  virtual void setCovariance(Covariance const& R) { R_ = R; has_covariance_ = true; }
+  virtual void setVariance(Variance const& R) { R_ = R; has_variance_ = true; }
   virtual Vector const &getVector() const { return y_; }
-  virtual Covariance const &getCovariance() const { return R_; }
+  virtual Variance const &getVariance() const { return R_; }
 
   virtual Vector &operator=(Vector const& y) { setValue(y); return y_; }
   virtual Vector &operator=(double y) { setValue(y); return y_; }
 
-  virtual bool hasCovariance() const { return has_covariance_; }
+  virtual bool hasVariance() const { return has_variance_; }
 
 protected:
   Vector y_;
-  Covariance R_;
-  bool has_covariance_;
+  Variance R_;
+  bool has_variance_;
 };
 
 namespace internal {
   template <class ConcreteModel, class ConcreteUpdate = Update_<ConcreteModel>, class Enable = void>
   struct UpdateInspector {
-    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const ConcreteModel*) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
-    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update, const ConcreteModel*) { return *static_cast<typename ConcreteModel::NoiseCovariance *>(0); }
+    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &, const State &, const ConcreteModel*) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
+    static typename ConcreteModel::NoiseVariance const& getVariance(const ConcreteUpdate &, const State &, const ConcreteModel*) { return *static_cast<typename ConcreteModel::NoiseVariance *>(0); }
   };
 
   template <class ConcreteModel, class ConcreteUpdate>
   struct UpdateInspector<ConcreteModel, ConcreteUpdate, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>,ConcreteUpdate> >::type >
   {
-    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const ConcreteModel*) { return update.getVector(); }
-    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update, const ConcreteModel*) { return update.getCovariance(); }
+    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const State &, const ConcreteModel*) { return update.getVector(); }
+    static typename ConcreteModel::NoiseVariance const& getVariance(const ConcreteUpdate &update, const State &, const ConcreteModel*) { return update.getVariance(); }
   };
 }
 

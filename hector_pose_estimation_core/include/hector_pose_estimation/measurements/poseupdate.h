@@ -35,56 +35,40 @@
 
 namespace hector_pose_estimation {
 
-class PositionXYModel : public MeasurementModel {
+class PositionXYModel : public MeasurementModel_<PositionXYModel,2> {
 public:
-  static const int MeasurementDimension = 2;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   PositionXYModel() : MeasurementModel(MeasurementDimension) {}
   virtual ~PositionXYModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 };
 
-class PositionZModel : public MeasurementModel {
+class PositionZModel : public MeasurementModel_<PositionZModel,1> {
 public:
-  static const int MeasurementDimension = 1;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   PositionZModel() : MeasurementModel(MeasurementDimension) {}
   virtual ~PositionZModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 };
 
-class YawModel : public MeasurementModel {
+class YawModel : public MeasurementModel_<YawModel,1> {
 public:
-  static const int MeasurementDimension = 1;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   YawModel() : MeasurementModel(MeasurementDimension) {}
   virtual ~YawModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 };
 
-class TwistModel : public MeasurementModel {
+class TwistModel : public MeasurementModel_<TwistModel,6> {
 public:
-  static const int MeasurementDimension = 6;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   TwistModel() : MeasurementModel(MeasurementDimension) {}
   virtual ~TwistModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 };
 
 class PoseUpdate : public Measurement

@@ -34,37 +34,58 @@
 
 namespace hector_pose_estimation {
 
-class ImuModel : public TimeContinuousSystemModel_<ImuModel,6>
+class GyroModel : public TimeContinuousSystemModel_<GyroModel, SubSystemModel, 3>
+{
+public:
+  enum StateIndex {
+    BIAS_GYRO_X = 0,
+    BIAS_GYRO_Y,
+    BIAS_GYRO_Z
+  };
+
+  GyroModel();
+  virtual ~GyroModel();
+
+  virtual bool init(PoseEstimation& estimator, State& state);
+  virtual void getPrior(State &state);
+
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
+  virtual void getStateJacobian(SystemMatrix& Asub, CrossSystemMatrix& Across, const State& state, bool init);
+
+  ConstVectorBlock3 getBias() const { return drift_->getSegment<3>(BIAS_GYRO_X); }
+
+private:
+  SubStatePtr drift_;
+  double rate_drift_;
+};
+
+class AccelerometerModel : public TimeContinuousSystemModel_<AccelerometerModel, SubSystemModel, 3>
 {
 public:
   enum StateIndex {
     BIAS_ACCEL_X = 0,
     BIAS_ACCEL_Y,
     BIAS_ACCEL_Z,
-    BIAS_GYRO_X,
-    BIAS_GYRO_Y,
-    BIAS_GYRO_Z
   };
 
-  ImuModel();
-  virtual ~ImuModel();
+  AccelerometerModel();
+  virtual ~AccelerometerModel();
 
   virtual bool init(PoseEstimation& estimator, State& state);
-
   virtual void getPrior(State &state);
 
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init);
+  virtual void getStateJacobian(SystemMatrix& Asub, CrossSystemMatrix& Across, const State& state, bool init);
 
-  ConstVectorBlock3 getAccelerationBias() const { return drift_->getSegment<3>(BIAS_ACCEL_X); }
-  ConstVectorBlock3 getGyroBias() const { return drift_->getSegment<3>(BIAS_GYRO_X); }
+  ConstVectorBlock3 getBias() const { return drift_->getSegment<3>(BIAS_ACCEL_X); }
 
 private:
   SubStatePtr drift_;
-
   double acceleration_drift_;
-  double rate_drift_;
 };
+
+typedef System_<GyroModel> Gyro;
+typedef System_<AccelerometerModel> Accelerometer;
 
 }
 

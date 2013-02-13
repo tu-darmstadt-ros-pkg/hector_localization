@@ -34,7 +34,6 @@
 #include <hector_pose_estimation/system.h>
 #include <hector_pose_estimation/measurement.h>
 #include <hector_pose_estimation/parameters.h>
-#include <hector_pose_estimation/global_reference.h>
 
 #include <boost/shared_ptr.hpp>
 #include <vector>
@@ -47,6 +46,7 @@
 namespace hector_pose_estimation {
 
 class Filter;
+class GlobalReference;
 
 class PoseEstimation
 {
@@ -168,8 +168,6 @@ private:
   State state_;
   ParameterList parameters_;
 
-  GlobalReference global_reference_;
-
   ros::Time timestamp_;
   std::string world_frame_;
   std::string nav_frame_;
@@ -180,6 +178,8 @@ private:
 
   ros::Time alignment_start_;
   double alignment_time_;
+
+  double gravity_;
 
 //  boost::shared_ptr<Rate> rate_;
 //  boost::shared_ptr<Gravity> gravity_;

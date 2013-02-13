@@ -74,7 +74,8 @@ protected:
   double velocity_stddev_;
 
   boost::shared_ptr<ImuInput> imu_;
-  boost::shared_ptr<ImuModel> imu_model_;
+  boost::shared_ptr<GyroModel> gyro_model_;
+  boost::shared_ptr<AccelerometerModel> accelerometer_model_;
 
   ColumnVector_<3> rate;
   ColumnVector_<3> acceleration;

@@ -45,10 +45,11 @@ class MeasurementModel {
 public:
   template <class Model> struct traits;
 
-  MeasurementModel(int dimension, int conditional_arguments = 0);
+  MeasurementModel();
   virtual ~MeasurementModel();
 
-  virtual int getDimension() const { return 0; }
+  virtual int getDimension() const = 0;
+  virtual bool hasSubsystem() const { return false; }
 
   virtual bool init(PoseEstimation& estimator, State& state) { return true; }
   virtual void cleanup() { }
@@ -63,19 +64,43 @@ public:
   virtual bool prepareUpdate(State& state, const MeasurementUpdate& update) { return true; }
   virtual void afterUpdate(State& state) {}
 
-  virtual void getExpectedValue(State::Vector& x_pred, const State& state, const Input& input, double dt) {}
-  virtual void getStateJacobian(Block<Matrix,Dynamic,Dynamic>& A, const State& state, const Input& input, double dt) {}
-  virtual void getInputJacobian(Block<Matrix,Dynamic,Dynamic>& A, const State& state, const Input& input, double dt) {}
-
 protected:
   ParameterList parameters_;
 };
 
-template <class Model>
-struct MeasurementModel::traits {
-  static const int Dimension = Model::MeasurementDimension;
-  typedef ColumnVector_<Dimension> Vector;
-  typedef SymmetricMatrix_<Dimension> Covariance;
+template <class Derived, int _Dimension, int _SubDimension = 0>
+class MeasurementModel_ : public MeasurementModel {
+public:
+  static const int MeasurementDimension = _Dimension;
+  static const int StateDimension = State::Dimension;
+  static const int SubDimension = _SubDimension;
+  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+  typedef SymmetricMatrix_<MeasurementDimension> NoiseVariance;
+  typedef Matrix_<MeasurementDimension,StateDimension> MeasurementMatrix;
+  typedef Matrix_<MeasurementDimension,SubDimension> SubMeasurementMatrix;
+
+  static const int InputDimension = Input::traits<Derived>::Dimension;
+  typedef typename Input::traits<Derived>::Type InputType;
+  typedef typename Input::traits<Derived>::Vector InputVector;
+  typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix;
+
+  struct HasSubSystem { static const bool value = (_SubDimension > 0); };
+
+  MeasurementModel_() {}
+  virtual ~MeasurementModel_() {}
+
+  virtual int getDimension() const { return MeasurementDimension; }
+  virtual bool hasSubSystem() const { return HasSubSystem::value; }
+
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state) {}
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init) {}
+  virtual void getInputJacobian(InputMatrix& D, const State& state, bool init) {}
+  virtual void getMeasurementNoise(NoiseVariance& R, const State& state, bool init) {}
+
+  // additionally for MeasurementModels that use a SubSystem
+  virtual void getStateJacobian(MeasurementMatrix& C, SubMeasurementMatrix& Csub, const State& state, bool init) {
+    getStateJacobian(C, state, init);
+  }
 };
 
 } // namespace hector_pose_estimation

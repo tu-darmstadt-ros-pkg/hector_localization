@@ -72,12 +72,12 @@ bool GenericQuaternionSystemModel::prepareUpdate(State& state, double dt)
   if (state.getAccelerationIndex() >= 0)
     acceleration = state.getAcceleration();
   else
-    acceleration = imu_->getAcceleration() + imu_model_->getAccelerationBias();
+    acceleration = imu_->getAcceleration() + accelerometer_model_->getBias();
 
   if (state.getRateIndex() >= 0)
     rate = state.getRate();
   else
-    rate = imu_->getRate() + imu_model_->getGyroBias();
+    rate = imu_->getRate() + gyro_model_->getBias();
 
   return true;
 }

@@ -44,8 +44,9 @@ public:
   BaroModel();
   virtual ~BaroModel();
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
 
   void setQnh(double qnh) { qnh_ = qnh; }
   double getQnh() const { return qnh_; }
@@ -81,7 +82,7 @@ public:
   double getQnh() const { return getModel()->getQnh(); }
 
   virtual void onReset();
-  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+  virtual bool beforeUpdate(State &state, const Update &update);
 };
 
 } // namespace hector_pose_estimation

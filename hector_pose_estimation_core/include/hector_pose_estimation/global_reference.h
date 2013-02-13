@@ -73,13 +73,16 @@ namespace hector_pose_estimation {
     void fromNorthEast(double north, double east, double &x, double &y);
     void toNorthEast(double x, double y, double &north, double &east);
 
-    GlobalReference();
     ParameterList& parameters();
+
+    static GlobalReference *Instance();
 
     void updated();
     void reset();
 
   private:
+    GlobalReference();
+
     Position position_;
     Heading heading_;
     Radius radius_;

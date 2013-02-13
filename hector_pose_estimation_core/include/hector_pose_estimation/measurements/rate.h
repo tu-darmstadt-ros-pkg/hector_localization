@@ -33,22 +33,20 @@
 
 namespace hector_pose_estimation {
 
-class RateModel : public MeasurementModel {
-public:
-  static const int MeasurementDimension = 3;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
+class GyroModel;
 
-  RateModel();
+class RateModel : public MeasurementModel_<RateModel,3,3> {
+public:
+  RateModel(const GyroModel *gyro_model);
   virtual ~RateModel();
 
-  virtual bool init();
-
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, SubMeasurementMatrix& Csub, const State& state);
 
 protected:
   double stddev_;
+  const GyroModel *gyro_model_;
 };
 
 typedef Measurement_<RateModel> Rate;

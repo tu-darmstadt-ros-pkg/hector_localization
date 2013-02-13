@@ -31,17 +31,8 @@
 namespace hector_pose_estimation {
 
 HeadingModel::HeadingModel()
-  : MeasurementModel(MeasurementDimension)
 {
   parameters().add("stddev", stddev_, 10.0*M_PI/180.0);
-}
-
-bool HeadingModel::init()
-{
-  NoiseCovariance noise = 0.0;
-  noise(1,1) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-  return true;
 }
 
 HeadingModel::~HeadingModel() {}
@@ -55,34 +46,32 @@ SystemStatus HeadingModel::getStatusFlags() const {
   return STATE_YAW;
 }
 
-ColumnVector HeadingModel::ExpectedValueGet() const {
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-
-  y_(1) = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
-
-  return y_;
+void HeadingModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
+{
+  if (init) {
+    R(0,0) = pow(stddev_, 2);
+  }
 }
 
-Matrix HeadingModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
+void HeadingModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
+{
+  const State::OrientationType& q = state.getOrientation();
+  y_pred(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
+}
 
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-  const double t1 = qw*qw + qx*qx - qy*qy - qz*qz;
-  const double t2 = 2*(qx*qy + qw*qz);
+void HeadingModel::getStateJacobian(MeasurementMatrix& C, const State& state)
+{
+  const State::OrientationType& q = state.getOrientation();
+  const double t1 = q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z();
+  const double t2 = 2*(q.x()*q.y() + q.w()*q.z());
   const double t3 = 1.0 / (t1*t1 + t2*t2);
 
-  C_(1,QUATERNION_W) = 2.0 * t3 * (qz * t1 - qw * t2);
-  C_(1,QUATERNION_X) = 2.0 * t3 * (qy * t1 - qx * t2);
-  C_(1,QUATERNION_Y) = 2.0 * t3 * (qx * t1 + qy * t2);
-  C_(1,QUATERNION_Z) = 2.0 * t3 * (qw * t1 + qz * t2);
-
-  return C_;
+  if (state.getOrientationIndex() >= 0) {
+    C(0,State::QUATERNION_W) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
+    C(0,State::QUATERNION_X) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
+    C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
+    C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
+  }
 }
 
 } // namespace hector_pose_estimation

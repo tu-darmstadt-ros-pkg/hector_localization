@@ -28,6 +28,7 @@
 
 #include <hector_pose_estimation/pose_estimation.h>
 #include <hector_pose_estimation/filter.h>
+#include <hector_pose_estimation/global_reference.h>
 
 #include <hector_pose_estimation/system/imu_input.h>
 #include <hector_pose_estimation/system/imu_model.h>
@@ -57,6 +58,7 @@ PoseEstimation::PoseEstimation(const SystemPtr& system)
   footprint_frame_ = "base_footprint";
   // position_frame_ = "base_position";
   alignment_time_ = 0.0;
+  gravity_ = -9.8065;
 
   parameters().add("world_frame", world_frame_);
   parameters().add("nav_frame", nav_frame_);
@@ -64,8 +66,9 @@ PoseEstimation::PoseEstimation(const SystemPtr& system)
   parameters().add("stabilized_frame", stabilized_frame_);
   parameters().add("footprint_frame", footprint_frame_);
   parameters().add("position_frame", position_frame_);
-  parameters().add(global_reference_.parameters());
+  parameters().add(globalReference()->parameters());
   parameters().add("alignment_time", alignment_time_);
+  parameters().add("gravity", gravity_);
 
   // add default measurements
 //  addMeasurement(rate_);
@@ -466,9 +469,9 @@ void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, doub
   const typename State::PositionType& position = state().getPosition();
   double north =  position.x() * globalReference()->heading().cos - position.y() * globalReference()->heading().sin;
   double east  = -position.x() * globalReference()->heading().sin - position.y() * globalReference()->heading().cos;
-  latitude  = global_reference_.position().latitude  + north / globalReference()->radius().north;
-  longitude = global_reference_.position().longitude + east  / globalReference()->radius().east;
-  altitude  = global_reference_.position().altitude  + position.z();
+  latitude  = globalReference()->position().latitude  + north / globalReference()->radius().north;
+  longitude = globalReference()->position().longitude + east  / globalReference()->radius().east;
+  altitude  = globalReference()->position().altitude  + position.z();
 }
 
 void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
@@ -516,8 +519,8 @@ void PoseEstimation::getOrientation(double &yaw, double &pitch, double &roll) {
 }
 
 void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity) {
-  boost::shared_ptr<const ImuInput> input = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
-  boost::shared_ptr<const ImuModel> drift = boost::shared_dynamic_cast<const ImuModel>(getSystem("imu"));
+  boost::shared_ptr<const ImuInput>  input     = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
+  boost::shared_ptr<const Accelerometer> accel = boost::shared_dynamic_cast<const Accelerometer>(getSystem("accelerometer"));
 
   if (input) {
     linear_acceleration.x = input->getAcceleration().x();
@@ -529,10 +532,10 @@ void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleratio
     linear_acceleration.z = 0.0;
   }
 
-  if (drift) {
-    linear_acceleration.x += drift->getAccelerationBias().x();
-    linear_acceleration.y += drift->getAccelerationBias().y();
-    linear_acceleration.z += drift->getAccelerationBias().z();
+  if (accel) {
+    linear_acceleration.x += accel->getModel()->getBias().x();
+    linear_acceleration.y += accel->getModel()->getBias().y();
+    linear_acceleration.z += accel->getModel()->getBias().z();
   }
 
   getRate(angular_velocity);
@@ -581,7 +584,7 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
 
   } else {
     boost::shared_ptr<const ImuInput> input = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
-    boost::shared_ptr<const ImuModel> drift = boost::shared_dynamic_cast<const ImuModel>(getSystem("imu"));
+    boost::shared_ptr<const Gyro> gyro      = boost::shared_dynamic_cast<const Gyro>(getSystem("gyro"));
 
     if (input) {
       vector.x = input->getRate().x();
@@ -593,10 +596,10 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
       vector.z = 0.0;
     }
 
-    if (drift) {
-      vector.x += drift->getGyroBias().x();
-      vector.y += drift->getGyroBias().y();
-      vector.z += drift->getGyroBias().z();
+    if (gyro) {
+      vector.x += gyro->getModel()->getBias().x();
+      vector.y += gyro->getModel()->getBias().y();
+      vector.z += gyro->getModel()->getBias().z();
     }
   }
 }
@@ -607,19 +610,25 @@ void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
 }
 
 void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration) {
-  boost::shared_ptr<const ImuModel> drift = boost::shared_dynamic_cast<const ImuModel>(getSystem("imu"));
+  boost::shared_ptr<const ImuInput>  input     = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
+  boost::shared_ptr<const Accelerometer> accel = boost::shared_dynamic_cast<const Accelerometer>(getSystem("accelerometer"));
+  boost::shared_ptr<const Gyro> gyro           = boost::shared_dynamic_cast<const Gyro>(getSystem("gyro"));
 
-  if (drift) {
-    angular_velocity.x = drift->getGyroBias().x();
-    angular_velocity.y = drift->getGyroBias().y();
-    angular_velocity.z = drift->getGyroBias().z();
-    linear_acceleration.x = drift->getAccelerationBias().x();
-    linear_acceleration.y = drift->getAccelerationBias().y();
-    linear_acceleration.z = drift->getAccelerationBias().z();
+  if (gyro) {
+    angular_velocity.x = gyro->getModel()->getBias().x();
+    angular_velocity.y = gyro->getModel()->getBias().y();
+    angular_velocity.z = gyro->getModel()->getBias().z();
   } else {
     angular_velocity.x = 0.0;
     angular_velocity.y = 0.0;
     angular_velocity.z = 0.0;
+  }
+
+  if (accel) {
+    linear_acceleration.x = accel->getModel()->getBias().x();
+    linear_acceleration.y = accel->getModel()->getBias().y();
+    linear_acceleration.z = accel->getModel()->getBias().z();
+  } else {
     linear_acceleration.x = 0.0;
     linear_acceleration.y = 0.0;
     linear_acceleration.z = 0.0;
@@ -729,7 +738,7 @@ ParameterList PoseEstimation::getParameters() const {
 }
 
 GlobalReference* PoseEstimation::globalReference() {
-  return &global_reference_;
+  return GlobalReference::Instance();
 }
 
 } // namespace hector_pose_estimation

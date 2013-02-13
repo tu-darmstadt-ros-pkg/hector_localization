@@ -105,7 +105,7 @@ public:
   typedef ConcreteUpdate Update;
   static const int MeasurementDimension = Model::MeasurementDimension;
   typedef typename Model::MeasurementVector MeasurementVector;
-  typedef typename Model::NoiseCovariance NoiseCovariance;
+  typedef typename Model::NoiseVariance NoiseVariance;
 
   Measurement_(const std::string& name)
     : Measurement(name)
@@ -124,21 +124,28 @@ public:
   virtual ~Measurement_() {
   }
 
-  virtual bool init(PoseEstimation& estimator, State& state) { return model_->init(estimator, state) && Measurement::init(estimator, state); }
-  virtual void cleanup() { model_->cleanup(); Measurement::cleanup(); }
-  virtual void reset(State& state) { model_->reset(state); Measurement::reset(); }
-
   virtual Model* getModel() const { return model_.get(); }
   virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
 
-  virtual MeasurementVector const& getVector(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVector(update, getModel()); }
-  virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update, getModel()) : static_cast<NoiseCovariance const&>(model_->AdditiveNoiseSigmaGet()); }
-  virtual void setNoiseCovariance(NoiseCovariance const& sigma);
+  virtual MeasurementVector const& getVector(const Update &update, const State &state) {
+    return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVector(update, state, getModel());
+  }
+
+  virtual NoiseVariance const& getVariance(const Update &update, const State &state) {
+    if (update.hasVariance()) return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVariance(update, state, getModel());
+    model_->getMeasurementNoise(R_, state, false);
+    return R_;
+  }
+
+  virtual void setNoiseVariance(NoiseVariance const& R) {
+    R_ = R;
+  }
 
   virtual bool update(Filter &filter, State &state, const MeasurementUpdate &update);
 
 protected:
   boost::shared_ptr<Model> model_;
+  NoiseVariance R_;
 
   Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
@@ -160,18 +167,12 @@ bool Measurement_<ConcreteModel, ConcreteUpdate>::update(Filter &filter, State &
   if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
 
   Update const &update = dynamic_cast<Update const &>(update_);
-  if (!prepareUpdate(state, update)) return false;
+  if (!beforeUpdate(state, update)) return false;
 
-  updateInternal(filter, state, getVector(update), getCovariance(update));
+  updateInternal(filter, state, getVector(update, state), getVariance(update, state));
 
   afterUpdate(state);
   return true;
-}
-
-template <class ConcreteModel, class ConcreteUpdate>
-void Measurement_<ConcreteModel, ConcreteUpdate>::setNoiseCovariance(Measurement_<ConcreteModel, ConcreteUpdate>::NoiseCovariance const& sigma)
-{
-  model_->AdditiveNoiseSigmaSet(sigma);
 }
 
 } // namespace hector_pose_estimation

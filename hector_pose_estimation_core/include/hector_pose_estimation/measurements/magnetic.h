@@ -34,20 +34,18 @@
 
 namespace hector_pose_estimation {
 
-class MagneticModel : public MeasurementModel {
+class MagneticModel : public MeasurementModel_<MagneticModel,3> {
 public:
-  static const int MeasurementDimension = 3;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   MagneticModel();
   virtual ~MagneticModel();
 
-  virtual bool init();
+  bool init(PoseEstimation &estimator, State &state);
+
   virtual SystemStatus getStatusFlags() const;
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
 
   double getMagneticHeading(const MeasurementVector& y) const;
   double getTrueHeading(const MeasurementVector& y) const;
@@ -73,8 +71,8 @@ public:
 
   virtual void onReset();
 
-  virtual MeasurementVector const& getVector(const Update &update);
-  virtual NoiseCovariance const& getCovariance(const Update &update);
+  virtual MeasurementVector const& getVector(const Update &update, const State&);
+  virtual NoiseVariance const& getVariance(const Update &update, const State&);
 
   virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
 
@@ -83,7 +81,7 @@ private:
   GlobalReference *reference_;
 
   MeasurementVector y_;
-  NoiseCovariance R_;
+  NoiseVariance R_;
 };
 
 } // namespace hector_pose_estimation

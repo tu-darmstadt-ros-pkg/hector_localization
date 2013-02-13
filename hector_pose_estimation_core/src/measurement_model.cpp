@@ -30,7 +30,7 @@
 
 namespace hector_pose_estimation {
 
-MeasurementModel::MeasurementModel(int dimension, int conditional_arguments)
+MeasurementModel::MeasurementModel()
 {
 }
 

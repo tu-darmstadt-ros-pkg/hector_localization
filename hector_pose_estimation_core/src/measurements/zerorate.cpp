@@ -27,21 +27,14 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/zerorate.h>
+#include <hector_pose_estimation/system/imu_model.h>
 
 namespace hector_pose_estimation {
 
-ZeroRateModel::ZeroRateModel()
-  : MeasurementModel(MeasurementDimension)
+ZeroRateModel::ZeroRateModel(const GyroModel *gyro_model)
+  : gyro_model_(gyro_model)
 {
   parameters().add("stddev", stddev_, 90.0*M_PI/180.0);
-}
-
-bool ZeroRateModel::init()
-{
-  NoiseCovariance noise = 0.0;
-  noise(1,1) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-  return true;
 }
 
 ZeroRateModel::~ZeroRateModel() {}
@@ -51,15 +44,21 @@ bool ZeroRateModel::applyStatusMask(const SystemStatus &status) const {
   return true;
 }
 
-ColumnVector ZeroRateModel::ExpectedValueGet() const {
-  y_(1) = -x_(BIAS_GYRO_Z);
-  return y_;
+void ZeroRateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
+{
+  if (init) {
+    R = pow(stddev_, 2);
+  }
 }
 
-Matrix ZeroRateModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
-  C_(1,BIAS_GYRO_Z)  = -1.0;
-  return C_;
+void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
+{
+  y_pred(0) = state.sub(gyro_model_)->getVector().z();
+}
+
+void ZeroRateModel::getStateJacobian(MeasurementMatrix&, SubMeasurementMatrix& Csub, const State& state, bool init)
+{
+  Csub(0,GyroModel::BIAS_GYRO_Z)  = -1.0;
 }
 
 } // namespace hector_pose_estimation
