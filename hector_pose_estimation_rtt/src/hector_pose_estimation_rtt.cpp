@@ -27,7 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/hector_pose_estimation_rtt.h>
-#include "services.h"
+#include <hector_pose_estimation/services.h>
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
