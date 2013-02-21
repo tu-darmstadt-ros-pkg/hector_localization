@@ -69,4 +69,12 @@ void SystemModel::getPrior(State &state) {
   }
 }
 
+SubSystemModel::SubSystemModel()
+{
+}
+
+SubSystemModel::~SubSystemModel()
+{
+}
+
 } // namespace hector_pose_estimation

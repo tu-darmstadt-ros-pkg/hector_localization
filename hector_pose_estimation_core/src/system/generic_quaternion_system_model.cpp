@@ -248,6 +248,11 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
   }
 }
 
+void GenericQuaternionSystemModel::getInputJacobian(InputMatrix& B, const State& state, bool init)
+{
+  throw std::runtime_error("not implemented");
+}
+
 void GenericQuaternionSystemModel::afterUpdate(State& state)
 {
   SystemStatus flags = state.getMeasurementStatus();

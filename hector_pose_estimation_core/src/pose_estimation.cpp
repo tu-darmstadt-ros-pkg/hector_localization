@@ -27,7 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/filter.h>
+#include <hector_pose_estimation/filter/ekf.h>
 #include <hector_pose_estimation/global_reference.h>
 
 #include <hector_pose_estimation/system/imu_input.h>
@@ -95,13 +95,16 @@ bool PoseEstimation::init()
   // check if system is initialized
   if (systems_.empty()) return false;
 
+  // initialize new filter
+  filter_.reset(new filter::EKF);
+
   // initialize systems
   for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it)
-    if (!(*it)->init(*this, state_)) return false;
+    if (!(*it)->init(*this, *filter_, state_)) return false;
 
   // initialize measurements
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)
-    if (!(*it)->init(*this, state_)) return false;
+    if (!(*it)->init(*this, *filter_, state_)) return false;
 
   // reset (or initialize) filter and measurements
   reset();
@@ -111,21 +114,18 @@ bool PoseEstimation::init()
 
 void PoseEstimation::cleanup()
 {
-  // delete filter instance
-//  if (filter_) filter_.reset();
-
   // cleanup system
   for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it) (*it)->cleanup();
 
   // cleanup measurements
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) (*it)->cleanup();
+
+  // delete filter instance
+  if (filter_) filter_.reset();
 }
 
 void PoseEstimation::reset()
 {
-  // reset extended Kalman filter
-//  if (filter_) cleanup();
-
   // check if system is initialized
   if (systems_.empty()) return;
 
@@ -146,8 +146,6 @@ void PoseEstimation::reset()
     (*it)->reset(state_);
   }
 
-  // initialize new filter
-//  filter_.reset(new BFL::ExtendedKalmanFilter(system_->getPrior()));
   updated();
 }
 
@@ -157,8 +155,8 @@ void PoseEstimation::update(ros::Time new_timestamp)
   if (systems_.empty()) return;
 
   ros::Duration dt;
-  if (!timestamp_.isZero()) dt = new_timestamp - timestamp_;
-  timestamp_ = new_timestamp;
+  if (!getTimestamp().isZero()) dt = new_timestamp - getTimestamp();
+  setTimestamp(new_timestamp);
 
   // do the update step
   update(dt.toSec());
@@ -255,8 +253,8 @@ void PoseEstimation::update(double dt)
 
   // switch overall system state
   if (inSystemStatus(STATE_ALIGNMENT)) {
-    if (alignment_start_.isZero()) alignment_start_ = timestamp_;
-    if ((timestamp_ - alignment_start_).toSec() >= alignment_time_) {
+    if (alignment_start_.isZero()) alignment_start_ = getTimestamp();
+    if ((getTimestamp() - alignment_start_).toSec() >= alignment_time_) {
       updateSystemStatus(STATE_DEGRADED, STATE_ALIGNMENT);
     }
   } else if (inSystemStatus(STATE_ROLLPITCH | STATE_YAW | STATE_XY_POSITION | STATE_Z_POSITION)) {
@@ -283,6 +281,15 @@ InputPtr PoseEstimation::addInput(const InputPtr& input, const std::string& name
 {
   if (!name.empty()) input->setName(name);
   return inputs_.add(input, input->getName());
+}
+
+InputPtr PoseEstimation::setInput(const Input& value, const std::string& name)
+{
+  InputPtr input = inputs_.get(!name.empty() ? name : input->getName());
+  if (!input) return input;
+
+  *input = value;
+  return input;
 }
 
 const MeasurementPtr& PoseEstimation::addMeasurement(const MeasurementPtr& measurement, const std::string& name) {
@@ -334,16 +341,16 @@ bool PoseEstimation::updateMeasurementStatus(SystemStatus set, SystemStatus clea
   return state_.updateMeasurementStatus(set, clear);
 }
 
-ros::Time PoseEstimation::getTimestamp() const {
-  return timestamp_;
+const ros::Time& PoseEstimation::getTimestamp() const {
+  return state_.getTimestamp();
 }
 
 void PoseEstimation::setTimestamp(const ros::Time& timestamp) {
-  timestamp_ = timestamp;
+  state_.setTimestamp(timestamp);
 }
 
 void PoseEstimation::getHeader(std_msgs::Header& header) {
-  header.stamp = timestamp_;
+  header.stamp = getTimestamp();
   header.frame_id = nav_frame_;
 }
 
@@ -428,7 +435,7 @@ void PoseEstimation::getPose(tf::Pose& pose) {
 
 void PoseEstimation::getPose(tf::Stamped<tf::Pose>& pose) {
   getPose(static_cast<tf::Pose &>(pose));
-  pose.stamp_ = timestamp_;
+  pose.stamp_ = getTimestamp();
   pose.frame_id_ = nav_frame_;
 }
 
@@ -449,7 +456,7 @@ void PoseEstimation::getPosition(tf::Point& point) {
 
 void PoseEstimation::getPosition(tf::Stamped<tf::Point>& point) {
   getPosition(static_cast<tf::Point &>(point));
-  point.stamp_ = timestamp_;
+  point.stamp_ = getTimestamp();
   point.frame_id_ = nav_frame_;
 }
 
@@ -491,7 +498,7 @@ void PoseEstimation::getOrientation(tf::Quaternion& quaternion) {
 
 void PoseEstimation::getOrientation(tf::Stamped<tf::Quaternion>& quaternion) {
   getOrientation(static_cast<tf::Quaternion &>(quaternion));
-  quaternion.stamp_ = timestamp_;
+  quaternion.stamp_ = getTimestamp();
   quaternion.frame_id_ = nav_frame_;
 }
 
@@ -548,7 +555,7 @@ void PoseEstimation::getVelocity(tf::Vector3& vector) {
 
 void PoseEstimation::getVelocity(tf::Stamped<tf::Vector3>& vector) {
   getVelocity(static_cast<tf::Vector3 &>(vector));
-  vector.stamp_ = timestamp_;
+  vector.stamp_ = getTimestamp();
   vector.frame_id_ = nav_frame_;
 }
 
@@ -572,7 +579,7 @@ void PoseEstimation::getRate(tf::Vector3& vector) {
 
 void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
   getRate(static_cast<tf::Vector3 &>(vector));
-  vector.stamp_ = timestamp_;
+  vector.stamp_ = getTimestamp();
   vector.frame_id_ = nav_frame_;
 }
 
@@ -637,9 +644,9 @@ void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_
 
 void PoseEstimation::getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration) {
   getBias(angular_velocity.vector, linear_acceleration.vector);
-  angular_velocity.header.stamp = timestamp_;
+  angular_velocity.header.stamp = getTimestamp();
   angular_velocity.header.frame_id = base_frame_;
-  linear_acceleration.header.stamp = timestamp_;
+  linear_acceleration.header.stamp = getTimestamp();
   linear_acceleration.header.frame_id = base_frame_;
 }
 
@@ -659,14 +666,14 @@ void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms
     tf::Transform position_transform;
     position_transform.getBasis().setIdentity();
     position_transform.setOrigin(tf::Point(position.x(), position.y(), position.z()));
-    transforms.push_back(tf::StampedTransform(position_transform, timestamp_, parent_frame, position_frame_ ));
+    transforms.push_back(tf::StampedTransform(position_transform, getTimestamp(), parent_frame, position_frame_ ));
   }
 
   if (!footprint_frame_.empty()) {
     tf::Transform footprint_transform;
     footprint_transform.getBasis().setEulerYPR(y, 0.0, 0.0);
     footprint_transform.setOrigin(tf::Point(position.x(), position.y(), 0.0));
-    transforms.push_back(tf::StampedTransform(footprint_transform, timestamp_, parent_frame, footprint_frame_));
+    transforms.push_back(tf::StampedTransform(footprint_transform, getTimestamp(), parent_frame, footprint_frame_));
 
     parent_frame = footprint_frame_;
     transform = footprint_transform.inverseTimes(transform);
@@ -680,30 +687,30 @@ void PoseEstimation::getTransforms(std::vector<tf::StampedTransform>& transforms
     btMatrix3x3 rollpitch_rotation; rollpitch_rotation.setEulerYPR(0.0, p, r);
 #endif
     stabilized_transform = stabilized_transform * tf::Transform(rollpitch_rotation.inverse());
-    transforms.push_back(tf::StampedTransform(stabilized_transform, timestamp_, parent_frame, stabilized_frame_));
+    transforms.push_back(tf::StampedTransform(stabilized_transform, getTimestamp(), parent_frame, stabilized_frame_));
 
     parent_frame = stabilized_frame_;
     transform = stabilized_transform.inverseTimes(transform);
   }
 
-  transforms.push_back(tf::StampedTransform(transform, timestamp_, parent_frame, base_frame_));
+  transforms.push_back(tf::StampedTransform(transform, getTimestamp(), parent_frame, base_frame_));
 
 //  transforms.resize(3);
 
-//  transforms[0].stamp_ = timestamp_;
+//  transforms[0].stamp_ = getTimestamp();
 //  transforms[0].frame_id_ = nav_frame_;
 //  transforms[0].child_frame_id_ = footprint_frame_;
 //  transforms[0].setOrigin(tf::Point(position.x(), position.y(), 0.0));
 //  rotation.setEulerYPR(y,0.0,0.0);
 //  transforms[0].setBasis(rotation);
 
-//  transforms[1].stamp_ = timestamp_;
+//  transforms[1].stamp_ = getTimestamp();
 //  transforms[1].frame_id_ = footprint_frame_;
 //  transforms[1].child_frame_id_ = stabilized_frame_;
 //  transforms[1].setIdentity();
 //  transforms[1].setOrigin(tf::Point(0.0, 0.0, position.z()));
 
-//  transforms[2].stamp_ = timestamp_;
+//  transforms[2].stamp_ = getTimestamp();
 //  transforms[2].frame_id_ = stabilized_frame_;
 //  transforms[2].child_frame_id_ = base_frame_;
 //  transforms[2].setIdentity();

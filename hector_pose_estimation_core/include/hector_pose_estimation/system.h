@@ -30,13 +30,15 @@
 #define HECTOR_POSE_ESTIMATION_SYSTEM_H
 
 #include <hector_pose_estimation/system_model.h>
+#include <hector_pose_estimation/types.h>
 #include <hector_pose_estimation/state.h>
 #include <hector_pose_estimation/input.h>
-#include <hector_pose_estimation/collection.h>
+#include <hector_pose_estimation/filter.h>
+#include <hector_pose_estimation/filter/ekf.h> // dirty
+
+#include <ros/console.h>
 
 namespace hector_pose_estimation {
-
-class Filter;
 
 class System
 {
@@ -49,9 +51,12 @@ public:
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
 
-  virtual SystemModel *getModel() const = 0;
+  virtual SystemModel *getModel() const { return 0; }
+  virtual int getDimension() const = 0;
 
-  virtual bool init(PoseEstimation& estimator, State& state);
+  virtual void setFilter(Filter *filter) = 0;
+
+  virtual bool init(PoseEstimation& estimator, Filter& filter, State& state);
   virtual void cleanup();
   virtual void reset(State& state);
 
@@ -63,18 +68,20 @@ public:
   virtual void getPrior(State &state) const;
 
   virtual bool update(Filter &filter, State &state, double dt);
+
   virtual void updated();
   virtual bool limitState(State& state) const;
+
+protected:
+  virtual bool updateImpl(Filter &filter, State &state, double dt) = 0;
+  virtual bool prepareUpdate(State &state, double dt) = 0;
+  virtual bool afterUpdate(State &state) = 0;
 
 protected:
   std::string name_;
   ParameterList parameters_;
   SystemStatus status_flags_;
 };
-
-typedef boost::shared_ptr<System> SystemPtr;
-typedef boost::weak_ptr<System> SystemWPtr;
-typedef Collection<System> Systems;
 
 template <typename ConcreteModel>
 class System_ : public System
@@ -103,13 +110,17 @@ public:
   virtual Model *getModel() const { return model_.get(); }
   virtual int getDimension() const { return model_->getDimension(); }
 
-  virtual const Input& getInput() const { return input_; }
-  virtual void setInput(const Input& input) { input_ = dynamic_cast<const InputType&>(input); }
-  virtual void setInput(const InputType& input) { input_ = input; }
+  const boost::shared_ptr< Filter::Predictor_<Model> >& filter() const { return filter_; }
+  void setFilter(Filter *filter = 0);
+
+protected:
+  virtual bool updateImpl(Filter &filter, State &state, double dt);
+  virtual bool prepareUpdate(State &state, double dt) { return getModel()->prepareUpdate(state, dt); }
+  virtual bool afterUpdate(State &state) { return getModel()->afterUpdate(state); }
 
 private:
   boost::shared_ptr<Model> model_;
-  InputType input_;
+  boost::shared_ptr< Filter::Predictor_<Model> > filter_;
 };
 
 template <typename ConcreteModel>
@@ -118,6 +129,34 @@ SystemPtr System::create(ConcreteModel *model, const std::string& name)
   return SystemPtr(new System_<ConcreteModel>(model, name));
 }
 
+template <typename ConcreteModel>
+void System_<ConcreteModel>::setFilter(Filter *filter) {
+  if (filter->derived<filter::EKF>()) {
+    filter_ = Filter::factory(filter->derived<filter::EKF>()).predictor(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
+  }
+}
+
+} // namespace hector_pose_estimation
+
+#include <hector_pose_estimation/filter.h>
+namespace hector_pose_estimation {
+  template <typename ConcreteModel>
+  bool System_<ConcreteModel>::updateImpl(Filter &filter, State &state, double dt) {
+    if (!prepareUpdate(state, dt)) return false;
+
+    ROS_DEBUG_NAMED(getName(), "Updating with system model %s", getName().c_str());
+    ROS_DEBUG_STREAM_NAMED(getName(), "dt = " << dt);
+
+    if (!this->filter() || !this->filter()->predict(state, dt)) return false;
+
+    ROS_DEBUG_STREAM_NAMED(getName(), "x_pred = [" << state.getVector().transpose() << "]");
+    ROS_DEBUG_STREAM_NAMED(getName(), "P_pred = [" << state.getCovariance() << "]");
+
+    afterUpdate(state);
+    return true;
+  }
 } // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_SYSTEM_H

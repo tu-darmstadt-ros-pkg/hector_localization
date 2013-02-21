@@ -37,7 +37,7 @@ namespace hector_pose_estimation {
 
 class PositionXYModel : public MeasurementModel_<PositionXYModel,2> {
 public:
-  PositionXYModel() : MeasurementModel(MeasurementDimension) {}
+  PositionXYModel() {}
   virtual ~PositionXYModel() {}
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -46,7 +46,7 @@ public:
 
 class PositionZModel : public MeasurementModel_<PositionZModel,1> {
 public:
-  PositionZModel() : MeasurementModel(MeasurementDimension) {}
+  PositionZModel() {}
   virtual ~PositionZModel() {}
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -55,7 +55,7 @@ public:
 
 class YawModel : public MeasurementModel_<YawModel,1> {
 public:
-  YawModel() : MeasurementModel(MeasurementDimension) {}
+  YawModel() {}
   virtual ~YawModel() {}
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -64,7 +64,7 @@ public:
 
 class TwistModel : public MeasurementModel_<TwistModel,6> {
 public:
-  TwistModel() : MeasurementModel(MeasurementDimension) {}
+  TwistModel() {}
   virtual ~TwistModel() {}
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -90,7 +90,7 @@ public:
     geometry_msgs::TwistWithCovarianceStampedConstPtr twist;
   };
 
-  bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
+  virtual bool update(Filter &filter, State &state, const MeasurementUpdate &update);
 
 private:
   PositionXYModel position_xy_model_;
@@ -123,7 +123,9 @@ private:
   bool jump_on_max_error_;
 
   double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const;
-  double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error = 0.0);
+
+  template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
+  double updateInternal(const State::Covariance &Px, const State::Vector &x, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, State::Covariance &Pxy, State::Vector &xy, const std::string& text, const double max_error = 0.0);
 
 protected:
   Queue_<Update> queue_;

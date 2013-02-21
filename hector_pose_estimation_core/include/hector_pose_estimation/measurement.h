@@ -31,13 +31,15 @@
 
 #include <hector_pose_estimation/measurement_model.h>
 #include <hector_pose_estimation/measurement_update.h>
+#include <hector_pose_estimation/types.h>
 #include <hector_pose_estimation/state.h>
 #include <hector_pose_estimation/queue.h>
-#include <hector_pose_estimation/collection.h>
+#include <hector_pose_estimation/filter.h>
+#include <hector_pose_estimation/filter/ekf.h> // dirty
+
+#include <ros/console.h>
 
 namespace hector_pose_estimation {
-
-class Filter;
 
 class Measurement
 {
@@ -51,8 +53,11 @@ public:
   void setName(const std::string& name) { name_ = name; }
 
   virtual MeasurementModel* getModel() const { return 0; }
+  virtual int getDimension() const { return 0; }
 
-  virtual bool init(PoseEstimation& estimator, State& state);
+  virtual void setFilter(Filter *filter) = 0;
+
+  virtual bool init(PoseEstimation& estimator, Filter& filter, State& state);
   virtual void cleanup();
   virtual void reset(State& state);
 
@@ -63,8 +68,8 @@ public:
   virtual const ParameterList& parameters() const { return parameters_; }
 
   virtual void add(const MeasurementUpdate &update);
-  virtual bool update(Filter &filter, State &state, const MeasurementUpdate &update) = 0;
-  virtual void process(Filter &filter, State &state);
+  virtual void process(State &state);
+  virtual bool update(State &state, const MeasurementUpdate &update);
 
   bool enabled() const { return enabled_; }
   void enable() { enabled_ = true; }
@@ -76,11 +81,11 @@ public:
 
 protected:
   virtual Queue& queue() = 0;
-  void updateInternal(Filter &filter, State &state, ColumnVector const& y, const SymmetricMatrix &R);
+  virtual bool updateImpl(State &state, const MeasurementUpdate &update) = 0;
 
-  virtual bool onInit(PoseEstimation& estimator, State& state) { return true; }
+  virtual bool onInit(PoseEstimation& estimator, State& state) { return true; } // currently unsed...
   virtual void onReset() { }
-  virtual void onCleanup() { }
+  virtual void onCleanup() { } // currently unsed...
 
 protected:
   std::string name_;
@@ -93,10 +98,6 @@ protected:
   double timeout_;
   double timer_;
 };
-
-typedef boost::shared_ptr<Measurement> MeasurementPtr;
-typedef boost::weak_ptr<Measurement> MeasurementWPtr;
-typedef Collection<Measurement> Measurements;
 
 template <class ConcreteModel, class ConcreteUpdate = typename Update_<ConcreteModel>::Type >
 class Measurement_ : public Measurement {
@@ -125,6 +126,8 @@ public:
   }
 
   virtual Model* getModel() const { return model_.get(); }
+  virtual int getDimension() const { return MeasurementDimension; }
+
   virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
 
   virtual MeasurementVector const& getVector(const Update &update, const State &state) {
@@ -141,7 +144,13 @@ public:
     R_ = R;
   }
 
-  virtual bool update(Filter &filter, State &state, const MeasurementUpdate &update);
+  const boost::shared_ptr< Filter::Corrector_<Model> >& filter() const { return filter_; }
+  void setFilter(Filter *filter = 0);
+
+protected:
+  virtual bool updateImpl(State &state, const MeasurementUpdate &update);
+  virtual bool prepareUpdate(State &state, const Update &update) { return getModel()->prepareUpdate(state, update); }
+  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
 
 protected:
   boost::shared_ptr<Model> model_;
@@ -150,8 +159,7 @@ protected:
   Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
 
-  virtual bool beforeUpdate(State &state, const Update &update) { return true; }
-  virtual void afterUpdate(State &state) { }
+  boost::shared_ptr< Filter::Corrector_<Model> > filter_;
 };
 
 template <typename ConcreteModel>
@@ -160,20 +168,49 @@ MeasurementPtr Measurement::create(ConcreteModel *model, const std::string& name
   return MeasurementPtr(new Measurement_<ConcreteModel>(model, name));
 }
 
-template <class ConcreteModel, class ConcreteUpdate>
-bool Measurement_<ConcreteModel, ConcreteUpdate>::update(Filter &filter, State &state, const MeasurementUpdate &update_)
-{
-  if (!enabled()) return false;
-  if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
-
-  Update const &update = dynamic_cast<Update const &>(update_);
-  if (!beforeUpdate(state, update)) return false;
-
-  updateInternal(filter, state, getVector(update, state), getVariance(update, state));
-
-  afterUpdate(state);
-  return true;
+template <typename ConcreteModel, class ConcreteUpdate>
+void Measurement_<ConcreteModel, ConcreteUpdate>::setFilter(Filter *filter) {
+  if (filter->derived<filter::EKF>()) {
+    filter_ = Filter::factory(filter->derived<filter::EKF>()).corrector(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
+  }
 }
+
+} // namespace hector_pose_estimation
+
+#include <hector_pose_estimation/filter.h>
+//#include <hector_pose_estimation/filter/ekf.h>
+
+namespace hector_pose_estimation {
+
+template <class ConcreteModel, class ConcreteUpdate>
+  bool Measurement_<ConcreteModel, ConcreteUpdate>::updateImpl(State &state, const MeasurementUpdate &update_)
+  {
+    Update const &update = dynamic_cast<Update const &>(update_);
+    if (!prepareUpdate(state, update)) return false;
+
+    ROS_DEBUG_NAMED(getName(), "Updating with measurement %s", getName().c_str());
+    const MeasurementVector &y = getVector(update, state);
+    const NoiseVariance &R = getVariance(update, state);
+
+    ROS_DEBUG_STREAM_NAMED(getName(), "x_prior    = [" << state.getVector().transpose() << "]");
+    ROS_DEBUG_STREAM_NAMED(getName(), "P_prior    = [" << state.getCovariance() << "]");
+    ROS_DEBUG_STREAM_NAMED(getName(), "y          = [" << y.transpose() << "]");
+    ROS_DEBUG_STREAM_NAMED(getName(), "R          = [" << R << "]");
+
+    if (!this->filter() || !this->filter()->correct(state, y, R)) return false;
+
+//    if (this->filter()->derived<filter::EKF>()) {
+//      ROS_DEBUG_STREAM_NAMED(getName(), "h(x)      = [" << this->filter()->derived<filter::EKF>()->y_pred.transpose() << "]");
+//      ROS_DEBUG_STREAM_NAMED(getName(), "H = dh/dx = [" << this->filter()->derived<filter::EKF>()->C << "]");
+//    }
+    ROS_DEBUG_STREAM_NAMED(getName(), "x_post    = [" << state.getVector().transpose() << "]");
+    ROS_DEBUG_STREAM_NAMED(getName(), "P_post    = [" << state.getCovariance() << "]");
+
+    afterUpdate(state);
+    return true;
+  }
 
 } // namespace hector_pose_estimation
 

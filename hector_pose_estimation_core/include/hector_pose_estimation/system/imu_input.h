@@ -52,6 +52,8 @@ public:
   ImuInput(const sensor_msgs::Imu& imu) { *this = imu; }
   virtual ~ImuInput() {}
 
+  virtual const std::string& getName() const { static std::string name("imu"); return name; }
+
   ImuInput &operator=(const sensor_msgs::Imu& imu) {
     u_(ACCEL_X) = imu.linear_acceleration.x;
     u_(ACCEL_Y) = imu.linear_acceleration.y;

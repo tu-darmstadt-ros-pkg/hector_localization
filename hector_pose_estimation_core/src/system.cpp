@@ -27,7 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/system.h>
-#include <hector_pose_estimation/filter.h>
+#include <hector_pose_estimation/filter/ekf.h>
 
 namespace hector_pose_estimation {
 
@@ -45,9 +45,10 @@ void System::getPrior(State &state) const
   getModel()->getPrior(state);
 }
 
-bool System::init(PoseEstimation& estimator, State& state)
+bool System::init(PoseEstimation& estimator, Filter& filter, State& state)
 {
   if (!getModel()) return false;
+  setFilter(&filter);
   return getModel()->init(estimator, state);
 }
 
@@ -62,24 +63,8 @@ void System::reset(State& state)
 }
 
 bool System::update(Filter &filter, State &state, double dt) {
-  if (!getModel()->prepareUpdate(state, dt)) return false;
-
-  ROS_DEBUG("Updating with system model %s", getName().c_str());
-
-//  std::cout << "     dt = " << dt << ", u = [" << input.getVector().transpose() << "]" << std::endl;
-
-//  getModel()->set_dt(dt);
-//  getModel()->setMeasurementStatus(estimator.getMeasurementStatus());
-//  estimator.filter()->Update(getModel(), u);
-  SymmetricMatrix Q;
-  filter.predict(state, getModel(), Q, dt);
+  if (!this->updateImpl(filter, state, dt)) return false;
   updated();
-//  estimator.updated();
-
-//  std::cout << "x_pred = [" << state.getVector().transpose() << "]" << std::endl;
-//  std::cout << "P_pred = [" << state.getCovariance() << "]" << std::endl;
-
-  getModel()->afterUpdate(state);
   return true;
 }
 

@@ -26,4 +26,25 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
+#ifndef HECTOR_POSE_ESTIMATION_FILTER_EKF_INL
+#define HECTOR_POSE_ESTIMATION_FILTER_EKF_INL
 
+#include <hector_pose_estimation/filter/ekf.h>
+
+namespace hector_pose_estimation {
+namespace filter {
+
+template <typename ConcreteModel>
+bool EKF::Predictor<ConcreteModel>::predict(Model *model, State &state, double dt) {
+  return true;
+}
+
+template <typename ConcreteModel>
+bool EKF::Corrector<ConcreteModel>::correct(State &state, const typename Model::MeasurementVector &y, const typename Model::NoiseVariance &R) {
+  return true;
+}
+
+} // namespace filter
+} // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_FILTER_EKF_INL

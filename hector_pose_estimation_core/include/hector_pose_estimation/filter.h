@@ -30,8 +30,9 @@
 #define HECTOR_POSE_ESTIMATION_FILTER_H
 
 #include <hector_pose_estimation/state.h>
-#include <hector_pose_estimation/system.h>
-#include <hector_pose_estimation/measurement.h>
+#include <hector_pose_estimation/types.h>
+
+#include <map>
 
 namespace hector_pose_estimation {
 
@@ -40,13 +41,44 @@ public:
   Filter();
   virtual ~Filter();
 
-  void predict(State& state, const Systems& systems, double dt);
-  void predict(State& state, const SystemPtr& system, double dt);
-  void predict(State& state, SystemModel* system, const SymmetricMatrix& Q, double dt);
+  virtual std::string getType() const = 0;
 
-  void update(State& state, const Measurements& measurements);
-  void update(State& state, const MeasurementPtr& measurement);
-  void update(State& state, MeasurementModel* model, const ColumnVector& y, const SymmetricMatrix& R);
+  virtual void predict(State& state, const Systems& systems, double dt);
+  virtual void predict(State& state, const SystemPtr& system, double dt);
+  template <typename ConcreteModel> bool predict(ConcreteModel *model, State& state, double dt);
+
+  virtual void update(State& state, const Measurements& measurements);
+  virtual void update(State& state, const MeasurementPtr& measurement);
+  template <typename ConcreteModel> bool update(ConcreteModel *model, State& state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
+
+  // struct Predictor {};
+  template <typename ConcreteModel> struct Predictor_ /* : public Predictor */ {
+    virtual bool predict(State& state, double dt) = 0;
+    template <typename Derived> typename Derived::template Predictor<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Predictor<ConcreteModel> *>(this); }
+    template <typename Derived> const typename Derived::template Predictor<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Predictor<ConcreteModel> *>(this); }
+  };
+
+  // class Corrector {};
+  template <typename ConcreteModel> struct Corrector_ /* : public Corrector */ {
+    virtual bool correct(State& state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R) = 0;
+    template <typename Derived> typename Derived::template Corrector<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Corrector<ConcreteModel> *>(this); }
+    template <typename Derived> const typename Derived::template Corrector<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Corrector<ConcreteModel> *>(this); }
+  };
+
+  template <typename Derived> Derived *derived() { return dynamic_cast<Derived *>(this); }
+  template <typename Derived> const Derived *derived() const { return dynamic_cast<const Derived *>(this); }
+
+  template <typename Derived>
+  struct Factory {
+    Factory(Derived *filter) : filter_(filter) {}
+    template <typename ConcreteModel> boost::shared_ptr<typename Derived::template Predictor<ConcreteModel> > predictor(ConcreteModel *model) { return boost::shared_ptr<typename Derived::template Predictor<ConcreteModel> >(new typename Derived::template Predictor<ConcreteModel>(filter_, model)); }
+    template <typename ConcreteModel> boost::shared_ptr<typename Derived::template Corrector<ConcreteModel> > corrector(ConcreteModel *model) { return boost::shared_ptr<typename Derived::template Corrector<ConcreteModel> >(new typename Derived::template Corrector<ConcreteModel>(filter_, model)); }
+
+  private:
+    Derived *filter_;
+  };
+
+  template <typename Derived> static Factory<Derived> factory(Derived *filter) { return Factory<Derived>(filter); }
 };
 
 } // namespace hector_pose_estimation

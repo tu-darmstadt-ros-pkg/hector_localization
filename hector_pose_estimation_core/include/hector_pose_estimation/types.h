@@ -30,6 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_TYPES_H
 
 #include <hector_pose_estimation/matrix.h>
+#include <hector_pose_estimation/collection.h>
 
 // Use system model with angular rates.
 // #define USE_RATE_SYSTEM_MODEL
@@ -59,6 +60,28 @@ namespace hector_pose_estimation {
   static inline std::ostream& operator<<(std::ostream& os, const SystemStatus& status) {
     return os << getSystemStatusString(status);
   }
+
+  class SystemModel;
+  class System;
+  typedef boost::shared_ptr<System> SystemPtr;
+  typedef boost::weak_ptr<System> SystemWPtr;
+  typedef Collection<System> Systems;
+
+  class MeasurementModel;
+  class MeasurementUpdate;
+  class Measurement;
+  typedef boost::shared_ptr<Measurement> MeasurementPtr;
+  typedef boost::weak_ptr<Measurement> MeasurementWPtr;
+  typedef Collection<Measurement> Measurements;
+
+  class Input;
+  typedef boost::shared_ptr<Input> InputPtr;
+  typedef boost::weak_ptr<Input> InputWPtr;
+  typedef Collection<Input> Inputs;
+
+  class PoseEstimation;
+  class Filter;
+  class State;
 
 } // namespace hector_pose_estimation
 

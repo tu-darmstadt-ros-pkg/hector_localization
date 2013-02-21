@@ -38,8 +38,6 @@
 
 namespace hector_pose_estimation {
 
-class PoseEstimation;
-
 class SystemModel {
 public:
   SystemModel();

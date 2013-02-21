@@ -29,7 +29,7 @@
 #ifndef HECTOR_POSE_ESTIMATION_INPUT_H
 #define HECTOR_POSE_ESTIMATION_INPUT_H
 
-#include <hector_pose_estimation/collection.h>
+#include <hector_pose_estimation/types.h>
 
 namespace hector_pose_estimation {
 
@@ -49,10 +49,6 @@ public:
 private:
   std::string name_;
 };
-
-typedef boost::shared_ptr<Input> InputPtr;
-typedef boost::weak_ptr<Input> InputWPtr;
-typedef Collection<Input> Inputs;
 
 template <int _Dimension> class Input_;
 template <class Model>
@@ -76,6 +72,7 @@ public:
   template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u, const Variance& Q) : u_(u), Q_(new Variance(Q)) {}
   Input_(double u) { *this = u; }
   Input_(double u, const Variance& Q) : Q_(new Variance(Q)) { *this = u; }
+  Input_(const Input& other) { *this = static_cast<const Input_<_Dimension>&>(other); }
   virtual ~Input_() {}
 
   virtual int getDimension() const { return Dimension; }

@@ -38,9 +38,6 @@
 
 namespace hector_pose_estimation {
 
-class MeasurementUpdate;
-class PoseEstimation;
-
 class MeasurementModel {
 public:
   template <class Model> struct traits;

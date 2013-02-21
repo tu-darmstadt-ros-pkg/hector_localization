@@ -12,7 +12,7 @@
 
   <depend package="rostime" />
   <depend package="rosconsole" />
-  <depend package="roscpp" /> <!-- only for registering parameters -->
+  <depend package="roscpp" /> <!-- only for parameters(!) -->
   <depend package="sensor_msgs" />
   <depend package="geometry_msgs" />
   <depend package="nav_msgs" />

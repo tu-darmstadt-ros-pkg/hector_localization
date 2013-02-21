@@ -142,6 +142,9 @@ public:
   const SubStates& getSubStates() const { return substates_; }
   SubStatePtr sub(const SystemModel *model) const;
 
+  const ros::Time& getTimestamp() const { return timestamp_; }
+  void setTimestamp(const ros::Time& timestamp) { timestamp_ = timestamp; }
+
 private:
   Vector state_;
   Covariance covariance_;
@@ -161,6 +164,8 @@ private:
 
   SubStates substates_;
   std::map<const SystemModel *, SubStateWPtr> substate_map_;
+
+  ros::Time timestamp_;
 };
 
 class SubState
@@ -187,7 +192,7 @@ public:
   virtual Covariance& P() { return covariance_; }
   virtual CrossVariance& S() { return cross_variance_; }
 
-  virtual void normalize();
+  virtual void normalize() {}
 
 private:
   const int dimension_;

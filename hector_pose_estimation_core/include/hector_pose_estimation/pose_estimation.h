@@ -90,13 +90,15 @@ public:
 
   template <class InputType> boost::shared_ptr<InputType> registerInput(const std::string& name = std::string());
   template <class InputType> boost::shared_ptr<InputType> getInputType(const std::string& name) const { return inputs_.getType<InputType>(name); }
+
   InputPtr addInput(const InputPtr& input, const std::string& name = std::string());
   InputPtr addInput(Input *input) { return addInput(InputPtr(input)); }
+  InputPtr setInput(const Input& input, const std::string& name = std::string());
   InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
   InputPtr getInput(const std::string& name) const { return inputs_.get(name); }
 
-  virtual const State& state() const;
-  virtual State& state();
+  virtual const State& state() const { return state_; }
+  virtual State& state() { return state_; }
 
   virtual const State::Vector& getStateVector();
   virtual const State::Covariance& getCovariance();
@@ -111,7 +113,7 @@ public:
 
   virtual GlobalReference* globalReference();
 
-  virtual ros::Time getTimestamp() const;
+  virtual const ros::Time& getTimestamp() const;
   virtual void setTimestamp(const ros::Time& timestamp);
 
   virtual void getHeader(std_msgs::Header& header);
@@ -140,8 +142,8 @@ public:
   virtual void getRate(tf::Stamped<tf::Vector3>& vector);
   virtual void getRate(geometry_msgs::Vector3& vector);
   virtual void getRate(geometry_msgs::Vector3Stamped& vector);
-  virtual void getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration);
-  virtual void getBias(tf::Stamped<tf::Vector3>& angular_velocity, tf::Stamped<tf::Vector3>& linear_acceleration);
+  // virtual void getBias(tf::Vector3& angular_velocity, tf::Vector3& linear_acceleration);
+  // virtual void getBias(tf::Stamped<tf::Vector3>& angular_velocity, tf::Stamped<tf::Vector3>& linear_acceleration);
   virtual void getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration);
   virtual void getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration);
   virtual void getTransforms(std::vector<tf::StampedTransform>& transforms);

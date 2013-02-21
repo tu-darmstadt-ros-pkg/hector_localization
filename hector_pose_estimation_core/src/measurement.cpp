@@ -27,8 +27,6 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/filter.h>
-#include <ros/console.h>
 
 namespace hector_pose_estimation {
 
@@ -48,9 +46,10 @@ Measurement::~Measurement()
 {
 }
 
-bool Measurement::init(PoseEstimation& estimator, State& state)
+bool Measurement::init(PoseEstimation& estimator, Filter& filter, State& state)
 {
   if (!getModel()) return false;
+  setFilter(&filter);
   if (!onInit(estimator, state)) return false;
   return getModel()->init(estimator, state);
 }
@@ -90,31 +89,24 @@ void Measurement::add(const MeasurementUpdate& update) {
   queue().push(update);
 }
 
-void Measurement::process(Filter &filter, State &state) {
+void Measurement::process(State &state) {
   while(!(queue().empty())) {
-    update(filter, state, queue().pop());
+    update(state, queue().pop());
   }
 
   // check for timeout
   if (timedout()) status_flags_ = 0;
 }
 
-void Measurement::updateInternal(Filter &filter, State &state, const ColumnVector &y, const SymmetricMatrix &R) {
-  ROS_DEBUG("Updating with measurement %s", getName().c_str());
+bool Measurement::update(State &state, const MeasurementUpdate &update)
+{
+  if (!enabled()) return false;
+  if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
 
-//  std::cout << "[" << getName() << "] x_prior   = [" << estimator.getState().transpose() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] P_prior   = [" << estimator.getCovariance() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] update    = [" << y.transpose() << "]" << std::endl;
-  filter.update(state, getModel(), y, R);
-//  estimator.filter()->Update(getModel(), y);
+  if (!updateImpl(state, update)) return false;
+
   updated();
-//  estimator.updated();
-
-//  std::cout << "[" << getName() << "] expected  = [" << getModel()->ExpectedValueGet().transpose() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] R         = [" << getModel()->CovarianceGet() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] H = dy/dx = [" << getModel()->dfGet(0) << "]" << std::endl;
-//  std::cout << "[" << getName() << "] x_post    = [" << estimator.getState().transpose() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] P_post    = [" << estimator.getCovariance() << "]" << std::endl;
+  return true;
 }
 
 } // namespace hector_pose_estimation

@@ -55,10 +55,6 @@ void Filter::predict(State& state, const SystemPtr& system, double dt) {
   system->update(*this, state, dt);
 }
 
-void Filter::predict(State &state, SystemModel *system, const SymmetricMatrix &Q, double dt) {
-
-}
-
 void Filter::update(State& state, const Measurements& measurements) {
   SystemStatus measurement_status = 0;
 
@@ -72,11 +68,8 @@ void Filter::update(State& state, const Measurements& measurements) {
 }
 
 void Filter::update(State& state, const MeasurementPtr& measurement) {
-  measurement->process(*this, state);
-}
-
-void Filter::update(State& state, MeasurementModel* model, const ColumnVector& y, const SymmetricMatrix& R) {
-
+  // measurement->process(*this, state);
+  measurement->process(state);
 }
 
 } // namespace hector_pose_estimation

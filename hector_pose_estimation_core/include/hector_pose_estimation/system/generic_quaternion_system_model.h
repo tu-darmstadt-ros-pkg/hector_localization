@@ -53,15 +53,13 @@ public:
 
   virtual bool init(PoseEstimation& estimator, State& state);
 
-  virtual void getPrior(State &state);
-
   virtual bool prepareUpdate(State& state, double dt);
   virtual void afterUpdate(State &state);
 
   virtual void getDerivative(StateVector& x_dot, const State& state);
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
   virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init);
-  virtual void getInputJacobian(InputMatrix& A, const State& state, bool init);
+  virtual void getInputJacobian(InputMatrix& B, const State& state, bool init);
 
   void setGravity(double gravity) { gravity_ = gravity; }
   double getGravity() const { return gravity_; }

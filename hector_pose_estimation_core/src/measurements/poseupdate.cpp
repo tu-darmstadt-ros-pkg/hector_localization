@@ -28,6 +28,9 @@
 
 #include <hector_pose_estimation/measurements/poseupdate.h>
 #include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/conversion.h>
+
+#include <Eigen/Core>
 
 namespace hector_pose_estimation {
 
@@ -85,12 +88,9 @@ PoseUpdate::~PoseUpdate()
 {
 }
 
-bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &update_) {
+bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_)
+{
   Update const &update = static_cast<Update const &>(update_);
-
-  // fetch current state
-  ColumnVector state = estimator.getState();
-  SymmetricMatrix covariance = estimator.getCovariance();
 
   while (update.pose) {
     // convert incoming update information to Eigen
@@ -100,21 +100,16 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
 
     // information is the information matrix if interpret_covariance_as_information_matrix_ is true and a covariance matrix otherwise
     // zero elements are counted as zero information in any case
-    SymmetricMatrix information(6);
-    covarianceMsgToBfl(update.pose->pose.covariance, information);
+    SymmetricMatrix_<6> information;
+    covarianceMsgToEigen(update.pose->pose.covariance, information);
 
-    // forward state vector to the individual measurement models
-    position_xy_model_.ConditionalArgumentSet(0,state);
-    position_z_model_.ConditionalArgumentSet(0,state);
-    yaw_model_.ConditionalArgumentSet(0,state);
-
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: state = [ " << state.transpose() << " ], P = [ " << covariance << " ]" << std::endl
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: x = [ " << state.getVector().transpose() << " ], P = [ " << state.getCovariance() << " ]" << std::endl
                                       << "update: pose = [ " << update_pose.transpose() << " ], euler = [ " << update_euler.transpose() << " ], information = [ " << information << " ]");
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "dt = " << (estimator.getTimestamp() - update.pose->header.stamp).toSec() << " s");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "dt = " << (state.getTimestamp() - update.pose->header.stamp).toSec() << " s");
 
     // predict update pose using the estimated velocity and degrade information
     if (!update.pose->header.stamp.isZero()) {
-      double dt = (estimator.getTimestamp() - update.pose->header.stamp).toSec();
+      double dt = (state.getTimestamp() - update.pose->header.stamp).toSec();
       if (dt < 0.0) {
         ROS_DEBUG_STREAM_NAMED("poseupdate", "Ignoring pose update as it has a negative time difference: dt = " << dt << "s");
         break;
@@ -130,79 +125,87 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
           information = information / (1.0 - dt/max_time_difference_);
       }
 
-      Eigen::Vector3d state_velocity(state.sub(VELOCITY_X, VELOCITY_Z));
+      const State::VelocityType& state_velocity(state.getVelocity());
       update_pose = update_pose + dt * state_velocity;
-  #ifdef USE_RATE_SYSTEM_MODEL
-      Eigen::Vector3d state_rate(state.sub(RATE_X,RATE_Z));
+
+      const State::RateType& state_rate(state.getRate());
       Eigen::AngleAxisd state_angle_offset(state_rate.norm() * dt, state_rate.normalized());
       update_orientation = state_angle_offset * update_orientation;
-  #endif
     }
 
     // update PositionXY
-    if (information(1,1) > 0.0 || information(2,2) > 0.0) {
-      // fetch observation matrix H
-      Matrix H = position_xy_model_.dfGet(0);
-      ColumnVector x(position_xy_model_.ExpectedValueGet());
-      ColumnVector y(2);
-      SymmetricMatrix Iy(information.sub(1,2,1,2));
-      y(1) = update_pose.x();
-      y(2) = update_pose.y();
+    if (information(0,0) > 0.0 || information(1,1) > 0.0) {
+      // fetch observation matrix H and current state x
+      PositionXYModel::MeasurementMatrix H;
+      PositionXYModel::MeasurementVector x;
+      position_xy_model_.getStateJacobian(H, state, true);
+      position_xy_model_.getExpectedValue(x, state);
+
+      PositionXYModel::MeasurementVector y(update_pose.segment<2>(0));
+      PositionXYModel::NoiseVariance Iy(information.block<2,2>(0,0));
 
       // invert Iy if information is a covariance matrix
-      if (!interpret_covariance_as_information_matrix_) Iy = Iy.inverse();
+      if (!interpret_covariance_as_information_matrix_) Iy = Iy.inverse().eval();
 
       // fixed_position_xy_stddev_ = 1.0;
       if (fixed_position_xy_stddev_ != 0.0) {
         Iy = 0.0;
-        Iy(1,1) = Iy(2,2) = 1.0 / (fixed_position_xy_stddev_*fixed_position_xy_stddev_);
+        Iy(0,0) = Iy(1,1) = 1.0 / (fixed_position_xy_stddev_*fixed_position_xy_stddev_);
       }
 
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Position Update: ");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_xy", max_position_xy_error_);
-      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << position_xy_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
+      double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, y - x, H, state.P(), state.x(), "position_xy", max_position_xy_error_);
+      position_xy_model_.getExpectedValue(x, state);
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x << "], Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_XY_POSITION;
     }
 
     // update PositionZ
-    if (information(3,3) > 0.0) {
-      // fetch observation matrix H
-      Matrix H = position_z_model_.dfGet(0);
-      ColumnVector x(position_z_model_.ExpectedValueGet());
-      ColumnVector y(1); y(1) =  update_pose.z();
-      SymmetricMatrix Iy(information.sub(3,3,3,3));
+    if (information(2,2) > 0.0) {
+      // fetch observation matrix H and current state x
+      PositionZModel::MeasurementMatrix H;
+      PositionZModel::MeasurementVector x;
+      position_z_model_.getStateJacobian(H, state, true);
+      position_z_model_.getExpectedValue(x, state);
+
+      PositionZModel::MeasurementVector y(update_pose.segment<1>(2));
+      PositionZModel::NoiseVariance Iy(information.block<1,1>(2,2));
 
       // invert Iy if information is a covariance matrix
-      if (!interpret_covariance_as_information_matrix_) Iy = Iy.inverse();
+      if (!interpret_covariance_as_information_matrix_) Iy = Iy.inverse().eval();
 
       // fixed_position_z_stddev_ = 1.0;
       if (fixed_position_z_stddev_ != 0.0) {
         Iy = 0.0;
-        Iy(1,1) = 1.0 / (fixed_position_z_stddev_*fixed_position_z_stddev_);
+        Iy(0,0) = 1.0 / (fixed_position_z_stddev_*fixed_position_z_stddev_);
       }
 
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Height Update: ");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(1) << ", H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(1) << ", Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_z", max_position_z_error_);
-      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << position_z_model_.PredictionGet(ColumnVector(), state) << ", Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) << ", H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(0) << ", Iy = [ " << Iy << " ]");
+      double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, y - x, H, state.P(), state.x(), "position_z", max_position_z_error_);
+      position_z_model_.getExpectedValue(x, state);
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) << ", Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_Z_POSITION;
     }
 
     // update Yaw
-    if (information(6,6) > 0.0) {
-      // fetch observation matrix H
-      Matrix H = yaw_model_.dfGet(0);
-      ColumnVector x(yaw_model_.ExpectedValueGet());
-      ColumnVector y(1); y(1) = update_euler(0);
-      SymmetricMatrix Iy(information.sub(6,6,6,6));
+    if (information(5,5) > 0.0) {
+      // fetch observation matrix H and current state x
+      YawModel::MeasurementMatrix H;
+      YawModel::MeasurementVector x;
+      yaw_model_.getStateJacobian(H, state, true);
+      yaw_model_.getExpectedValue(x, state);
+
+      YawModel::MeasurementVector y(update_euler(0));
+      YawModel::NoiseVariance Iy(information.block<1,1>(5,5));
 
       // invert Iy if information is a covariance matrix
-      if (!interpret_covariance_as_information_matrix_) Iy = Iy.inverse();
+      if (!interpret_covariance_as_information_matrix_) Iy = Iy.inverse().eval();
 
       // fixed_yaw_stddev_ = 5.0 * M_PI/180.0;
       if (fixed_yaw_stddev_ != 0.0) {
@@ -211,14 +214,15 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
       }
 
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Yaw Update: ");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(1) * 180.0/M_PI << "°, H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(1) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) * 180.0/M_PI << "°, H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(0) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]");
 
       ColumnVector error(y - x);
-      error(1) = error(1) - 2.0*M_PI * round(error(1) / (2.0*M_PI));
+      error(0) = error(0) - 2.0*M_PI * round(error(0) / (2.0*M_PI));
 
-      double innovation = updateInternal(covariance, state, Iy, error, H, covariance, state, "yaw", max_yaw_error_);
-      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
+      double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, error, H, state.P(), state.x(), "yaw", max_yaw_error_);
+      yaw_model_.getExpectedValue(x, state);
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) * 180.0/M_PI << "°, Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_YAW;
     }
@@ -234,18 +238,15 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
     // information is the information matrix if interpret_covariance_as_information_matrix_ is true and a covariance matrix otherwise
     // zero elements are counted as zero information in any case
     SymmetricMatrix information(6);
-    covarianceMsgToBfl(update.twist->twist.covariance, information);
+    covarianceMsgToEigen(update.twist->twist.covariance, information);
 
-    // forward state vector to the individual measurement models
-    twist_model_.ConditionalArgumentSet(0,state);
-
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "TwistUpdate:  state = [ " << state.transpose() << " ], P = [ " << covariance << " ]" << std::endl
-              << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]");
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "                dt = " << (estimator.getTimestamp() - update.twist->header.stamp).toSec() << " s");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "TwistUpdate:  state = [ " << state.getVector().transpose() << " ], P = [ " << state.getCovariance() << " ]" << std::endl
+                                      << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "                 dt = " << (state.getTimestamp() - update.twist->header.stamp).toSec() << " s");
 
     // degrade information if the time difference is too large
     if (!update.twist->header.stamp.isZero()) {
-      double dt = (estimator.getTimestamp() - update.twist->header.stamp).toSec();
+      double dt = (state.getTimestamp() - update.twist->header.stamp).toSec();
       if (dt < 0.0) {
         ROS_DEBUG_STREAM_NAMED("poseupdate", "Ignoring twist update as it has a negative time difference: dt = " << dt << "s");
         break;
@@ -262,17 +263,16 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
       }
     }
 
-    // fetch observation matrix H
-    Matrix H = twist_model_.dfGet(0);
-    ColumnVector x(twist_model_.ExpectedValueGet());
-    TwistModel::NoiseCovariance Iy(information);
+    // fetch observation matrix H and current state x
+    TwistModel::MeasurementMatrix H;
+    TwistModel::MeasurementVector x;
+    twist_model_.getStateJacobian(H, state, true);
+    twist_model_.getExpectedValue(x, state);
+
     TwistModel::MeasurementVector y;
-    y(1) = update_linear.x();
-    y(2) = update_linear.y();
-    y(3) = update_linear.z();
-    y(4) = update_angular.x();
-    y(5) = update_angular.y();
-    y(6) = update_angular.z();
+    TwistModel::NoiseVariance Iy(information);
+    y.segment<3>(0) = update_linear;
+    y.segment<3>(3) = update_angular;
 
     // invert Iy if information is a covariance matrix
     if (!interpret_covariance_as_information_matrix_) {
@@ -281,77 +281,74 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
     }
 
     // update VelocityXY
-    if (information(1,1) > 0.0 || information(2,2) > 0.0) {
+    if (information(0,0) > 0.0 || information(0,0) > 0.0) {
       status_flags_ |= STATE_XY_VELOCITY;
 
       // fixed_velocity_xy_stddev_ = 1.0;
       if (fixed_velocity_xy_stddev_ != 0.0) {
-        for(int i = 1; i <= 6; ++i) Iy(1,i) = Iy(2,i) = Iy(i,1) = Iy(i,2) = 0.0;
-        Iy(1,1) = Iy(2,2) = 1.0 / (fixed_velocity_xy_stddev_*fixed_velocity_xy_stddev_);
+        for(int i = 0; i < 6; ++i) Iy(0,i) = Iy(1,i) = Iy(i,0) = Iy(i,1) = 0.0;
+        Iy(0,0) = Iy(1,1) = 1.0 / (fixed_velocity_xy_stddev_*fixed_velocity_xy_stddev_);
       }
     }
 
     // update VelocityZ
-    if (information(3,3) > 0.0) {
+    if (information(2,2) > 0.0) {
       status_flags_ |= STATE_Z_VELOCITY;
 
       // fixed_velocity_z_stddev_ = 1.0;
       if (fixed_velocity_z_stddev_ != 0.0) {
-          for(int i = 1; i <= 6; ++i) Iy(3,i) = Iy(i,3) = 0.0;
-        Iy(3,3) = 1.0 / (fixed_velocity_z_stddev_*fixed_velocity_z_stddev_);
+          for(int i = 0; i < 6; ++i) Iy(2,i) = Iy(i,2) = 0.0;
+        Iy(2,2) = 1.0 / (fixed_velocity_z_stddev_*fixed_velocity_z_stddev_);
       }
     }
 
     // update RateXY
-    if (information(4,4) > 0.0 || information(5,5) > 0.0) {
+    if (information(3,3) > 0.0 || information(4,4) > 0.0) {
       // fixed_angular_rate_xy_stddev_ = 1.0;
       if (fixed_angular_rate_xy_stddev_ != 0.0) {
-        for(int i = 1; i <= 6; ++i) Iy(4,i) = Iy(4,i) = Iy(i,5) = Iy(i,5) = 0.0;
+        for(int i = 0; i < 6; ++i) Iy(3,i) = Iy(3,i) = Iy(i,4) = Iy(i,4) = 0.0;
         Iy(4,4) = Iy(5,5) = 1.0 / (fixed_angular_rate_xy_stddev_*fixed_angular_rate_xy_stddev_);
       }
     }
 
     // update RateZ
-    if (information(6,6) > 0.0) {
+    if (information(5,5) > 0.0) {
       // fixed_angular_rate_z_stddev_ = 1.0;
       if (fixed_angular_rate_z_stddev_ != 0.0) {
-        for(int i = 1; i <= 6; ++i) Iy(6,i) = Iy(i,6) = 0.0;
-        Iy(6,6) = 1.0 / (fixed_angular_rate_z_stddev_*fixed_angular_rate_z_stddev_);
+        for(int i = 0; i < 6; ++i) Iy(5,i) = Iy(i,5) = 0.0;
+        Iy(5,5) = 1.0 / (fixed_angular_rate_z_stddev_*fixed_angular_rate_z_stddev_);
       }
     }
 
     ROS_DEBUG_STREAM_NAMED("poseupdate", "Twist Update: ");
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
     ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-    double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "twist", 0.0);
-    ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << twist_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
+    double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, y - x, H, state.P(), state.x(), "twist", 0.0);
+    twist_model_.getExpectedValue(x, state);
+    ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x.transpose() << "], Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
 
     break;
   }
 
-  estimator.setState(state);
-  estimator.setCovariance(covariance);
-  estimator.updated();
-  updated();
-
+  state.updated();
   return true;
 }
 
 double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const {
-  double tr_x = static_cast<EigenMatrix>(Ix).trace();
-  double tr_y = static_cast<EigenMatrix>(Iy).trace();
+  double tr_x = Ix.trace();
+  double tr_y = Iy.trace();
   return tr_y / (tr_x + tr_y);
 }
 
-double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error) {
-  Matrix HT(H.transpose());
-  SymmetricMatrix H_Px_HT(H*Px*HT);
+template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
+double PoseUpdate::updateInternal(const State::Covariance &Px, const State::Vector &x, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, State::Covariance &Pxy, State::Vector &xy, const std::string& text, const double max_error) {
+  NoiseVariance H_Px_HT(H * Px * H.transpose());
 
   if (H_Px_HT.determinant() <= 0) {
     ROS_WARN_STREAM("Ignoring poseupdate for " << text << " as the a-priori state covariance is zero!");
     return 0.0;
   }
-  SymmetricMatrix Ix(H_Px_HT.inverse());
+  NoiseVariance Ix(H_Px_HT.inverse().eval());
 
   ROS_DEBUG_STREAM_NAMED("poseupdate", "H = [" << H << "]");
   ROS_DEBUG_STREAM_NAMED("poseupdate", "Ix = [" << Ix << "]");
@@ -388,100 +385,77 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
 //  ROS_DEBUG_STREAM_NAMED("poseupdate", "Ii = [" << Ii << "], innovation = " << innovation);
 
   // S_1 is equivalent to S^(-1) = (H*P*H^T + R)^(-1) in the standard Kalman gain
-  SymmetricMatrix S_1(Ix - Ix * (Ix * alpha + Iy * beta).inverse() * Ix);
+  NoiseVariance S_1(Ix - Ix * (Ix * alpha + Iy * beta).inverse() * Ix);
   double innovation = S_1.determinant();
 
-  Pxy = Px - Px  * HT * S_1 * H * Px; // may invalidate Px if &Pxy == &Px
-   xy =  x + Pxy * HT * Iy * beta * error;
+  Pxy = Px - Px  * H.transpose() * S_1 * H * Px; // may invalidate Px if &Pxy == &Px
+   xy =  x + Pxy * H.transpose() * Iy * beta * error;
 
-  ROS_DEBUG_STREAM_NAMED("poseupdate", "K = [" << (Pxy * HT * Iy * beta) << "]");
-  ROS_DEBUG_STREAM_NAMED("poseupdate", "dx = [" << ( Pxy * HT * Iy * beta * error).transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "K = [" << (Pxy * H.transpose() * Iy * beta) << "]");
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "dx = [" << ( Pxy * H.transpose() * Iy * beta * error).transpose() << "]");
 
   return innovation;
 }
 
-ColumnVector PositionXYModel::ExpectedValueGet() const {
-  y_(1) = x_(POSITION_X);
-  y_(2) = x_(POSITION_Y);
-  return y_;
+void PositionXYModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
+  y_pred = state.getPosition().segment<2>(0);
 }
 
-Matrix PositionXYModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
-  C_(1,POSITION_X)   = 1.0;
-  C_(2,POSITION_Y)   = 1.0;
-  return C_;
+void PositionXYModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
+  if (init) {
+    if (state.getPositionIndex() >= 0) {
+      C(0,State::POSITION_X)   = 1.0;
+      C(1,State::POSITION_Y)   = 1.0;
+    }
+  }
 }
 
-ColumnVector PositionZModel::ExpectedValueGet() const {
-  y_(1) = x_(POSITION_Z);
-  return y_;
+void PositionZModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
+  y_pred = state.getPosition().segment<1>(2);
 }
 
-Matrix PositionZModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
-  C_(1,POSITION_Z)   = 1.0;
-  return C_;
+void PositionZModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
+  if (init && state.getPositionIndex() >= 0) {
+    C(0,State::POSITION_Z)   = 1.0;
+  }
 }
 
-ColumnVector YawModel::ExpectedValueGet() const {
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-
-  y_(1) = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
-
-  return y_;
+void YawModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
+  const State::OrientationType& q(state.getOrientation());
+  y_pred(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
 }
 
-Matrix YawModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
+void YawModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
+  const State::OrientationType& q(state.getOrientation());
+  if (init && state.getOrientationIndex() >= 0) {
+    const double t1 = q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z();
+    const double t2 = 2*(q.x()*q.y() + q.w()*q.z());
+    const double t3 = 1.0 / (t1*t1 + t2*t2);
 
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-  const double t1 = qw*qw + qx*qx - qy*qy - qz*qz;
-  const double t2 = 2*(qx*qy + qw*qz);
-  const double t3 = 1.0 / (t1*t1 + t2*t2);
-
-  C_(1,QUATERNION_W) = 2.0 * t3 * (qz * t1 - qw * t2);
-  C_(1,QUATERNION_X) = 2.0 * t3 * (qy * t1 - qx * t2);
-  C_(1,QUATERNION_Y) = 2.0 * t3 * (qx * t1 + qy * t2);
-  C_(1,QUATERNION_Z) = 2.0 * t3 * (qw * t1 + qz * t2);
-
-  return C_;
+    C(0,State::QUATERNION_W) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
+    C(0,State::QUATERNION_X) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
+    C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
+    C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
+  }
 }
 
-ColumnVector TwistModel::ExpectedValueGet() const {
-  y_(1) = x_(VELOCITY_X);
-  y_(2) = x_(VELOCITY_Y);
-  y_(3) = x_(VELOCITY_Z);
-#ifdef USE_RATE_SYSTEM_MODEL
-  y_(4) = x_(RATE_X);
-  y_(5) = x_(RATE_Y);
-  y_(6) = x_(RATE_Z);
-#else // USE_RATE_SYSTEM_MODEL
-  y_(4) = 0.0;
-  y_(5) = 0.0;
-  y_(6) = 0.0;
-#endif // USE_RATE_SYSTEM_MODEL
-  return y_;
+void TwistModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
+  y_pred.segment<3>(0) = state.getVelocity();
+  y_pred.segment<3>(3) = state.getRate();
 }
 
-Matrix TwistModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
+void TwistModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
+  if (init && state.getVelocityIndex() >= 0) {
+    C(0,State::VELOCITY_X) = 1.0;
+    C(1,State::VELOCITY_Y) = 1.0;
+    C(2,State::VELOCITY_Z) = 1.0;
+  }
 
-  C_(1,VELOCITY_X) = 1.0;
-  C_(2,VELOCITY_Y) = 1.0;
-  C_(3,VELOCITY_Z) = 1.0;
-#ifdef USE_RATE_SYSTEM_MODEL
-  C_(4,RATE_X) = 1.0;
-  C_(5,RATE_Y) = 1.0;
-  C_(6,RATE_Z) = 1.0;
-#endif // USE_RATE_SYSTEM_MODEL
-  return C_;
+  if (init && state.getRateIndex() >= 0) {
+    C(3,State::RATE_X) = 1.0;
+    C(4,State::RATE_Y) = 1.0;
+    C(5,State::RATE_Z) = 1.0;
+  }
 }
 
 } // namespace hector_pose_estimation

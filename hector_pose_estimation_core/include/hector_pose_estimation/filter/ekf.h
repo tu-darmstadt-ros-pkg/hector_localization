@@ -32,8 +32,58 @@
 #include <hector_pose_estimation/filter.h>
 
 namespace hector_pose_estimation {
+namespace filter {
 
+class EKF : public Filter
+{
+public:
+  EKF() {}
+  virtual ~EKF() {}
 
+  std::string getType() const { return "EKF"; }
+
+  template <typename ConcreteModel> class Predictor : public Filter::template Predictor_<ConcreteModel>
+  {
+  public:
+    typedef ConcreteModel Model;
+    using Filter::template Corrector_<ConcreteModel>::derived;
+
+    Predictor(EKF *filter, Model *model) : filter_(filter), model_(model) {}
+    bool predict(Model *model, State &state, double dt);
+
+  private:
+    EKF *filter_;
+    Model *model_;
+
+    typename Model::StateVector x_pred;
+    typename Model::NoiseVariance Q;
+    typename Model::SystemMatrix A;
+    typename Model::CrossSystemMatrix Across;
+  };
+
+  template <typename ConcreteModel> class Corrector : public Filter::template Corrector_<ConcreteModel>
+  {
+  public:
+    typedef ConcreteModel Model;
+    using Filter::template Corrector_<ConcreteModel>::derived;
+
+    Corrector(EKF *filter, Model *model) : filter_(filter), model_(model) {}
+    bool correct(State &state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
+
+  private:
+    EKF *filter_;
+    Model *model_;
+
+    typename Model::MeasurementVector y_pred;
+    typename Model::MeasurementVector error;
+    typename Model::MeasurementMatrix C;
+    typename Model::SubMeasurementMatrix Ccross;
+  };
+};
+
+} // namespace filter
 } // namespace hector_pose_estimation
+
+#include <hector_pose_estimation/filter/ekf.inl>
 
 #endif // HECTOR_POSE_ESTIMATION_FILTER_EKF_H
