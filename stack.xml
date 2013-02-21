@@ -8,7 +8,7 @@
     GPS, magnetometer, barometric pressure sensors and other external sources that provide a geometry_msgs/PoseWithCovariance
     message via the poseupdate topic.
   </description>
-  <author>Maintained by Johannes Meyer</author>
+  <author>Johannes Meyer</author>
   <license>BSD</license>  
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/hector_localization</url>

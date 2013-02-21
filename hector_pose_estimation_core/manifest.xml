@@ -10,7 +10,9 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/hector_pose_estimation_core</url>
 
-  <depend package="roscpp" />
+  <depend package="rostime" />
+  <depend package="rosconsole" />
+  <depend package="roscpp" /> <!-- only for registering parameters -->
   <depend package="sensor_msgs" />
   <depend package="geometry_msgs" />
   <depend package="nav_msgs" />
