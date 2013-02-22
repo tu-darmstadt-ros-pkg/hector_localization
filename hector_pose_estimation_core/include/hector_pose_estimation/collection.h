@@ -29,11 +29,12 @@
 #ifndef HECTOR_POSE_ESTIMATION_COLLECTION_H
 #define HECTOR_POSE_ESTIMATION_COLLECTION_H
 
-#include <vector>
+#include <list>
 #include <map>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
+#include <boost/make_shared.hpp>
 
 namespace hector_pose_estimation {
 
@@ -42,7 +43,7 @@ class Collection {
 public:
   typedef boost::shared_ptr<T> Ptr;
   typedef boost::weak_ptr<T> WPtr;
-  typedef std::vector<Ptr> ListType;
+  typedef std::list<Ptr> ListType; // lists do no invalidate iterators on insert operations
   typedef std::map<key_type, WPtr> MapType;
   typedef typename ListType::const_iterator iterator;
   typedef typename ListType::const_iterator const_iterator;
@@ -66,21 +67,20 @@ public:
     return add(p, key);
   }
 
-  Ptr get(std::size_t index) const {
-    if (index >= size()) return Ptr();
-    return list_[index];
-
-  }
+//  Ptr get(std::size_t index) const {
+//    if (index >= size()) return Ptr();
+//    return list_[index];
+//  }
 
   Ptr get(const key_type& key) const {
     if (!map_.count(key)) return Ptr();
     return map_.at(key).lock();
   }
 
-  template <typename Derived>
-  boost::shared_ptr<Derived> getType(std::size_t index) const {
-    return boost::shared_dynamic_cast<Derived>(get(index));
-  }
+//  template <typename Derived>
+//  boost::shared_ptr<Derived> getType(std::size_t index) const {
+//    return boost::shared_dynamic_cast<Derived>(get(index));
+//  }
 
   template <typename Derived>
   boost::shared_ptr<Derived> getType(const key_type& key) const {

@@ -55,13 +55,13 @@ void RateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
   y_pred(1) = (2.0*q.x()*q.y()-2.0*q.w()*q.z())                 * rate.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()) * rate.y() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                 * rate.z();
   y_pred(2) = (2.0*q.x()*q.z()+2.0*q.w()*q.y())                 * rate.x() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                 * rate.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z()) * rate.z();
 
-  SubStatePtr gyro = state.sub(gyro_model_);
+  typename SubState_<3>::Ptr gyro = state.getSubState<3>(gyro_model_);
   if (gyro) {
     y_pred += gyro->getVector();
   }
 }
 
-void RateModel::getStateJacobian(MeasurementMatrix &C, SubMeasurementMatrix &Csub, const State &state)
+void RateModel::getStateJacobian(MeasurementMatrix &C, SubMeasurementMatrix &Csub, const State &state, bool)
 {
   const State::OrientationType& q = state.getOrientation();
 

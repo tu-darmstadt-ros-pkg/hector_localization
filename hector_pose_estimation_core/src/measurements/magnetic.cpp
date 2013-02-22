@@ -29,6 +29,8 @@
 #include <hector_pose_estimation/measurements/magnetic.h>
 #include <hector_pose_estimation/pose_estimation.h>
 
+#include <Eigen/Geometry>
+
 namespace hector_pose_estimation {
 
 MagneticModel::MagneticModel()
@@ -77,7 +79,7 @@ void MagneticModel::getExpectedValue(MeasurementVector& y_pred, const State& sta
   y_pred(2) = (2.0*q.x()*q.z()+2.0*q.w()*q.y())                 * magnetic_field_reference_(0) + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                 * magnetic_field_reference_(1) + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z()) * magnetic_field_reference_(2);
 }
 
-void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state)
+void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
   const State::OrientationType& q = state.getOrientation();
 
@@ -141,13 +143,12 @@ void MagneticModel::updateMagneticField()
 Magnetic::Magnetic(const std::string &name)
   : Measurement_<MagneticModel>(name)
   , auto_heading_(true)
-  , reference_(0)
 {
   parameters().add("auto_heading", auto_heading_);
 }
 
 void Magnetic::onReset() {
-  reference_ = 0;
+  reference_.reset();
 }
 
 const MagneticModel::MeasurementVector& Magnetic::getVector(const Magnetic::Update& update, const State&) {
@@ -176,16 +177,15 @@ const MagneticModel::NoiseVariance& Magnetic::getVariance(const Magnetic::Update
   return R_;
 }
 
-bool Magnetic::beforeUpdate(PoseEstimation &estimator, const Magnetic::Update &update) {
+bool Magnetic::prepareUpdate(State &state, const Update &update) {
   // reset reference position if Magnetic has not been updated for a while
-  if (timedout()) reference_ = 0;
+  if (timedout()) reference_.reset();
 
-  if (reference_ != estimator.globalReference()) {
-    reference_ = estimator.globalReference();
+  if (reference_ != GlobalReference::Instance()) {
+    reference_ = GlobalReference::Instance();
 
     if (auto_heading_) {
-      double yaw, pitch, roll;
-      estimator.getOrientation(yaw, pitch, roll);
+      double yaw = Eigen::Quaterniond(state.getOrientation()).matrix().eulerAngles(2,1,0)[0];
       reference_->setHeading(getModel()->getTrueHeading(update.getVector()) - (-yaw));
       ROS_INFO("Set new reference heading to %.1f degress", reference_->heading() * 180.0 / M_PI);
     }

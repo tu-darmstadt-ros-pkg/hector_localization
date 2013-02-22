@@ -56,6 +56,8 @@ namespace hector_pose_estimation {
   template <int _Rows>
   class ColumnVector_ : public Eigen::Matrix<ScalarType,_Rows,1> {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(_Rows != Dynamic) // is this really required if Eigen::Matrix is the base class?
+
     typedef Eigen::Matrix<ScalarType,_Rows,1> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
@@ -69,6 +71,8 @@ namespace hector_pose_estimation {
   template <int _Cols>
   class RowVector_ : public Eigen::Matrix<ScalarType,1,_Cols> {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(_Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
+
     typedef Eigen::Matrix<ScalarType,1,_Cols> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
@@ -82,6 +86,8 @@ namespace hector_pose_estimation {
   template <int _Rows, int _Cols>
   class Matrix_ : public Eigen::Matrix<ScalarType,_Rows,_Cols> {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(_Rows != Dynamic || _Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
+
     typedef Eigen::Matrix<ScalarType,_Rows,_Cols> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
@@ -137,10 +143,10 @@ namespace hector_pose_estimation {
     SymmetricMatrix_(Scalar value) /* : SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ { this->setConstant(value); }
     template <typename Derived> SymmetricMatrix_(const Eigen::MatrixBase<Derived>& other) : Matrix_<_Dimension,_Dimension>(other) /* , SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ {}
 
-    SymmetricMatrix_& setZero() {
-      this->setZero();
-      return *this;
-    }
+//    SymmetricMatrix_& setZero() {
+//      this->Matrix_<_Dimension,_Dimension>::setZero();
+//      return *this;
+//    }
 
     // using SelfAdjointViewType::operator();
 

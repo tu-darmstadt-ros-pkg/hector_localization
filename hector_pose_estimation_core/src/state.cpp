@@ -38,14 +38,15 @@ State::State()
 #ifdef USE_RATE_SYSTEM_MODEL
   , rate_(state_.segment<3>(RATE_X))
 #else
-  , rate_storage(new ColumnVector(3, 0.0))
+  , rate_storage(new ColumnVector(3))
   , rate_(rate_storage_->segment<3>(0))
 #endif
   , position_(state_.segment<3>(POSITION_X))
   , velocity_(state_.segment<3>(VELOCITY_X))
-  , acceleration_storage_(new ColumnVector(3, 0.0))
+  , acceleration_storage_(new ColumnVector(3))
   , acceleration_(acceleration_storage_->segment<3>(0))
 {
+  reset();
 }
 
 State::State(const Vector &vector, const Covariance& covariance)
@@ -55,14 +56,15 @@ State::State(const Vector &vector, const Covariance& covariance)
 #ifdef USE_RATE_SYSTEM_MODEL
   , rate_(state_.segment<3>(RATE_X))
 #else
-  , rate_storage(new ColumnVector(3, 0.0))
+  , rate_storage(new ColumnVector(3))
   , rate_(rate_storage_->segment<3>(0))
 #endif
   , position_(state_.segment<3>(POSITION_X))
   , velocity_(state_.segment<3>(VELOCITY_X))
-  , acceleration_storage_(new ColumnVector(3, 0.0))
+  , acceleration_storage_(new ColumnVector(3))
   , acceleration_(acceleration_storage_->segment<3>(0))
 {
+  reset();
 }
 
 State::~State()
@@ -70,12 +72,23 @@ State::~State()
 
 void State::reset()
 {
+  // reset state
   state_.setZero();
   covariance_.setZero();
   orientation().w() = 1.0;
 
+  // reset status flags
   system_status_ = 0;
   measurement_status_ = 0;
+
+  // reset pseudo-states
+  if (rate_storage_)         rate_storage_->setZero();
+  if (acceleration_storage_) acceleration_storage_->setZero();
+
+  // reset all substates
+  for(SubStates::iterator sub = substates_.begin(); sub != substates_.end(); ++sub) {
+    (*sub)->reset();
+  }
 }
 
 void State::updated()
@@ -142,34 +155,5 @@ double State::normalize() {
   orientation() = orientation() / s;
   return s;
 }
-
-const SubStatePtr& State::addSubState(const SystemModel *model)
-{
-  SubStatePtr substate(new SubState(model->getDimension()));
-  substates_.push_back(substate);
-  substate_map_[model] = SubStateWPtr(substate);
-  return substates_.back();
-}
-
-SubState::SubState(int dimension)
-  : dimension_(dimension)
-  , state_(dimension)
-  , covariance_(dimension)
-  , cross_variance_(State::StateDimension, dimension)
-{
-}
-
-SubState::~SubState()
-{}
-
-void SubState::reset()
-{
-  state_.setZero();
-  covariance_.setZero();
-  cross_variance_.setZero();
-}
-
-void SubState::updated()
-{}
 
 } // namespace hector_pose_estimation

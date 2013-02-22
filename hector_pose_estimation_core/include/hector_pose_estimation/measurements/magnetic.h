@@ -45,7 +45,7 @@ public:
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
   double getMagneticHeading(const MeasurementVector& y) const;
   double getTrueHeading(const MeasurementVector& y) const;
@@ -74,11 +74,11 @@ public:
   virtual MeasurementVector const& getVector(const Update &update, const State&);
   virtual NoiseVariance const& getVariance(const Update &update, const State&);
 
-  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+  virtual bool prepareUpdate(State &state, const Update &update);
 
 private:
   bool auto_heading_;
-  GlobalReference *reference_;
+  GlobalReferencePtr reference_;
 
   MeasurementVector y_;
   NoiseVariance R_;

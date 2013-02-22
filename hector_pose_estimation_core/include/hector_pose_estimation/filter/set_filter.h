@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,68 +26,36 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_BARO_H
-#define HECTOR_POSE_ESTIMATION_BARO_H
+#ifndef HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H
+#define HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H
 
+#include <hector_pose_estimation/system.h>
 #include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/measurements/height.h>
 
-#ifdef USE_HECTOR_UAV_MSGS
-  #include <hector_uav_msgs/Altimeter.h>
-#endif
+#include <hector_pose_estimation/filter/ekf.h>
+
+#include <ros/console.h>
 
 namespace hector_pose_estimation {
 
-class BaroModel : public HeightModel
-{
-public:
-  BaroModel();
-  virtual ~BaroModel();
-
-  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
-
-  void setQnh(double qnh) { qnh_ = qnh; }
-  double getQnh() const { return qnh_; }
-
-  double getAltitude(const Update_<BaroModel>& update);
-
-protected:
-  double qnh_;
-};
-
-class BaroUpdate : public Update_<BaroModel> {
-public:
-  BaroUpdate();
-  BaroUpdate(double pressure);
-  BaroUpdate(double pressure, double qnh);
-  double qnh() const { return qnh_; }
-  BaroUpdate& qnh(double qnh) { qnh_ = qnh; return *this; }
-
-private:
-  double qnh_;
-};
-
-namespace traits {
-  template <> struct Update<BaroModel> { typedef BaroUpdate type; };
+template <typename ConcreteModel>
+void System_<ConcreteModel>::setFilter(Filter *filter) {
+  if (filter->derived<filter::EKF>()) {
+    filter_ = Filter::factory(filter->derived<filter::EKF>()).addPredictor<ConcreteModel>(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
+  }
 }
 
-class Baro : public Measurement_<BaroModel>, HeightBaroCommon
-{
-public:
-  Baro(const std::string& name = "baro") : Measurement_<BaroModel>(name), HeightBaroCommon(this) {}
-  virtual ~Baro() {}
+template <typename ConcreteModel>
+void Measurement_<ConcreteModel>::setFilter(Filter *filter) {
+  if (filter->derived<filter::EKF>()) {
+    filter_ = Filter::factory(filter->derived<filter::EKF>()).addCorrector<ConcreteModel>(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
+  }
+}
 
-  void setElevation(double elevation) { getModel()->setElevation(elevation); }
-  double getElevation() const { return getModel()->getElevation(); }
+}
 
-  void setQnh(double qnh) { getModel()->setQnh(qnh); }
-  double getQnh() const { return getModel()->getQnh(); }
-
-  virtual void onReset();
-  virtual bool prepareUpdate(State &state, const Update &update);
-};
-
-} // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_BARO_H
+#endif // HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H

@@ -43,7 +43,7 @@ public:
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
 protected:
   double position_stddev_;
@@ -57,7 +57,11 @@ struct GPSUpdate : public MeasurementUpdate {
   double velocity_east;
 };
 
-class GPS : public Measurement_<GPSModel,GPSUpdate>
+namespace traits {
+  template <> struct Update<GPSModel> { typedef GPSUpdate type; };
+}
+
+class GPS : public Measurement_<GPSModel>
 {
 public:
   GPS(const std::string& name = "gps");
@@ -66,10 +70,10 @@ public:
   void onReset();
 
   GPSModel::MeasurementVector const& getVector(const GPSUpdate &update, const State&);
-  bool beforeUpdate(State &state, const GPSUpdate &update);
+  bool prepareUpdate(State &state, const GPSUpdate &update);
 
 private:
-  GlobalReference *reference_;
+  GlobalReferencePtr reference_;
   GPSUpdate last_;
   GPSModel::MeasurementVector y_;
 };

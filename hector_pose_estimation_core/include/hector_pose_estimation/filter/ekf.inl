@@ -30,18 +30,54 @@
 #define HECTOR_POSE_ESTIMATION_FILTER_EKF_INL
 
 #include <hector_pose_estimation/filter/ekf.h>
+#include <boost/utility/enable_if.hpp>
 
 namespace hector_pose_estimation {
 namespace filter {
 
-template <typename ConcreteModel>
-bool EKF::Predictor<ConcreteModel>::predict(Model *model, State &state, double dt) {
+template <typename ConcreteModel, typename Enabled>
+bool EKF::PredictorImpl<ConcreteModel, Enabled>::predict(State &state, double dt) {
+  this->model_->getExpectedValue(x_pred, state, dt);
+  this->model_->getStateJacobian(A, state, dt, this->init_);
+  this->model_->getSystemNoise(Q, state, dt, this->init_);
+
+  state.P() = A * state.P() * A.transpose() + Q;
+  state.x() = x_pred;
+
+  this->init_ = false;
   return true;
 }
 
 template <typename ConcreteModel>
-bool EKF::Corrector<ConcreteModel>::correct(State &state, const typename Model::MeasurementVector &y, const typename Model::NoiseVariance &R) {
+bool EKF::PredictorImpl<ConcreteModel, typename boost::enable_if< typename ConcreteModel::IsSubSystem >::type>::predict(State &state, double dt) {
+  this->model_->getExpectedValue(x_pred, state, dt);
+  this->model_->getStateJacobian(Asub, Across, state, dt, this->init_);
+  this->model_->getSystemNoise(Q, state, dt, this->init_);
+
+  this->init_ = false;
   return true;
+}
+
+template <typename ConcreteModel, typename Enabled>
+bool EKF::CorrectorImpl<ConcreteModel, Enabled>::correct(State &state, const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
+  this->model_->getExpectedValue(y_pred, state);
+  this->model_->getStateJacobian(C, state, this->init_);
+
+  K = state.P() * C.transpose() * (C * state.P() * C.transpose() + R).inverse();
+  state.P() = state.P() - K * C * state.P();
+
+  error = y - y_pred;
+  this->model_->limitError(error);
+  state.x() = state.x() + K * error;
+
+  this->init_ = false;
+  return true;
+}
+
+template <typename ConcreteModel>
+bool EKF::CorrectorImpl<ConcreteModel, typename boost::enable_if< typename ConcreteModel::HasSubSystem >::type>::correct(State &state, const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
+  ROS_FATAL_NAMED(this->model_->getName(), "EKF corrections with sub systems are currently not implemented");
+  return false;
 }
 
 } // namespace filter

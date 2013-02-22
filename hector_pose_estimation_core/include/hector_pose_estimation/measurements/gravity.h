@@ -41,6 +41,8 @@ public:
   GravityModel();
   virtual ~GravityModel();
 
+  virtual bool init(PoseEstimation &estimator, State &state);
+
   virtual void setGravity(double gravity) { gravity_ = gravity; }
   virtual double getGravity() const { return gravity_; }
 
@@ -49,18 +51,11 @@ public:
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
 protected:
   double stddev_;
   double gravity_;
-};
-
-class Gravity : public Measurement_<GravityModel>
-{
-public:
-  Gravity(const std::string& name = "gravity") : Measurement_<GravityModel>(name) {}
-  bool beforeUpdate(PoseEstimation &estimator, const Update &update);
 };
 
 } // namespace hector_pose_estimation

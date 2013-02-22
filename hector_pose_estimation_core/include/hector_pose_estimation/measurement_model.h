@@ -65,29 +65,69 @@ protected:
   ParameterList parameters_;
 };
 
+namespace traits {
+
+  template <class Derived, int _Dimension = Derived::MeasurementDimension, int _SubDimension = Derived::SubDimension>
+  struct MeasurementModel {
+    enum { StateDimension = State::Dimension };
+    typedef ColumnVector_<StateDimension> StateVector;
+    typedef SymmetricMatrix_<StateDimension> StateVariance;
+
+    enum { MeasurementDimension = _Dimension };
+    typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+    typedef SymmetricMatrix_<MeasurementDimension> NoiseVariance;
+    typedef Matrix_<MeasurementDimension,StateDimension> MeasurementMatrix;
+    typedef Matrix_<StateDimension,MeasurementDimension> GainMatrix;
+
+    enum { InputDimension = traits::Input<Derived>::Dimension };
+    typedef typename traits::Input<Derived>::Type InputType;
+    typedef typename traits::Input<Derived>::Vector InputVector;
+    typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix;
+
+    enum { SubDimension = _SubDimension };
+    struct HasSubSystem : public boost::integral_constant<bool, (_SubDimension > 0)> {};
+    typedef ColumnVector_<SubDimension> SubStateVector;
+    typedef SymmetricMatrix_<SubDimension> SubStateVariance;
+    typedef Matrix_<MeasurementDimension,SubDimension> SubMeasurementMatrix;
+    typedef Matrix_<SubDimension,MeasurementDimension> SubGainMatrix;
+  };
+
+} // namespace traits
+
 template <class Derived, int _Dimension, int _SubDimension = 0>
 class MeasurementModel_ : public MeasurementModel {
 public:
-  static const int MeasurementDimension = _Dimension;
-  static const int StateDimension = State::Dimension;
-  static const int SubDimension = _SubDimension;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseVariance;
-  typedef Matrix_<MeasurementDimension,StateDimension> MeasurementMatrix;
-  typedef Matrix_<MeasurementDimension,SubDimension> SubMeasurementMatrix;
+  typedef typename traits::MeasurementModel<Derived, _Dimension, _SubDimension> traits;
 
-  static const int InputDimension = Input::traits<Derived>::Dimension;
-  typedef typename Input::traits<Derived>::Type InputType;
-  typedef typename Input::traits<Derived>::Vector InputVector;
-  typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix;
+  enum { StateDimension = traits::StateDimension };
+  typedef typename traits::StateVector StateVector;
+  typedef typename traits::StateVariance StateVariance;
 
-  struct HasSubSystem { static const bool value = (_SubDimension > 0); };
+  enum { MeasurementDimension = _Dimension };
+  typedef typename traits::MeasurementVector MeasurementVector;
+  typedef typename traits::NoiseVariance NoiseVariance;
+  typedef typename traits::MeasurementMatrix MeasurementMatrix;
+  typedef typename traits::GainMatrix GainMatrix;
+
+  enum { InputDimension = traits::InputDimension };
+  typedef typename traits::InputType InputType;
+  typedef typename traits::InputVector InputVector;
+  typedef typename traits::InputMatrix InputMatrix;
+
+  typedef typename traits::HasSubSystem HasSubSystem;
+  enum { SubDimension = _SubDimension };
+  typedef typename traits::SubStateVector SubStateVector;
+  typedef typename traits::SubStateVariance SubStateVariance;
+  typedef typename traits::SubMeasurementMatrix SubMeasurementMatrix;
+  typedef typename traits::SubGainMatrix SubGainMatrix;
 
   MeasurementModel_() {}
   virtual ~MeasurementModel_() {}
 
-  virtual int getDimension() const { return MeasurementDimension; }
-  virtual bool hasSubSystem() const { return HasSubSystem::value; }
+  virtual int getDimension() const { return traits::MeasurementDimension; }
+  virtual bool hasSubSystem() const { return traits::HasSubSystem::value; }
+
+  virtual State& state(State& state) const { return state; }
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state) {}
   virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init) {}
@@ -98,6 +138,8 @@ public:
   virtual void getStateJacobian(MeasurementMatrix& C, SubMeasurementMatrix& Csub, const State& state, bool init) {
     getStateJacobian(C, state, init);
   }
+
+  virtual void limitError(MeasurementVector& error) {}
 };
 
 } // namespace hector_pose_estimation

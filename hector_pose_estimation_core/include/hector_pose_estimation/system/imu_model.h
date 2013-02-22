@@ -34,7 +34,7 @@
 
 namespace hector_pose_estimation {
 
-class GyroModel : public TimeContinuousSystemModel_<GyroModel, SubSystemModel, 3>
+class GyroModel : public TimeContinuousSystemModel_<GyroModel, 3>
 {
 public:
   enum StateIndex {
@@ -49,23 +49,25 @@ public:
   virtual bool init(PoseEstimation& estimator, State& state);
   virtual void getPrior(State &state);
 
+  using TimeContinuousSystemModel_<GyroModel, 3>::getSystemNoise;
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
-  virtual void getStateJacobian(SystemMatrix& Asub, CrossSystemMatrix& Across, const State& state, bool init);
+  using TimeContinuousSystemModel_<GyroModel, 3>::getStateJacobian;
+  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, bool init);
 
-  ConstVectorBlock3 getBias() const { return drift_->getSegment<3>(BIAS_GYRO_X); }
+  const typename SubState::Vector& getBias() const { return drift_->getVector(); }
 
 private:
   SubStatePtr drift_;
   double rate_drift_;
 };
 
-class AccelerometerModel : public TimeContinuousSystemModel_<AccelerometerModel, SubSystemModel, 3>
+class AccelerometerModel : public TimeContinuousSystemModel_<AccelerometerModel, 3>
 {
 public:
   enum StateIndex {
     BIAS_ACCEL_X = 0,
     BIAS_ACCEL_Y,
-    BIAS_ACCEL_Z,
+    BIAS_ACCEL_Z
   };
 
   AccelerometerModel();
@@ -74,10 +76,12 @@ public:
   virtual bool init(PoseEstimation& estimator, State& state);
   virtual void getPrior(State &state);
 
+  using TimeContinuousSystemModel_<AccelerometerModel, 3>::getSystemNoise;
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
-  virtual void getStateJacobian(SystemMatrix& Asub, CrossSystemMatrix& Across, const State& state, bool init);
+  using TimeContinuousSystemModel_<AccelerometerModel, 3>::getStateJacobian;
+  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, bool init);
 
-  ConstVectorBlock3 getBias() const { return drift_->getSegment<3>(BIAS_ACCEL_X); }
+  const typename SubState::Vector& getBias() const { return drift_->getVector(); }
 
 private:
   SubStatePtr drift_;

@@ -43,9 +43,10 @@ GlobalReference::GlobalReference()
   reset();
 }
 
-GlobalReference *GlobalReference::Instance()
+const GlobalReferencePtr &GlobalReference::Instance()
 {
-  static GlobalReference *instance = new GlobalReference();
+  static GlobalReferencePtr instance;
+  if (!instance) { instance.reset(new GlobalReference); }
   return instance;
 }
 

@@ -83,6 +83,9 @@ namespace hector_pose_estimation {
   class Filter;
   class State;
 
+  class GlobalReference;
+  typedef boost::shared_ptr<GlobalReference> GlobalReferencePtr;
+
 } // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_TYPES_H

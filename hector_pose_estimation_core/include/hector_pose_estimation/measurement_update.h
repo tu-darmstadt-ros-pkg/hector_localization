@@ -45,7 +45,7 @@ public:
 template <class MeasurementModel>
 class Update_ : public MeasurementUpdate {
 public:
-  static const int MeasurementDimension = MeasurementModel::MeasurementDimension;
+  enum { MeasurementDimension = MeasurementModel::MeasurementDimension };
   typedef Update_<MeasurementModel> Type;
   typedef typename MeasurementModel::MeasurementVector Vector;
   typedef typename MeasurementModel::NoiseVariance Variance;
@@ -86,18 +86,22 @@ protected:
   bool has_variance_;
 };
 
+namespace traits {
+  template <typename ConcreteModel> struct Update { typedef Update_<ConcreteModel> type; };
+}
+
 namespace internal {
-  template <class ConcreteModel, class ConcreteUpdate = Update_<ConcreteModel>, class Enable = void>
+  template <class ConcreteModel, class Enable = void>
   struct UpdateInspector {
-    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &, const State &, const ConcreteModel*) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
-    static typename ConcreteModel::NoiseVariance const& getVariance(const ConcreteUpdate &, const State &, const ConcreteModel*) { return *static_cast<typename ConcreteModel::NoiseVariance *>(0); }
+    static typename ConcreteModel::MeasurementVector const& getVector(const typename traits::Update<ConcreteModel>::type&, const State&, const ConcreteModel*) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
+    static typename ConcreteModel::NoiseVariance const& getVariance(const typename traits::Update<ConcreteModel>::type&, const State&, const ConcreteModel*) { return *static_cast<typename ConcreteModel::NoiseVariance *>(0); }
   };
 
-  template <class ConcreteModel, class ConcreteUpdate>
-  struct UpdateInspector<ConcreteModel, ConcreteUpdate, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>,ConcreteUpdate> >::type >
+  template <class ConcreteModel>
+  struct UpdateInspector<ConcreteModel, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>, typename traits::Update<ConcreteModel>::type> >::type >
   {
-    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const State &, const ConcreteModel*) { return update.getVector(); }
-    static typename ConcreteModel::NoiseVariance const& getVariance(const ConcreteUpdate &update, const State &, const ConcreteModel*) { return update.getVariance(); }
+    static typename ConcreteModel::MeasurementVector const& getVector(const typename traits::Update<ConcreteModel>::type& update, const State&, const ConcreteModel*) { return update.getVector(); }
+    static typename ConcreteModel::NoiseVariance const& getVariance(const typename traits::Update<ConcreteModel>::type& update, const State&, const ConcreteModel*) { return update.getVariance(); }
   };
 }
 

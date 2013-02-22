@@ -62,8 +62,10 @@ void GPSModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
   y_pred(3) = state.getVelocity().y();
 }
 
-void GPSModel::getStateJacobian(MeasurementMatrix& C, const State& state)
+void GPSModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool init)
 {
+  if (!init) return; // C is time-constant
+
   if (state.getPositionIndex() >= 0) {
     C(0,State::POSITION_X) = 1.0;
     C(1,State::POSITION_Y) = 1.0;
@@ -76,8 +78,7 @@ void GPSModel::getStateJacobian(MeasurementMatrix& C, const State& state)
 }
 
 GPS::GPS(const std::string &name)
-  : Measurement_<GPSModel,GPSUpdate>(name)
-  , reference_(0)
+  : Measurement_<GPSModel>(name)
   , y_(4)
 {
 }
@@ -86,7 +87,7 @@ GPS::~GPS()
 {}
 
 void GPS::onReset() {
-  reference_ = 0;
+  reference_.reset();
 }
 
 GPSModel::MeasurementVector const& GPS::getVector(const GPSUpdate &update, const State&) {
@@ -102,9 +103,9 @@ GPSModel::MeasurementVector const& GPS::getVector(const GPSUpdate &update, const
   return y_;
 }
 
-bool GPS::beforeUpdate(State &state, const GPSUpdate &update) {
+bool GPS::prepareUpdate(State &state, const Update &update) {
   // reset reference position if GPS has not been updated for a while
-  if (timedout()) reference_ = 0;
+  if (timedout()) reference_.reset();
 
   // find new reference position
   if (reference_ != GlobalReference::Instance()) {

@@ -41,7 +41,7 @@ GyroModel::~GyroModel()
 
 bool GyroModel::init(PoseEstimation& estimator, State& state)
 {
-  drift_ = state.addSubState(this);
+  drift_ = state.addSubState<3>(this);
   return drift_;
 }
 
@@ -62,7 +62,7 @@ void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, bool init)
   }
 }
 
-void GyroModel::getStateJacobian(SystemMatrix& Asub, CrossSystemMatrix& Across, const State& state, bool)
+void GyroModel::getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, bool)
 {
   const State::OrientationType& q = state.getOrientation();
 
@@ -96,7 +96,7 @@ AccelerometerModel::~AccelerometerModel()
 
 bool AccelerometerModel::init(PoseEstimation& estimator, State& state)
 {
-  drift_ = state.addSubState(this);
+  drift_ = state.addSubState<3>(this);
   return drift_;
 }
 
@@ -118,7 +118,7 @@ void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State& state, bo
   }
 }
 
-void AccelerometerModel::getStateJacobian(SystemMatrix& Asub, CrossSystemMatrix& Across, const State& state, bool)
+void AccelerometerModel::getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, bool)
 {
   const State::OrientationType& q = state.getOrientation();
 

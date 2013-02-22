@@ -53,10 +53,10 @@ void ZeroRateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool ini
 
 void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  y_pred(0) = state.sub(gyro_model_)->getVector().z();
+  y_pred(0) = state.getSubState<3>(gyro_model_)->getVector().z();
 }
 
-void ZeroRateModel::getStateJacobian(MeasurementMatrix&, SubMeasurementMatrix& Csub, const State& state, bool init)
+void ZeroRateModel::getStateJacobian(MeasurementMatrix&, SubMeasurementMatrix& Csub, const State& state, bool)
 {
   Csub(0,GyroModel::BIAS_GYRO_Z)  = -1.0;
 }

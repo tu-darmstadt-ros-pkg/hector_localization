@@ -29,6 +29,7 @@
 #ifndef HECTOR_POSE_ESTIMATION_GLOBAL_REFERENCE_H
 #define HECTOR_POSE_ESTIMATION_GLOBAL_REFERENCE_H
 
+#include <hector_pose_estimation/types.h>
 #include <hector_pose_estimation/parameters.h>
 
 namespace hector_pose_estimation {
@@ -75,7 +76,7 @@ namespace hector_pose_estimation {
 
     ParameterList& parameters();
 
-    static GlobalReference *Instance();
+    static const GlobalReferencePtr &Instance();
 
     void updated();
     void reset();

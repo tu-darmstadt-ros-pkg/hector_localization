@@ -39,6 +39,11 @@ GravityModel::GravityModel()
 
 GravityModel::~GravityModel() {}
 
+bool GravityModel::init(PoseEstimation &estimator, State &state) {
+  setGravity(estimator.parameters().get<double>("gravity"));
+  return true;
+}
+
 bool GravityModel::applyStatusMask(const SystemStatus &status) const {
   if (status & STATE_ROLLPITCH) return false;
   return true;
@@ -65,7 +70,7 @@ void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& stat
   y_pred(2) = -gravity_ * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
 }
 
-void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state)
+void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
   const State::OrientationType& q = state.getOrientation();
 
@@ -83,16 +88,6 @@ void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state)
     C(2,State::QUATERNION_Y) =  gravity_*2*q.y();
     C(2,State::QUATERNION_Z) = -gravity_*2*q.z();
   }
-}
-
-bool Gravity::beforeUpdate(PoseEstimation &estimator, const Update &update) {
-  try {
-    model_->setGravity(estimator.parameters().get<double>("gravity"));
-  } catch(std::bad_cast&) {
-    return false;
-  }
-
-  return true;
 }
 
 } // namespace hector_pose_estimation

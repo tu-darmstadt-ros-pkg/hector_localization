@@ -60,8 +60,10 @@ void HeightModel::getExpectedValue(MeasurementVector& y_pred, const State& state
   y_pred(0) = state.getPosition().z() + getElevation();
 }
 
-void HeightModel::getStateJacobian(MeasurementMatrix& C, const State& state)
+void HeightModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool init)
 {
+  if (!init) return; // C is time-constant
+
   if (state.getPositionIndex() >= 0) {
     C(0,State::POSITION_Z) = 1.0;
   }
@@ -103,7 +105,7 @@ private:
   T value;
 };
 
-bool Height::beforeUpdate(State &state, const Update_<HeightModel> &update) {
+bool Height::prepareUpdate(State &state, const Update &update) {
   setElevation(resetElevation(state, functor_wrapper<double>(update.getVector()(0))));
   return true;
 }

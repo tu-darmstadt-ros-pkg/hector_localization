@@ -49,7 +49,7 @@ PoseEstimation::PoseEstimation(const SystemPtr& system)
 //  , heading_(new Heading("heading"))
 {
   if (!the_instance) the_instance = this;
-  addSystem(system);
+  if (system) addSystem(system);
 
   world_frame_ = "world";
   nav_frame_ = "nav";
@@ -96,14 +96,14 @@ bool PoseEstimation::init()
   if (systems_.empty()) return false;
 
   // initialize new filter
-  filter_.reset(new filter::EKF);
+  filter_.reset(new filter::EKF(state_));
 
-  // initialize systems
-  for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it)
+  // initialize measurements (new systems could be added during initialization!)
+  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)
     if (!(*it)->init(*this, *filter_, state_)) return false;
 
-  // initialize measurements
-  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)
+  // initialize systems (new systems could be added during initialization!)
+  for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it)
     if (!(*it)->init(*this, *filter_, state_)) return false;
 
   // reset (or initialize) filter and measurements
@@ -130,7 +130,9 @@ void PoseEstimation::reset()
   if (systems_.empty()) return;
 
   // set initial status
-  state().reset();
+  if (filter_) filter_->reset();
+
+  // restart alignment
   alignment_start_ = ros::Time();
   if (alignment_time_ > 0) {
     state().setSystemStatus(STATE_ALIGNMENT);
@@ -744,7 +746,7 @@ ParameterList PoseEstimation::getParameters() const {
   return parameters;
 }
 
-GlobalReference* PoseEstimation::globalReference() {
+const GlobalReferencePtr &PoseEstimation::globalReference() {
   return GlobalReference::Instance();
 }
 

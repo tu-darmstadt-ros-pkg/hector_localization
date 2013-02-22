@@ -36,8 +36,6 @@ namespace hector_pose_estimation {
 class Input
 {
 public:
-  template <class Model> struct traits;
-
   Input() {}
   virtual ~Input() {}
 
@@ -50,19 +48,10 @@ private:
   std::string name_;
 };
 
-template <int _Dimension> class Input_;
-template <class Model>
-struct Input::traits {
-  static const int Dimension = 0;
-  typedef Input_<Dimension> Type;
-  typedef ColumnVector_<0> Vector;
-  typedef SymmetricMatrix_<0> Variance;
-};
-
 template <int _Dimension>
 class Input_ : public Input {
 public:
-  static const int Dimension = _Dimension;
+  enum { Dimension = _Dimension };
   typedef Input_<Dimension> Type;
   typedef ColumnVector_<Dimension> Vector;
   typedef SymmetricMatrix_<Dimension> Variance;
@@ -101,6 +90,15 @@ protected:
   Vector u_;
   boost::shared_ptr<Variance> Q_;
 };
+
+namespace traits {
+  template <class Model> struct Input {
+    enum { Dimension = 0 };
+    typedef Input_<Dimension> Type;
+    typedef ColumnVector_<0> Vector;
+    typedef SymmetricMatrix_<0> Variance;
+  };
+}
 
 } // namespace hector_pose_estimation
 

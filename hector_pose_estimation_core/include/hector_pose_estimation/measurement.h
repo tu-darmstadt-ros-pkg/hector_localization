@@ -35,11 +35,12 @@
 #include <hector_pose_estimation/state.h>
 #include <hector_pose_estimation/queue.h>
 #include <hector_pose_estimation/filter.h>
-#include <hector_pose_estimation/filter/ekf.h> // dirty
 
 #include <ros/console.h>
 
 namespace hector_pose_estimation {
+
+template <typename ConcreteModel> class Measurement_;
 
 class Measurement
 {
@@ -47,7 +48,7 @@ public:
   Measurement(const std::string& name);
   virtual ~Measurement();
 
-  template <typename ConcreteModel> static boost::shared_ptr<Measurement> create(ConcreteModel *model, const std::string& name);
+  template <typename ConcreteModel> static boost::shared_ptr<Measurement_<ConcreteModel> > create(ConcreteModel *model, const std::string& name);
 
   virtual const std::string& getName() const { return name_; }
   void setName(const std::string& name) { name_ = name; }
@@ -55,7 +56,7 @@ public:
   virtual MeasurementModel* getModel() const { return 0; }
   virtual int getDimension() const { return 0; }
 
-  virtual void setFilter(Filter *filter) = 0;
+  virtual void setFilter(Filter *filter) {}
 
   virtual bool init(PoseEstimation& estimator, Filter& filter, State& state);
   virtual void cleanup();
@@ -81,7 +82,7 @@ public:
 
 protected:
   virtual Queue& queue() = 0;
-  virtual bool updateImpl(State &state, const MeasurementUpdate &update) = 0;
+  virtual bool updateImpl(State &state, const MeasurementUpdate &update) { return false; }
 
   virtual bool onInit(PoseEstimation& estimator, State& state) { return true; } // currently unsed...
   virtual void onReset() { }
@@ -99,12 +100,13 @@ protected:
   double timer_;
 };
 
-template <class ConcreteModel, class ConcreteUpdate = typename Update_<ConcreteModel>::Type >
+template <class ConcreteModel>
 class Measurement_ : public Measurement {
 public:
   typedef ConcreteModel Model;
-  typedef ConcreteUpdate Update;
-  static const int MeasurementDimension = Model::MeasurementDimension;
+  typedef typename traits::Update<ConcreteModel>::type Update;
+
+  enum { MeasurementDimension = Model::MeasurementDimension };
   typedef typename Model::MeasurementVector MeasurementVector;
   typedef typename Model::NoiseVariance NoiseVariance;
 
@@ -131,11 +133,11 @@ public:
   virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
 
   virtual MeasurementVector const& getVector(const Update &update, const State &state) {
-    return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVector(update, state, getModel());
+    return internal::UpdateInspector<ConcreteModel>::getVector(update, state, getModel());
   }
 
   virtual NoiseVariance const& getVariance(const Update &update, const State &state) {
-    if (update.hasVariance()) return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVariance(update, state, getModel());
+    if (update.hasVariance()) return internal::UpdateInspector<ConcreteModel>::getVariance(update, state, getModel());
     model_->getMeasurementNoise(R_, state, false);
     return R_;
   }
@@ -145,7 +147,7 @@ public:
   }
 
   const boost::shared_ptr< Filter::Corrector_<Model> >& filter() const { return filter_; }
-  void setFilter(Filter *filter = 0);
+  void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
   virtual bool updateImpl(State &state, const MeasurementUpdate &update);
@@ -163,18 +165,9 @@ protected:
 };
 
 template <typename ConcreteModel>
-MeasurementPtr Measurement::create(ConcreteModel *model, const std::string& name)
+boost::shared_ptr<Measurement_<ConcreteModel> > Measurement::create(ConcreteModel *model, const std::string& name)
 {
-  return MeasurementPtr(new Measurement_<ConcreteModel>(model, name));
-}
-
-template <typename ConcreteModel, class ConcreteUpdate>
-void Measurement_<ConcreteModel, ConcreteUpdate>::setFilter(Filter *filter) {
-  if (filter->derived<filter::EKF>()) {
-    filter_ = Filter::factory(filter->derived<filter::EKF>()).corrector(this->getModel());
-  } else {
-    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
-  }
+  return boost::make_shared<Measurement_<ConcreteModel> >(model, name);
 }
 
 } // namespace hector_pose_estimation
@@ -184,8 +177,8 @@ void Measurement_<ConcreteModel, ConcreteUpdate>::setFilter(Filter *filter) {
 
 namespace hector_pose_estimation {
 
-template <class ConcreteModel, class ConcreteUpdate>
-  bool Measurement_<ConcreteModel, ConcreteUpdate>::updateImpl(State &state, const MeasurementUpdate &update_)
+template <class ConcreteModel>
+  bool Measurement_<ConcreteModel>::updateImpl(State &state, const MeasurementUpdate &update_)
   {
     Update const &update = dynamic_cast<Update const &>(update_);
     if (!prepareUpdate(state, update)) return false;

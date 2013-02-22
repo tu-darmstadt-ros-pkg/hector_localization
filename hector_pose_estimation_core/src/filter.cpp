@@ -31,12 +31,19 @@
 
 namespace hector_pose_estimation {
 
-Filter::Filter()
+Filter::Filter(State& state)
+  : state_(state)
 {
 }
 
 Filter::~Filter()
 {
+}
+
+bool Filter::reset()
+{
+  state_.reset();
+  return true;
 }
 
 void Filter::predict(State& state, const Systems& systems, double dt) {

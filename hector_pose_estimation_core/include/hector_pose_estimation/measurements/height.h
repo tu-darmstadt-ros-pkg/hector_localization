@@ -42,7 +42,7 @@ public:
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
   void setElevation(double elevation) { elevation_ = elevation; }
   double getElevation() const { return elevation_; }
@@ -76,7 +76,7 @@ public:
   double getElevation() const { return getModel()->getElevation(); }
 
   virtual void onReset();
-  virtual bool beforeUpdate(State &state, const Update &update);
+  virtual bool prepareUpdate(State &state, const Update &update);
 };
 
 } // namespace hector_pose_estimation

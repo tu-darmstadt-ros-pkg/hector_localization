@@ -34,11 +34,12 @@
 #include <hector_pose_estimation/state.h>
 #include <hector_pose_estimation/input.h>
 #include <hector_pose_estimation/filter.h>
-#include <hector_pose_estimation/filter/ekf.h> // dirty
 
 #include <ros/console.h>
 
 namespace hector_pose_estimation {
+
+template <typename ConcreteModel> class System_;
 
 class System
 {
@@ -46,7 +47,7 @@ public:
   System(const std::string& name);
   virtual ~System();
 
-  template <typename ConcreteModel> static boost::shared_ptr<System> create(ConcreteModel *model, const std::string& name = "system");
+  template <typename ConcreteModel> static boost::shared_ptr<System_<ConcreteModel> > create(ConcreteModel *model, const std::string& name = "system");
 
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
@@ -74,8 +75,6 @@ public:
 
 protected:
   virtual bool updateImpl(Filter &filter, State &state, double dt) = 0;
-  virtual bool prepareUpdate(State &state, double dt) = 0;
-  virtual bool afterUpdate(State &state) = 0;
 
 protected:
   std::string name_;
@@ -88,8 +87,8 @@ class System_ : public System
 {
 public:
   typedef ConcreteModel Model;
-  typedef typename Input::traits<ConcreteModel>::Type InputType;
-  typedef typename Input::traits<ConcreteModel>::Vector InputVector;
+  typedef typename traits::Input<ConcreteModel>::Type InputType;
+  typedef typename traits::Input<ConcreteModel>::Vector InputVector;
 
   System_(const std::string& name = "system")
     : System(name)
@@ -111,12 +110,12 @@ public:
   virtual int getDimension() const { return model_->getDimension(); }
 
   const boost::shared_ptr< Filter::Predictor_<Model> >& filter() const { return filter_; }
-  void setFilter(Filter *filter = 0);
+  void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
   virtual bool updateImpl(Filter &filter, State &state, double dt);
   virtual bool prepareUpdate(State &state, double dt) { return getModel()->prepareUpdate(state, dt); }
-  virtual bool afterUpdate(State &state) { return getModel()->afterUpdate(state); }
+  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
 
 private:
   boost::shared_ptr<Model> model_;
@@ -124,18 +123,9 @@ private:
 };
 
 template <typename ConcreteModel>
-SystemPtr System::create(ConcreteModel *model, const std::string& name)
+boost::shared_ptr<System_<ConcreteModel> > System::create(ConcreteModel *model, const std::string& name)
 {
-  return SystemPtr(new System_<ConcreteModel>(model, name));
-}
-
-template <typename ConcreteModel>
-void System_<ConcreteModel>::setFilter(Filter *filter) {
-  if (filter->derived<filter::EKF>()) {
-    filter_ = Filter::factory(filter->derived<filter::EKF>()).predictor(this->getModel());
-  } else {
-    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
-  }
+  return boost::make_shared<System_<ConcreteModel> >(model, name);
 }
 
 } // namespace hector_pose_estimation

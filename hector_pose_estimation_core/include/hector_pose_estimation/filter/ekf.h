@@ -34,50 +34,115 @@
 namespace hector_pose_estimation {
 namespace filter {
 
+class EKF;
+
+namespace ekf {
+
+
+
+
+} // namespace ekf
+
 class EKF : public Filter
 {
 public:
-  EKF() {}
+  EKF(State& state) : Filter(state) {}
   virtual ~EKF() {}
 
   std::string getType() const { return "EKF"; }
 
-  template <typename ConcreteModel> class Predictor : public Filter::template Predictor_<ConcreteModel>
+  template <typename ConcreteModel, typename Enabled = void>
+  class PredictorImpl : public Filter::template Predictor_<ConcreteModel>
   {
   public:
     typedef ConcreteModel Model;
-    using Filter::template Corrector_<ConcreteModel>::derived;
+    typedef typename Filter::template Predictor_<ConcreteModel> Base;
 
-    Predictor(EKF *filter, Model *model) : filter_(filter), model_(model) {}
-    bool predict(Model *model, State &state, double dt);
+    PredictorImpl(EKF *filter, Model *model) : Base(filter, model), filter_(filter) {}
+    virtual ~PredictorImpl() {}
 
-  private:
+    virtual bool predict(State &state, double dt);
+
+  protected:
     EKF *filter_;
-    Model *model_;
-
     typename Model::StateVector x_pred;
     typename Model::NoiseVariance Q;
     typename Model::SystemMatrix A;
-    typename Model::CrossSystemMatrix Across;
   };
 
-  template <typename ConcreteModel> class Corrector : public Filter::template Corrector_<ConcreteModel>
+  template <typename ConcreteModel>
+  class PredictorImpl<ConcreteModel, typename boost::enable_if<typename ConcreteModel::IsSubSystem >::type> : public Filter::template Predictor_<ConcreteModel>
   {
   public:
     typedef ConcreteModel Model;
-    using Filter::template Corrector_<ConcreteModel>::derived;
+    typedef typename Filter::template Predictor_<ConcreteModel> Base;
 
-    Corrector(EKF *filter, Model *model) : filter_(filter), model_(model) {}
-    bool correct(State &state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
+    PredictorImpl(EKF *filter, Model *model) : Base(filter, model), filter_(filter) {}
+    virtual ~PredictorImpl() {}
 
-  private:
+    virtual bool predict(State &state, double dt);
+
+  protected:
     EKF *filter_;
-    Model *model_;
+    typename Model::StateVector x_pred;
+    typename Model::NoiseVariance Q;
+    typename Model::SystemMatrix Asub;
+    typename Model::SubSystemMatrix Across;
+  };
 
+  template <typename ConcreteModel, typename Enabled = void>
+  class CorrectorImpl : public Filter::template Corrector_<ConcreteModel>
+  {
+  public:
+    typedef ConcreteModel Model;
+    typedef typename Filter::template Corrector_<ConcreteModel> Base;
+
+    CorrectorImpl(EKF *filter, Model *model) : Base(filter, model), filter_(filter) {}
+    virtual ~CorrectorImpl() {}
+
+    virtual bool correct(State &state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
+
+  protected:
+    EKF *filter_;
+    typename Model::MeasurementVector y_pred;
+    typename Model::MeasurementVector error;
+    typename Model::MeasurementMatrix C;
+    typename Model::GainMatrix K;
+  };
+
+  template <typename ConcreteModel>
+  class CorrectorImpl<ConcreteModel, typename boost::enable_if<typename ConcreteModel::HasSubSystem >::type> : public Filter::template Corrector_<ConcreteModel>
+  {
+  public:
+    typedef ConcreteModel Model;
+    typedef typename Filter::template Corrector_<ConcreteModel> Base;
+
+    CorrectorImpl(EKF *filter, Model *model) : Base(filter, model), filter_(filter) {}
+    virtual ~CorrectorImpl() {}
+
+    virtual bool correct(State &state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
+
+  protected:
+    EKF *filter_;
     typename Model::MeasurementVector y_pred;
     typename Model::MeasurementVector error;
     typename Model::MeasurementMatrix C;
     typename Model::SubMeasurementMatrix Ccross;
+    typename Model::GainMatrix K;
+  };
+
+  template <typename ConcreteModel>
+  class Predictor : public PredictorImpl<ConcreteModel> {
+  public:
+     Predictor(EKF *filter, ConcreteModel *model) : PredictorImpl<ConcreteModel>(filter, model) {}
+     virtual ~Predictor() {}
+  };
+
+  template <typename ConcreteModel>
+  class Corrector : public CorrectorImpl<ConcreteModel> {
+  public:
+     Corrector(EKF *filter, ConcreteModel *model) : CorrectorImpl<ConcreteModel>(filter, model) {}
+     virtual ~Corrector() {}
   };
 };
 

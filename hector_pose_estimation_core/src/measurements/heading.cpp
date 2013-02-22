@@ -59,7 +59,7 @@ void HeadingModel::getExpectedValue(MeasurementVector& y_pred, const State& stat
   y_pred(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
 }
 
-void HeadingModel::getStateJacobian(MeasurementMatrix& C, const State& state)
+void HeadingModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
   const State::OrientationType& q = state.getOrientation();
   const double t1 = q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z();
@@ -72,6 +72,10 @@ void HeadingModel::getStateJacobian(MeasurementMatrix& C, const State& state)
     C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
     C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
   }
+}
+
+void HeadingModel::limitError(MeasurementVector &error) {
+  error(0) = remainder(error(0), 2 * M_PI);
 }
 
 } // namespace hector_pose_estimation

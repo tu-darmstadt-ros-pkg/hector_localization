@@ -35,6 +35,8 @@
 #include <hector_pose_estimation/measurement.h>
 #include <hector_pose_estimation/parameters.h>
 
+#include <hector_pose_estimation/filter/set_filter.h> // pulls in all filter types
+
 #include <boost/shared_ptr.hpp>
 #include <vector>
 
@@ -67,14 +69,14 @@ public:
   const SystemPtr& addSystem(const SystemPtr& system, const std::string& name = "system");
   const SystemPtr& addSystem(System *system) { return addSystem(SystemPtr(system)); }
   template <typename ConcreteSystemModel> const SystemPtr& addSystem(ConcreteSystemModel *model, const std::string& name = "system");
-  SystemPtr getSystem(std::size_t index = 0) const { return systems_.get(index); }
+//  SystemPtr getSystem(std::size_t index = 0) const { return systems_.get(index); }
   SystemPtr getSystem(const std::string& name) const { return systems_.get(name); }
 
-  const SystemModel *getSystemModel(std::size_t index) const {
-    SystemPtr system = systems_.get(index);
-    if (!system) return 0;
-    return system->getModel();
-  }
+//  const SystemModel *getSystemModel(std::size_t index) const {
+//    SystemPtr system = systems_.get(index);
+//    if (!system) return 0;
+//    return system->getModel();
+//  }
 
   const SystemModel *getSystemModel(const std::string& name) const {
     SystemPtr system = systems_.get(name);
@@ -85,7 +87,7 @@ public:
   const MeasurementPtr& addMeasurement(const MeasurementPtr& measurement, const std::string& name = std::string());
   const MeasurementPtr& addMeasurement(Measurement *measurement) { return addMeasurement(MeasurementPtr(measurement)); }
   template <class ConcreteMeasurementModel> const MeasurementPtr& addMeasurement(ConcreteMeasurementModel *model, const std::string& name);
-  MeasurementPtr getMeasurement(std::size_t index) const { return measurements_.get(index); }
+//  MeasurementPtr getMeasurement(std::size_t index) const { return measurements_.get(index); }
   MeasurementPtr getMeasurement(const std::string &name) const { return measurements_.get(name); }
 
   template <class InputType> boost::shared_ptr<InputType> registerInput(const std::string& name = std::string());
@@ -94,7 +96,7 @@ public:
   InputPtr addInput(const InputPtr& input, const std::string& name = std::string());
   InputPtr addInput(Input *input) { return addInput(InputPtr(input)); }
   InputPtr setInput(const Input& input, const std::string& name = std::string());
-  InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
+//  InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
   InputPtr getInput(const std::string& name) const { return inputs_.get(name); }
 
   virtual const State& state() const { return state_; }
@@ -111,7 +113,7 @@ public:
   virtual bool updateSystemStatus(SystemStatus set, SystemStatus clear);
   virtual bool updateMeasurementStatus(SystemStatus set, SystemStatus clear);
 
-  virtual GlobalReference* globalReference();
+  virtual const GlobalReferencePtr &globalReference();
 
   virtual const ros::Time& getTimestamp() const;
   virtual void setTimestamp(const ros::Time& timestamp);

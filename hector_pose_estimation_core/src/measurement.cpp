@@ -48,10 +48,10 @@ Measurement::~Measurement()
 
 bool Measurement::init(PoseEstimation& estimator, Filter& filter, State& state)
 {
-  if (!getModel()) return false;
+  if (getModel() && !getModel()->init(estimator, state)) return false;
   setFilter(&filter);
   if (!onInit(estimator, state)) return false;
-  return getModel()->init(estimator, state);
+  return true;
 }
 
 void Measurement::cleanup()

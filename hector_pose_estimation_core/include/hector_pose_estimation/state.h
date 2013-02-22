@@ -51,6 +51,7 @@ namespace hector_pose_estimation {
 
 class SystemModel;
 class SubState;
+template <int Dimension> class SubState_;
 typedef boost::shared_ptr<SubState> SubStatePtr;
 typedef boost::weak_ptr<SubState> SubStateWPtr;
 
@@ -74,7 +75,9 @@ public:
     VELOCITY_Z, // body frame
     StateDimension
   };
-  static const int Dimension = StateDimension;
+  enum { Dimension = StateDimension };
+//  typedef ColumnVector_<Dimension> Vector;
+//  typedef SymmetricMatrix_<Dimension> Covariance;
   typedef ColumnVector Vector;
   typedef SymmetricMatrix Covariance;
 
@@ -138,9 +141,9 @@ public:
   virtual IndexType getVelocityIndex() const { return VELOCITY_X; }
   virtual IndexType getAccelerationIndex() const { return IndexType(-1); }
 
-  const SubStatePtr& addSubState(const SystemModel *model);
+  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > addSubState(const SystemModel *model);
+  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const SystemModel *model) const;
   const SubStates& getSubStates() const { return substates_; }
-  SubStatePtr sub(const SystemModel *model) const;
 
   const ros::Time& getTimestamp() const { return timestamp_; }
   void setTimestamp(const ros::Time& timestamp) { timestamp_ = timestamp; }
@@ -171,38 +174,62 @@ private:
 class SubState
 {
 public:
-  typedef ColumnVector Vector;
-  typedef SymmetricMatrix Covariance;
-  typedef Matrix CrossVariance;
+  virtual ~SubState() {}
+  virtual int getDimension() const = 0;
+
+  virtual void reset() = 0;
+  virtual void updated() {}
+  virtual void normalize() {}
+};
+
+template <int _Dimension>
+class SubState_ : public SubState
+{
+public:
+  static const unsigned int Dimension = _Dimension;
+  typedef SubState_<Dimension> type;
+  typedef ColumnVector_<Dimension> Vector;
+  typedef SymmetricMatrix_<Dimension> Covariance;
+  typedef Matrix_<State::Dimension, Dimension> CrossVariance;
+
+  typedef boost::shared_ptr<SubState_<Dimension> > Ptr;
 
 public:
-  SubState(int dimension);
-  virtual ~SubState();
+  virtual ~SubState_() {}
+  virtual int getDimension() const { return Dimension; }
 
-  virtual int getDimension() const { return dimension_; }
-
-  virtual void reset();
-  virtual void updated();
+  virtual void reset()
+  {
+    state_.setZero();
+    covariance_.setZero();
+    cross_variance_.setZero();
+  }
 
   virtual const Vector& getVector() const { return state_; }
   virtual const Covariance& getCovariance() const { return covariance_; }
-  template <int Size> VectorBlock<const Vector, Size> getSegment(IndexType start) const { return state_.segment<Size>(start); }
+  template <int Size> VectorBlock<const typename Vector::Base, Size> getSegment(IndexType start) const { return state_.segment<Size>(start); }
 
   virtual Vector& x() { return state_; }
   virtual Covariance& P() { return covariance_; }
   virtual CrossVariance& S() { return cross_variance_; }
 
-  virtual void normalize() {}
-
 private:
-  const int dimension_;
   Vector state_;
   Covariance covariance_;
   CrossVariance cross_variance_;
 };
 
-inline SubStatePtr State::sub(const SystemModel *model) const {
-  return substate_map_.count(model) ? substate_map_.at(model).lock() : SubStatePtr();
+template <int SubDimension>
+boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const SystemModel *model) const {
+  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substate_map_.count(model) ? substate_map_.at(model).lock() : SubStatePtr());
+}
+
+template <int SubDimension>
+boost::shared_ptr<SubState_<SubDimension> > State::addSubState(const SystemModel *model) {
+  boost::shared_ptr<SubState_<SubDimension> > substate(new SubState_<SubDimension>);
+  substates_.push_back(boost::shared_static_cast<SubState>(substate));
+  substate_map_[model] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
+  return substate;
 }
 
 } // namespace hector_pose_estimation

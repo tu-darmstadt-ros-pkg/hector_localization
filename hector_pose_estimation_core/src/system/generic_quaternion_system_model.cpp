@@ -55,6 +55,9 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   parameters().add("velocity_stddev", velocity_stddev_);
 //  parameters().add("accelerationdrift", accelerationdrift_);
 //  parameters().add("ratedrift", rate_drift_);
+
+  gyro_ = System::create(new GyroModel);
+  accelerometer_ = System::create(new AccelerometerModel);
 }
 
 GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
@@ -64,6 +67,8 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, State& state)
 {
   imu_ = estimator.registerInput<InputType>("raw_imu");
+  estimator.addSystem(gyro_, "gyro");
+  estimator.addSystem(accelerometer_, "accelerometer");
   return true;
 }
 
@@ -72,12 +77,12 @@ bool GenericQuaternionSystemModel::prepareUpdate(State& state, double dt)
   if (state.getAccelerationIndex() >= 0)
     acceleration = state.getAcceleration();
   else
-    acceleration = imu_->getAcceleration() + accelerometer_model_->getBias();
+    acceleration = imu_->getAcceleration() + accelerometer_->getModel()->getBias();
 
   if (state.getRateIndex() >= 0)
     rate = state.getRate();
   else
-    rate = imu_->getRate() + gyro_model_->getBias();
+    rate = imu_->getRate() + gyro_->getModel()->getBias();
 
   return true;
 }
