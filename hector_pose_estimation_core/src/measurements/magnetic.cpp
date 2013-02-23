@@ -157,9 +157,9 @@ void Magnetic::onReset() {
 }
 
 const MagneticModel::MeasurementVector& Magnetic::getVector(const Magnetic::Update& update) {
-  if (getModel()->hasMagnitude()) return update.getVector();
+  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getVector(update);
 
-  y_ = update.getVector();
+  y_ = Measurement_<MagneticModel>::getVector(update);
   double c = 1.0 / y_.norm();
   if (isinf(c)) {
     y_ = MeasurementVector(0.0);
@@ -170,10 +170,10 @@ const MagneticModel::MeasurementVector& Magnetic::getVector(const Magnetic::Upda
 }
 
 const MagneticModel::NoiseCovariance& Magnetic::getCovariance(const Magnetic::Update& update) {
-  if (getModel()->hasMagnitude()) return update.getCovariance();
+  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getCovariance(update);
 
-  R_ = update.getCovariance();
-  double c = 1.0 / update.getVector().norm();
+  R_ = Measurement_<MagneticModel>::getCovariance(update);
+  double c = 1.0 / Measurement_<MagneticModel>::getVector(update).norm();
   if (isinf(c)) {
     R_ = NoiseCovariance(1.0);
   } else {
