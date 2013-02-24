@@ -38,7 +38,7 @@ State::State()
 #ifdef USE_RATE_SYSTEM_MODEL
   , rate_(state_.segment<3>(RATE_X))
 #else
-  , rate_storage(new ColumnVector(3))
+  , rate_storage_(new ColumnVector(3))
   , rate_(rate_storage_->segment<3>(0))
 #endif
   , position_(state_.segment<3>(POSITION_X))
@@ -56,7 +56,7 @@ State::State(const Vector &vector, const Covariance& covariance)
 #ifdef USE_RATE_SYSTEM_MODEL
   , rate_(state_.segment<3>(RATE_X))
 #else
-  , rate_storage(new ColumnVector(3))
+  , rate_storage_(new ColumnVector(3))
   , rate_(rate_storage_->segment<3>(0))
 #endif
   , position_(state_.segment<3>(POSITION_X))

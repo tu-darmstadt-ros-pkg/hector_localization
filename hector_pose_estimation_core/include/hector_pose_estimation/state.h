@@ -45,7 +45,7 @@
 #include <sensor_msgs/NavSatFix.h>
 
 // Use system model with angular rates.
-// #define USE_RATE_SYSTEM_MODEL
+#define USE_RATE_SYSTEM_MODEL
 
 namespace hector_pose_estimation {
 
@@ -72,7 +72,16 @@ public:
     VELOCITY_X, // world frame
     VELOCITY_Y, // world frame
     VELOCITY_Z, // world frame
-    Dimension
+    Dimension,
+
+#ifndef USE_RATE_SYSTEM_MODEL
+    RATE_X = -1,
+    RATE_Y = -1,
+    RATE_Z = -1,
+#endif // USE_RATE_SYSTEM_MODEL
+    ACCELERATION_X = -1,
+    ACCELERATION_Y = -1,
+    ACCELERATION_Z = -1
   };
 
 //  typedef ColumnVector_<Dimension> Vector;
