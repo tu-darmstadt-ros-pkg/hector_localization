@@ -27,12 +27,12 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/rate.h>
+#include <hector_pose_estimation/pose_estimation.h>
 #include <hector_pose_estimation/system/imu_model.h>
 
 namespace hector_pose_estimation {
 
-RateModel::RateModel(const GyroModel *gyro_model)
-  : gyro_model_(gyro_model)
+RateModel::RateModel()
 {
   parameters().add("stddev", stddev_, 1.0*M_PI/180.0);
 }
@@ -48,53 +48,52 @@ void RateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 
 void RateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  const State::OrientationType& q = state.getOrientation();
-  const State::RateType& rate = state.getRate();
+//  const State::OrientationType& q = state.getOrientation();
+//  const State::RateType& rate = state.getRate();
 
-  y_pred(0) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()) * rate.x() + (2.0*q.x()*q.y()+2.0*q.w()*q.z())                 * rate.y() + (2.0*q.x()*q.z()-2.0*q.w()*q.y())                 * rate.z();
-  y_pred(1) = (2.0*q.x()*q.y()-2.0*q.w()*q.z())                 * rate.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()) * rate.y() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                 * rate.z();
-  y_pred(2) = (2.0*q.x()*q.z()+2.0*q.w()*q.y())                 * rate.x() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                 * rate.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z()) * rate.z();
-
-  typename SubState_<3>::Ptr gyro = state.getSubState<3>(gyro_model_);
-  if (gyro) {
-    y_pred += gyro->getVector();
-  }
+//  y_pred(0) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()) * rate.x() + (2.0*q.x()*q.y()+2.0*q.w()*q.z())                 * rate.y() + (2.0*q.x()*q.z()-2.0*q.w()*q.y())                 * rate.z();
+//  y_pred(1) = (2.0*q.x()*q.y()-2.0*q.w()*q.z())                 * rate.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()) * rate.y() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                 * rate.z();
+//  y_pred(2) = (2.0*q.x()*q.z()+2.0*q.w()*q.y())                 * rate.x() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                 * rate.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z()) * rate.z();
+  y_pred = state.getRate();
 }
 
-void RateModel::getStateJacobian(MeasurementMatrix &C, SubMeasurementMatrix &Csub, const State &state, bool)
+void RateModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init)
 {
-  const State::OrientationType& q = state.getOrientation();
+//  const State::OrientationType& q = state.getOrientation();
+//  const State::RateType& rate = state.getRate();
 
-  if (state.getOrientationIndex() >= 0) {
-    //  C(0,State::QUATERNION_W) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-    //  C(0,State::QUATERNION_X) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-    //  C(0,State::QUATERNION_Y) = -2.0*q.y() * rate.x() + 2.0*q.x() * rate.y() - 2.0*q.w() * rate.z();
-    //  C(0,State::QUATERNION_Z) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-    //  C(1,State::State::QUATERNION_W) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-    //  C(1,State::QUATERNION_X) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-    //  C(1,State::QUATERNION_Y) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-    //  C(1,State::QUATERNION_Z) = -2.0*q.w() * rate.x() - 2.0*q.z() * rate.y() + 2.0*q.y() * rate.z();
-    //  C(2,State::QUATERNION_W) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-    //  C(2,State::QUATERNION_X) =  2.0*q.z() * rate.x() - 2.0*q.w() * rate.y() - 2.0*q.x() * rate.z();
-    //  C(2,State::QUATERNION_Y) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-    //  C(2,State::QUATERNION_Z) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//  if (state.getOrientationIndex() >= 0) {
+//    C(0,State::QUATERNION_W) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
+//    C(0,State::QUATERNION_X) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(0,State::QUATERNION_Y) = -2.0*q.y() * rate.x() + 2.0*q.x() * rate.y() - 2.0*q.w() * rate.z();
+//    C(0,State::QUATERNION_Z) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
+//    C(1,State::QUATERNION_W) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
+//    C(1,State::QUATERNION_X) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
+//    C(1,State::QUATERNION_Y) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(1,State::QUATERNION_Z) = -2.0*q.w() * rate.x() - 2.0*q.z() * rate.y() + 2.0*q.y() * rate.z();
+//    C(2,State::QUATERNION_W) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
+//    C(2,State::QUATERNION_X) =  2.0*q.z() * rate.x() - 2.0*q.w() * rate.y() - 2.0*q.x() * rate.z();
+//    C(2,State::QUATERNION_Y) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
+//    C(2,State::QUATERNION_Z) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//  }
+
+//  if (state.getRateIndex() >= 0) {
+//    C(0,State::RATE_X) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());
+//    C(0,State::RATE_Y) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
+//    C(0,State::RATE_Z) = (2.0*q.x()*q.z()-2.0*q.w()*q.y());
+//    C(1,State::RATE_X) = (2.0*q.x()*q.y()-2.0*q.w()*q.z());
+//    C(1,State::RATE_Y) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
+//    C(1,State::RATE_Z) = (2.0*q.y()*q.z()+2.0*q.w()*q.x());
+//    C(2,State::RATE_X) = (2.0*q.x()*q.z()+2.0*q.w()*q.y());
+//    C(2,State::RATE_Y) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
+//    C(2,State::RATE_Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
+//  }
+
+  if (init && state.getRateIndex() >= 0) {
+   C(0,State::RATE_X) = 1.0;
+   C(1,State::RATE_Y) = 1.0;
+   C(2,State::RATE_Z) = 1.0;
   }
-
-  if (state.getRateIndex() >= 0) {
-    C(0,State::RATE_X) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());
-    C(0,State::RATE_Y) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
-    C(0,State::RATE_Z) = (2.0*q.x()*q.z()-2.0*q.w()*q.y());
-    C(1,State::RATE_X) = (2.0*q.x()*q.y()-2.0*q.w()*q.z());
-    C(1,State::RATE_Y) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
-    C(1,State::RATE_Z) = (2.0*q.y()*q.z()+2.0*q.w()*q.x());
-    C(2,State::RATE_X) = (2.0*q.x()*q.z()+2.0*q.w()*q.y());
-    C(2,State::RATE_Y) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
-    C(2,State::RATE_Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
-  }
-
-  Csub(0,GyroModel::BIAS_GYRO_X) = 1.0;
-  Csub(1,GyroModel::BIAS_GYRO_Y) = 1.0;
-  Csub(2,GyroModel::BIAS_GYRO_Z) = 1.0;
 }
 
 } // namespace hector_pose_estimation

@@ -38,7 +38,7 @@ public:
   HeightModel();
   virtual ~HeightModel();
 
-  virtual SystemStatus getStatusFlags() const;
+  SystemStatus getStatusFlags() const { return STATE_POSITION_Z; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);

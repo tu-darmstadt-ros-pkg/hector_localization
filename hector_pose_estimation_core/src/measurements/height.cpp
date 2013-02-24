@@ -44,10 +44,6 @@ HeightModel::HeightModel()
 
 HeightModel::~HeightModel() {}
 
-SystemStatus HeightModel::getStatusFlags() const {
-  return STATE_Z_POSITION;
-}
-
 void HeightModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
   if (init) {

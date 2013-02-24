@@ -34,6 +34,8 @@
 #include <hector_pose_estimation/input.h>
 #include <hector_pose_estimation/parameters.h>
 
+#include <ros/assert.h>
+
 #include <string>
 
 namespace hector_pose_estimation {
@@ -54,6 +56,9 @@ public:
   virtual void cleanup() { }
   virtual void reset(State& state) { }
 
+  virtual SystemStatus getStatusFlags(const State& state) const { return SystemStatus(0); }
+  virtual bool applyStatusMask(const SystemStatus& status) { return true; }
+
   ParameterList& parameters() { return parameters_; }
   const ParameterList& parameters() const { return parameters_; }
 
@@ -72,7 +77,6 @@ template <int _SubDimension>
 class SubSystemModel_ : public SystemModel {
 public:
   enum { SubDimension = _SubDimension };
-  typedef SubSystemModel_<_SubDimension> Base;
 
   SubSystemModel_() {}
   virtual ~SubSystemModel_() {}
@@ -80,68 +84,107 @@ public:
   virtual bool isSubSystem() const { return true; }
 };
 
-template <>
-class SubSystemModel_<0> {
-public:
-  enum { SubDimension = 0 };
-  typedef SystemModel Base;
-};
-
 namespace traits {
 
-  template <class Derived, int _SubDimension = Derived::SubDimension>
+  template <int _SubDimension>
   struct SystemModel {
     enum { StateDimension = State::Dimension };
     enum { SubDimension = _SubDimension };
-    enum { Dimension = (_SubDimension > 0 ? _SubDimension : State::Dimension) };
+    enum { Dimension = _SubDimension };
 
+    typedef SubSystemModel_<SubDimension> Base;
+
+    typedef SubState_<Dimension> StateType;
+//    typedef typename StateType::Vector StateVector;
+//    typedef typename StateType::Covariance StateVariance;
     typedef ColumnVector_<Dimension> StateVector;
     typedef SymmetricMatrix_<Dimension> StateVariance;
     typedef SymmetricMatrix_<Dimension> NoiseVariance;
     typedef Matrix_<Dimension,Dimension> SystemMatrix;
-    typedef Matrix_<StateDimension,SubDimension> SubSystemMatrix;
 
-    enum { InputDimension = traits::Input<Derived>::Dimension };
-    typedef typename traits::Input<Derived>::Type InputType;
-    typedef typename traits::Input<Derived>::Vector InputVector;
-    typedef Matrix_<Dimension,InputDimension> InputMatrix;
-
-    typedef boost::integral_constant<bool, (SubDimension > 0)> IsSubSystem;
+    typedef boost::true_type IsSubSystem;
     typedef typename SubState_<SubDimension>::type SubState;
     typedef typename SubState::Ptr SubStatePtr;
+    typedef ColumnVector_<SubDimension> SubStateVector;
+    typedef SymmetricMatrix_<SubDimension> SubStateVariance;
+    typedef Matrix_<StateDimension,SubDimension> CrossSystemMatrix;
+  };
+
+  template <>
+  struct SystemModel<0> {
+    enum { StateDimension = State::Dimension };
+    enum { SubDimension = 0 };
+    enum { Dimension = State::Dimension };
+
+    typedef hector_pose_estimation::SystemModel Base;
+
+    typedef State StateType;
+//    typedef typename StateType::Vector StateVector;
+//    typedef typename StateType::Covariance StateVariance;
+    typedef ColumnVector_<Dimension> StateVector;
+    typedef SymmetricMatrix_<Dimension> StateVariance;
+    typedef Matrix_<Dimension,Dimension> NoiseVariance;
+    typedef Matrix_<Dimension,Dimension> SystemMatrix;
+
+    typedef boost::false_type IsSubSystem;
+    typedef typename SubState_<SubDimension>::type SubState;
+    typedef typename SubState::Ptr SubStatePtr;
+    typedef ColumnVector_<SubDimension> SubStateVector;
+    typedef SymmetricMatrix_<SubDimension> SubStateVariance;
+    typedef Matrix_<StateDimension,SubDimension> CrossSystemMatrix;
+  };
+
+  template <class Derived, typename Enabled = void>
+  struct StateInspector {
+    static State& state(const Derived *model, State &state) { return state; }
+    static const State& state(const Derived *model, const State &state) { return state; }
+  };
+
+  template <class Derived>
+  struct StateInspector<Derived, typename boost::enable_if< typename Derived::IsSubSystem >::type> {
   };
 
 } // namespace traits
 
-template <class Derived, int _SubDimension = 0>
-class SystemModel_ : public SubSystemModel_<_SubDimension>::Base {
+template <class Derived, int _SubDimension>
+class SystemModel_ : public traits::template SystemModel<_SubDimension>::Base {
 public:
-  typedef traits::SystemModel<Derived, _SubDimension> traits;
+  typedef traits::SystemModel<_SubDimension> trait;
+  enum { Dimension = trait::Dimension };
 
-  enum { StateDimension = traits::StateDimension };
-  typedef typename traits::StateVector       StateVector;
-  typedef typename traits::StateVariance     StateVariance;
-  typedef typename traits::NoiseVariance     NoiseVariance;
-  typedef typename traits::SystemMatrix      SystemMatrix;
+  enum { StateDimension = trait::StateDimension };
+  typedef typename trait::StateType         StateType;
+  typedef typename trait::StateVector       StateVector;
+  typedef typename trait::StateVariance     StateVariance;
+  typedef typename trait::NoiseVariance     NoiseVariance;
+  typedef typename trait::SystemMatrix      SystemMatrix;
 
-  enum { InputDimension = traits::InputDimension };
-  typedef typename traits::InputType         InputType;
-  typedef typename traits::InputVector       InputVector;
-  typedef typename traits::InputMatrix       InputMatrix;
+  enum { InputDimension = traits::Input<Derived>::Dimension };
+  typedef typename traits::Input<Derived>::Type InputType;
+  typedef typename traits::Input<Derived>::Vector InputVector;
+  typedef Matrix_<Dimension,InputDimension> InputMatrix;
 
-  typedef typename traits::IsSubSystem       IsSubSystem;
+  typedef typename trait::IsSubSystem       IsSubSystem;
   enum { SubDimension = _SubDimension };
-  typedef typename traits::SubState          SubState;
-  typedef typename traits::SubStatePtr       SubStatePtr;
-  typedef typename traits::SubSystemMatrix   SubSystemMatrix;
+  typedef typename trait::SubState          SubState;
+  typedef typename trait::SubStatePtr       SubStatePtr;
+  typedef typename trait::SubStateVector    SubStateVector;
+  typedef typename trait::SubStateVariance  SubStateVariance;
+  typedef typename trait::CrossSystemMatrix CrossSystemMatrix;
 
   SystemModel_() {}
   virtual ~SystemModel_() {}
 
-  virtual int getDimension() const { return traits::Dimension; }
+  int getDimension() const { return trait::Dimension; }
+
+  Derived *derived() { return static_cast<Derived *>(this); }
+  const Derived *derived() const { return static_cast<const Derived *>(this); }
+
+  StateType& state(State& state) const { return traits::StateInspector<Derived>::state(derived(), state); }
+  const StateType& state(const State& state) const { return traits::StateInspector<Derived>::state(derived(), state); }
 
   // time discrete models should overwrite the following virtual methods if required:
-  virtual void getExpectedValue(StateVector& x_pred, const State& state, double dt) {}
+  virtual void getExpectedValue(StateVector& x_pred, const State& state, double dt) { x_pred = this->state(state).getVector(); }
   virtual void getStateJacobian(SystemMatrix& A, const State& state, double dt) {}
   virtual void getInputJacobian(InputMatrix& B, const State& state, double dt) {}
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, double dt) {}
@@ -152,28 +195,36 @@ public:
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, double dt, bool init)  { getSystemNoise(Q, state, dt); }
 
   // variants for SubSystems
-  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, double dt) { getStateJacobian(Asub, state, dt); }
-  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, double dt, bool init) { getStateJacobian(Asub, Across, state, dt); }
+  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, double dt) {}
+  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, double dt, bool init) { getStateJacobian(A1, A01, state, dt); }
 };
 
 template <class Derived, int _SubDimension = 0>
 class TimeDiscreteSystemModel_ : public SystemModel_<Derived, _SubDimension> {
 public:
-  typedef traits::SystemModel<Derived, _SubDimension> traits;
+  // unfortunately we have to repeat the typedefs here as they are not inherited from base class SystemModel_
+  typedef traits::SystemModel<_SubDimension> trait;
+  enum { Dimension = trait::Dimension };
 
-  typedef typename traits::StateVector       StateVector;
-  typedef typename traits::StateVariance     StateVariance;
-  typedef typename traits::NoiseVariance     NoiseVariance;
-  typedef typename traits::SystemMatrix      SystemMatrix;
+  enum { StateDimension = trait::StateDimension };
+  typedef typename trait::StateType         StateType;
+  typedef typename trait::StateVector       StateVector;
+  typedef typename trait::StateVariance     StateVariance;
+  typedef typename trait::NoiseVariance     NoiseVariance;
+  typedef typename trait::SystemMatrix      SystemMatrix;
 
-  typedef typename traits::InputType         InputType;
-  typedef typename traits::InputVector       InputVector;
-  typedef typename traits::InputMatrix       InputMatrix;
+  enum { InputDimension = traits::Input<Derived>::Dimension };
+  typedef typename traits::Input<Derived>::Type InputType;
+  typedef typename traits::Input<Derived>::Vector InputVector;
+  typedef Matrix_<Dimension,InputDimension> InputMatrix;
 
-  typedef typename traits::IsSubSystem       IsSubSystem;
-  typedef typename traits::SubState          SubState;
-  typedef typename traits::SubStatePtr       SubStatePtr;
-  typedef typename traits::SubSystemMatrix   SubSystemMatrix;
+  typedef typename trait::IsSubSystem       IsSubSystem;
+  enum { SubDimension = _SubDimension };
+  typedef typename trait::SubState          SubState;
+  typedef typename trait::SubStatePtr       SubStatePtr;
+  typedef typename trait::SubStateVector    SubStateVector;
+  typedef typename trait::SubStateVariance  SubStateVariance;
+  typedef typename trait::CrossSystemMatrix CrossSystemMatrix;
 
   TimeDiscreteSystemModel_() {}
   virtual ~TimeDiscreteSystemModel_() {}
@@ -184,29 +235,40 @@ public:
 template <class Derived, int _SubDimension = 0>
 class TimeContinuousSystemModel_ : public SystemModel_<Derived, _SubDimension> {
 public:
-  typedef traits::SystemModel<Derived, _SubDimension> traits;
+  // unfortunately we have to repeat the typedefs here as they are not inherited from base class SystemModel_
+  typedef traits::SystemModel<_SubDimension> trait;
+  enum { Dimension = trait::Dimension };
 
-  typedef typename traits::StateVector       StateVector;
-  typedef typename traits::StateVariance     StateVariance;
-  typedef typename traits::NoiseVariance     NoiseVariance;
-  typedef typename traits::SystemMatrix      SystemMatrix;
+  enum { StateDimension = trait::StateDimension };
+  typedef typename trait::StateType         StateType;
+  typedef typename trait::StateVector       StateVector;
+  typedef typename trait::StateVariance     StateVariance;
+  typedef typename trait::NoiseVariance     NoiseVariance;
+  typedef typename trait::SystemMatrix      SystemMatrix;
 
-  typedef typename traits::InputType         InputType;
-  typedef typename traits::InputVector       InputVector;
-  typedef typename traits::InputMatrix       InputMatrix;
+  enum { InputDimension = traits::Input<Derived>::Dimension };
+  typedef typename traits::Input<Derived>::Type InputType;
+  typedef typename traits::Input<Derived>::Vector InputVector;
+  typedef Matrix_<Dimension,InputDimension> InputMatrix;
 
-  typedef typename traits::IsSubSystem       IsSubSystem;
-  typedef typename traits::SubState          SubState;
-  typedef typename traits::SubStatePtr       SubStatePtr;
-  typedef typename traits::SubSystemMatrix   SubSystemMatrix;
+  typedef typename trait::IsSubSystem       IsSubSystem;
+  enum { SubDimension = _SubDimension };
+  typedef typename trait::SubState          SubState;
+  typedef typename trait::SubStatePtr       SubStatePtr;
+  typedef typename trait::SubStateVector    SubStateVector;
+  typedef typename trait::SubStateVariance  SubStateVariance;
+  typedef typename trait::CrossSystemMatrix CrossSystemMatrix;
 
   TimeContinuousSystemModel_() {}
+//  {
+//    internal_.x_dot.resize(Dimension);
+//  }
   virtual ~TimeContinuousSystemModel_() {}
 
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_CONTINUOUS; }
 
   // time continuous models should overwrite the following virtual methods if required:
-  virtual void getDerivative(StateVector& x_dot, const State& state) { internal_.x_dot.setZero(); }
+  virtual void getDerivative(StateVector& x_dot, const State& state) { x_dot.setZero(); }
   virtual void getStateJacobian(SystemMatrix& A, const State& state) {}
   virtual void getInputJacobian(InputMatrix& B, const State& state) {}
   virtual void getSystemNoise(NoiseVariance& Q, const State& state) {}
@@ -217,12 +279,12 @@ public:
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init)  { getSystemNoise(Q, state); }
 
   // variants for SubSystems
-  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state) {}
-  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, bool init) { getStateJacobian(Asub, Across, state); }
+  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state) {}
+  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init) { getStateJacobian(A1, A01, state); }
 
   void getExpectedValue(StateVector& x_pred, const State& state, double dt) {
     getDerivative(internal_.x_dot, state);
-    x_pred = state.getVector() + dt * internal_.x_dot;
+    x_pred = this->state(state).getVector() + dt * internal_.x_dot;
   }
 
   void getStateJacobian(SystemMatrix& A, const State& state, double dt, bool init) {
@@ -231,14 +293,14 @@ public:
     A = SystemMatrix::Identity() + dt * internal_.A;
   }
 
-  void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, double dt, bool init) {
+  void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, double dt, bool init) {
     if (init) {
       internal_.A.setZero();
-      internal_.Across.setZero();
+      internal_.A01.setZero();
     }
-    getStateJacobian(internal_.A, internal_.Across, state, init);
-    Asub = SystemMatrix::Identity() + dt * internal_.A;
-    Across = dt * internal_.Across;
+    getStateJacobian(internal_.A, internal_.A01, state, init);
+    A1 = SystemMatrix::Identity() + dt * internal_.A;
+    A01 = dt * internal_.A01;
   }
 
   void getInputJacobian(InputMatrix& B, const State& state, double dt, bool init) {
@@ -253,11 +315,15 @@ public:
     Q = dt * internal_.Q;
   }
 
+  virtual void reset(State &state) {
+    this->internal_ = internal();
+  }
+
 private:
-  struct {
+  struct internal {
     StateVector x_dot;
     SystemMatrix A;
-    SubSystemMatrix Across;
+    CrossSystemMatrix A01;
     InputMatrix B;
     NoiseVariance Q;
   } internal_;

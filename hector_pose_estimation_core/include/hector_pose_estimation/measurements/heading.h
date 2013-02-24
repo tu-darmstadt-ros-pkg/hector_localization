@@ -38,8 +38,8 @@ public:
   HeadingModel();
   virtual ~HeadingModel();
 
-  bool applyStatusMask(const SystemStatus &status) const;
-  virtual SystemStatus getStatusFlags() const;
+  bool applyStatusMask(const SystemStatus &status) const { return !(status & STATE_YAW); }
+  SystemStatus getStatusFlags() const { return STATE_YAW; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);

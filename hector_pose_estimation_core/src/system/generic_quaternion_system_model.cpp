@@ -31,14 +31,12 @@
 
 namespace hector_pose_estimation {
 
-static const double GRAVITY = -9.8065;
-
 GenericQuaternionSystemModel::GenericQuaternionSystemModel()
 {
-  gravity_ = GRAVITY;
+  gravity_ = 0.0;
 #ifdef USE_RATE_SYSTEM_MODEL
   rate_stddev_ = 0.0;
-  angular_acceleration_stddev_ = 10.0 * M_PI/180.0;
+  angular_acceleration_stddev_ = 360.0 * M_PI/180.0;
 #else // USE_RATE_SYSTEM_MODEL
   rate_stddev_ = 1.0 * M_PI/180.0;
 #endif // USE_RATE_SYSTEM_MODEL
@@ -46,18 +44,15 @@ GenericQuaternionSystemModel::GenericQuaternionSystemModel()
   velocity_stddev_ = 0.0;
 //  accelerationdrift_ = 1.0e-6;
 //  rate_drift_ = 1.0e-2 * M_PI/180.0;
-  parameters().add("gravity", gravity_);
-  parameters().add("ratestddev", rate_stddev_);
+  parameters().add("rate_stddev", rate_stddev_);
 #ifdef USE_RATE_SYSTEM_MODEL
-  parameters().add("angular_accelerationstddev", angular_acceleration_stddev_);
+  parameters().add("angular_acceleration_stddev", angular_acceleration_stddev_);
 #endif // USE_RATE_SYSTEM_MODEL
-  parameters().add("accelerationstddev", acceleration_stddev_);
+  parameters().add("acceleration_stddev", acceleration_stddev_);
   parameters().add("velocity_stddev", velocity_stddev_);
-//  parameters().add("accelerationdrift", accelerationdrift_);
-//  parameters().add("ratedrift", rate_drift_);
 
-  gyro_ = System::create(new GyroModel);
-  accelerometer_ = System::create(new AccelerometerModel);
+  gyro_ = System::create(new GyroModel, "gyro");
+  accelerometer_ = System::create(new AccelerometerModel, "accelerometer");
 }
 
 GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
@@ -66,6 +61,8 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 
 bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, State& state)
 {
+  gravity_ = estimator.parameters().get<double>("gravity");
+
   imu_ = estimator.registerInput<InputType>("raw_imu");
   estimator.addSystem(gyro_, "gyro");
   estimator.addSystem(accelerometer_, "accelerometer");
@@ -100,19 +97,19 @@ void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State
     x_dot(State::QUATERNION_Z) = 0.5*(( rate.z())*q.w()+( rate.y())*q.x()+(-rate.x())*q.y()                  );
   }
 
-  if (state.getSystemStatus() & STATE_XY_VELOCITY && state.getVelocityIndex() >= 0) {
+  if (state.getSystemStatus() & STATE_VELOCITY_XY && state.getVelocityIndex() >= 0) {
     x_dot(State::VELOCITY_X)  = ((q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z())*acceleration.x() + (2.0*q.x()*q.y()-2.0*q.w()*q.z())                *acceleration.y() + (2.0*q.x()*q.z()+2.0*q.w()*q.y())                *acceleration.z());
     x_dot(State::VELOCITY_Y)  = ((2.0*q.x()*q.y()+2.0*q.w()*q.z())                *acceleration.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z())*acceleration.y() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                *acceleration.z());
   }
-  if (state.getSystemStatus() & STATE_Z_VELOCITY && state.getVelocityIndex() >= 0) {
+  if (state.getSystemStatus() & STATE_VELOCITY_Z && state.getVelocityIndex() >= 0) {
     x_dot(State::VELOCITY_Z)  = ((2.0*q.x()*q.z()-2.0*q.w()*q.y())                *acceleration.x() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                *acceleration.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z())*acceleration.z() + gravity_);
   }
 
-  if (state.getSystemStatus() & STATE_XY_POSITION) {
+  if (state.getSystemStatus() & STATE_POSITION_XY) {
     x_dot(State::POSITION_X)  = (v.x());
     x_dot(State::POSITION_Y)  = (v.y());
   }
-  if (state.getSystemStatus() & STATE_Z_POSITION) {
+  if (state.getSystemStatus() & STATE_POSITION_Z) {
     x_dot(State::POSITION_Z)  = (v.z());
   }
 }
@@ -131,7 +128,7 @@ void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State&
 //    Q(BIAS_GYRO_X,BIAS_GYRO_X) = Q(BIAS_GYRO_Y,BIAS_GYRO_Y) = Q(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(ratedrift_, 2);
   }
 
-  if (state.getOrientationIndex() >= 0) {
+  if (rate_stddev_ > 0.0 && state.getOrientationIndex() >= 0) {
     const State::OrientationType& q = state.getOrientation();
     double rate_variance_4 = 0.25 * pow(rate_stddev_, 2);
     Q(State::QUATERNION_W,State::QUATERNION_W) = rate_variance_4 * (q.x()*q.x()+q.y()*q.y()+q.z()*q.z());
@@ -181,7 +178,7 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
   }
 
   if (state.getVelocityIndex() >= 0 && state.getOrientationIndex() >= 0) {
-    if (state.getSystemStatus() & STATE_XY_VELOCITY) {
+    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
       A(State::VELOCITY_X,State::QUATERNION_W) = (-2.0*q.z()*acceleration.y()+2.0*q.y()*acceleration.z()+2.0*q.w()*acceleration.x());
       A(State::VELOCITY_X,State::QUATERNION_X) = ( 2.0*q.y()*acceleration.y()+2.0*q.z()*acceleration.z()+2.0*q.x()*acceleration.x());
       A(State::VELOCITY_X,State::QUATERNION_Y) = (-2.0*q.y()*acceleration.x()+2.0*q.x()*acceleration.y()+2.0*q.w()*acceleration.z());
@@ -216,7 +213,7 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
 //      A(State::VELOCITY_Y,BIAS_ACCEL_Z) = 0.0;
     }
 
-    if (state.getSystemStatus() & STATE_Z_VELOCITY) {
+    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
       A(State::VELOCITY_Z,State::QUATERNION_W) = (-2.0*q.y()*acceleration.x()+2.0*q.x()*acceleration.y()+2.0*q.w()*acceleration.z());
       A(State::VELOCITY_Z,State::QUATERNION_X) = ( 2.0*q.z()*acceleration.x()+2.0*q.w()*acceleration.y()-2.0*q.x()*acceleration.z());
       A(State::VELOCITY_Z,State::QUATERNION_Y) = (-2.0*q.w()*acceleration.x()+2.0*q.z()*acceleration.y()-2.0*q.y()*acceleration.z());
@@ -237,7 +234,7 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
   }
 
   if (state.getPositionIndex() >= 0 && state.getVelocityIndex() >= 0) {
-    if (state.getSystemStatus() & STATE_XY_POSITION) {
+    if (state.getSystemStatus() & STATE_POSITION_XY) {
       A(State::POSITION_X,State::VELOCITY_X)   = 1.0;
       A(State::POSITION_Y,State::VELOCITY_Y)   = 1.0;
     } else {
@@ -245,7 +242,7 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
       A(State::POSITION_Y,State::VELOCITY_Y)   = 0.0;
     }
 
-    if (state.getSystemStatus() & STATE_Z_POSITION) {
+    if (state.getSystemStatus() & STATE_POSITION_Z) {
       A(State::POSITION_Z,State::VELOCITY_Z)   = 1.0;
     } else {
       A(State::POSITION_Z,State::VELOCITY_Z)   = 0.0;
@@ -258,14 +255,16 @@ void GenericQuaternionSystemModel::getInputJacobian(InputMatrix& B, const State&
   throw std::runtime_error("not implemented");
 }
 
-void GenericQuaternionSystemModel::afterUpdate(State& state)
+SystemStatus GenericQuaternionSystemModel::getStatusFlags(const State& state) const
 {
   SystemStatus flags = state.getMeasurementStatus();
-//     flags |= STATE_XY_POSITION | STATE_Z_POSITION;
-  if (flags & STATE_XY_POSITION) flags |= STATE_XY_VELOCITY;
-  if (flags & STATE_Z_POSITION)  flags |= STATE_Z_VELOCITY;
-  if (flags & STATE_XY_VELOCITY) flags |= STATE_ROLLPITCH;
-  state.updateSystemStatus(flags, 0);
+//     flags |= STATE_POSITION_XY | STATE_POSITION_Z;
+  if (flags & STATE_POSITION_XY) flags |= STATE_VELOCITY_XY;
+  if (flags & STATE_POSITION_Z)  flags |= STATE_VELOCITY_Z;
+  if (flags & STATE_VELOCITY_XY) flags |= STATE_ROLLPITCH;
+  if (flags & STATE_ROLLPITCH)   flags |= STATE_RATE_XY;
+  if (flags & STATE_YAW)         flags |= STATE_RATE_Z;
+  return flags;
 }
 
 } // namespace hector_pose_estimation

@@ -48,14 +48,19 @@ bool Filter::reset()
 
 void Filter::predict(State& state, const Systems& systems, double dt) {
   SystemStatus system_status = 0;
+  dt = 0.01;
 
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
     predict(state, system, dt);
     system_status |= system->getStatusFlags();
+
+    if (!state.valid()) {
+      ROS_ERROR("Invalid state after predicting %s", system->getName().c_str());
+    }
   }
 
-  state.setSystemStatus(system_status);
+  state.updateSystemStatus(system_status, STATE_MASK);
 }
 
 void Filter::predict(State& state, const SystemPtr& system, double dt) {
@@ -69,13 +74,16 @@ void Filter::update(State& state, const Measurements& measurements) {
     const MeasurementPtr& measurement = *it;
     update(state, measurement);
     measurement_status |= measurement->getStatusFlags();
+
+    if (!state.valid()) {
+      ROS_ERROR("Invalid state after updating with measurement %s", measurement->getName().c_str());
+    }
   }
 
   state.setMeasurementStatus(measurement_status);
 }
 
 void Filter::update(State& state, const MeasurementPtr& measurement) {
-  // measurement->process(*this, state);
   measurement->process(state);
 }
 

@@ -62,7 +62,7 @@ namespace hector_pose_estimation {
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
 
-    ColumnVector_() {}
+    ColumnVector_() { this->setZero(); }
     ColumnVector_(Scalar value) { this->setConstant(value); }
     ColumnVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,_Rows,1>(x, y, z) {}
     template <typename Derived> ColumnVector_(const Eigen::MatrixBase<Derived>& other) : Eigen::Matrix<ScalarType,_Rows,1>(other) {}
@@ -77,7 +77,7 @@ namespace hector_pose_estimation {
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
 
-    RowVector_() {}
+    RowVector_() { this->setZero(); }
     RowVector_(Scalar value) { this->setConstant(value); }
     RowVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,1,_Cols>(x, y, z) {}
     template <typename Derived> RowVector_(const Eigen::MatrixBase<Derived>& other) : Eigen::Matrix<ScalarType,1,_Cols>(other) {}
@@ -92,7 +92,7 @@ namespace hector_pose_estimation {
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
 
-    Matrix_() {}
+    Matrix_() { this->setZero(); }
     Matrix_(Scalar value) { this->setConstant(value); }
     template <typename Derived> Matrix_(const Eigen::MatrixBase<Derived>& other) : Eigen::Matrix<ScalarType,_Rows,_Cols>(other) {}
 
@@ -140,7 +140,7 @@ namespace hector_pose_estimation {
 
     // Constructors
     SymmetricMatrix_() /* : SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ {}
-    SymmetricMatrix_(Scalar value) /* : SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ { this->setConstant(value); }
+    SymmetricMatrix_(Scalar value) : Matrix_<_Dimension,_Dimension>(value) /* ,SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ {}
     template <typename Derived> SymmetricMatrix_(const Eigen::MatrixBase<Derived>& other) : Matrix_<_Dimension,_Dimension>(other) /* , SelfAdjointViewType(static_cast<Matrix_<_Dimension,_Dimension>&>(*this)) */ {}
 
 //    SymmetricMatrix_& setZero() {
@@ -158,11 +158,11 @@ namespace hector_pose_estimation {
   public:
     // Constructors
     SymmetricMatrix() : SymmetricMatrix_<Dynamic>() {}
-    SymmetricMatrix(Index dim) : SymmetricMatrix_<Dynamic>(dim) {}
+    SymmetricMatrix(Index dim) : SymmetricMatrix_<Dynamic>(dim) { this->setZero(); }
     SymmetricMatrix(Index dim, Scalar value) : SymmetricMatrix_<Dynamic>(dim) { this->setConstant(value); }
     template <typename Derived> SymmetricMatrix(const Eigen::MatrixBase<Derived>& other) : SymmetricMatrix_<Dynamic>(other) {}
   };
 
-} // namespace hector_pose_estimation
+} // namespac5e hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_MATRIX_H

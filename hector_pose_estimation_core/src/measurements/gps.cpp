@@ -42,10 +42,6 @@ GPSModel::GPSModel()
 
 GPSModel::~GPSModel() {}
 
-SystemStatus GPSModel::getStatusFlags() const {
-  return STATE_XY_VELOCITY | STATE_XY_POSITION;
-}
-
 void GPSModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
   if (init) {

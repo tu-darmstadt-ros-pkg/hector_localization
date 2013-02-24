@@ -44,6 +44,8 @@ public:
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
 
+  virtual Input& operator=(const Input& other) = 0;
+
 private:
   std::string name_;
 };
@@ -56,12 +58,12 @@ public:
   typedef ColumnVector_<Dimension> Vector;
   typedef SymmetricMatrix_<Dimension> Variance;
 
-  Input_() {}
+  Input_() { u_.setZero(); }
   template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u) : u_(u) {}
-  template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u, const Variance& Q) : u_(u), Q_(new Variance(Q)) {}
+  template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u, const Variance& Q) : u_(u), variance_(new Variance(Q)) {}
   Input_(double u) { *this = u; }
-  Input_(double u, const Variance& Q) : Q_(new Variance(Q)) { *this = u; }
-  Input_(const Input& other) { *this = static_cast<const Input_<_Dimension>&>(other); }
+  Input_(double u, const Variance& Q) : variance_(new Variance(Q)) { *this = u; }
+  Input_(const Input& other) { *this = other; }
   virtual ~Input_() {}
 
   virtual int getDimension() const { return Dimension; }
@@ -70,25 +72,37 @@ public:
   virtual Vector& u() { return u_; }
 
   virtual Variance &setVariance(const Variance &other) {
-    if (!Q_) Q_.reset(new Variance);
-    *Q_ = other;
-    return *Q_;
+    if (!variance_) variance_.reset(new Variance);
+    *variance_ = other;
+    return *variance_;
   }
 
-  virtual bool hasVariance() const { return Q_; }
-  virtual Variance const &getVariance() { if (!Q_) Q_.reset(new Variance); return *Q_; }
-  virtual Variance const &getVariance() const { return *Q_; }
-  virtual Variance& Q() { if (!Q_) Q_.reset(new Variance); return *Q_; }
+  virtual bool hasVariance() const { return variance_; }
+  virtual Variance const &getVariance() { if (!variance_) variance_.reset(new Variance); return *variance_; }
+  virtual Variance const &getVariance() const { return *variance_; }
+  virtual Variance& variance() { if (!variance_) variance_.reset(new Variance); return *variance_; }
+
+  virtual Input_<Dimension>& operator=(const Input& other) {
+    *this = static_cast<const Input_<Dimension>&>(other);
+    return *this;
+  }
+
+  virtual Input_<Dimension>& operator=(const Input_<Dimension>& other) {
+    u_ = other.getVector();
+    if (other.variance_) setVariance(*other.variance_);
+    return *this;
+  }
 
   template <typename Derived> Vector &operator=(const Eigen::MatrixBase<Derived>& other) {
     u_ = other;
     return u_;
   }
-  virtual Vector &operator=(double u) { u_.setZero(); u_(0) = u; return u_; }
+
+  virtual Vector &operator=(double u) { u_ = u; return u_; }
 
 protected:
   Vector u_;
-  boost::shared_ptr<Variance> Q_;
+  boost::shared_ptr<Variance> variance_;
 };
 
 namespace traits {

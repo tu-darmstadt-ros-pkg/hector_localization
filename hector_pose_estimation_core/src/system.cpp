@@ -63,7 +63,9 @@ void System::reset(State& state)
 }
 
 bool System::update(Filter &filter, State &state, double dt) {
+  if (!active(state.getSystemStatus())) return false;
   if (!this->updateImpl(filter, state, dt)) return false;
+  if (getModel()) status_flags_ = getModel()->getStatusFlags(state);
   updated();
   return true;
 }

@@ -33,20 +33,19 @@
 
 namespace hector_pose_estimation {
 
-class GyroModel;
-
-class RateModel : public MeasurementModel_<RateModel,3,3> {
+class RateModel : public MeasurementModel_<RateModel,3> {
 public:
-  RateModel(const GyroModel *gyro_model);
+  RateModel();
   virtual ~RateModel();
+
+  SystemStatus getStatusFlags() const { return STATE_RATE_XY | STATE_RATE_Z; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, SubMeasurementMatrix& Csub, const State& state, bool init);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
 protected:
   double stddev_;
-  const GyroModel *gyro_model_;
 };
 
 typedef Measurement_<RateModel> Rate;

@@ -38,24 +38,23 @@
 namespace hector_pose_estimation {
 
   enum {
-    STATE_ALIGNMENT = 1,
-    STATE_DEGRADED = 2,
-    STATE_READY = 4,
+    STATUS_ALIGNMENT = 0x1,
+    STATUS_DEGRADED = 0x2,
+    STATUS_READY = 0x4,
+    STATUS_MASK = 0xf,
 
-    STATE_ROLLPITCH = 8,
-    STATE_YAW = 16,
-    STATE_XY_VELOCITY = 32,
-    STATE_XY_POSITION = 64,
-    STATE_Z_VELOCITY = 128,
-    STATE_Z_POSITION = 256,
-
-    STATE_ALL = -1
+    STATE_ROLLPITCH = 0x10,
+    STATE_YAW = 0x20,
+    STATE_RATE_XY = 0x100,
+    STATE_RATE_Z = 0x200,
+    STATE_VELOCITY_XY = 0x1000,
+    STATE_VELOCITY_Z = 0x2000,
+    STATE_POSITION_XY = 0x10000,
+    STATE_POSITION_Z = 0x20000,
+    STATE_MASK = 0xffff0
   };
-  typedef int SystemStatus;
+  typedef unsigned int SystemStatus;
 
-  static const char* const SystemStatusStrings[] = {
-    "ALIGNMENT", "DEGRADED", "READY", "ROLLPITCH", "YAW", "XY_VELOCITY", "XY_POSITION", "Z_VELOCITY", "Z_POSITION"
-  };
   std::string getSystemStatusString(const SystemStatus& status);
   static inline std::ostream& operator<<(std::ostream& os, const SystemStatus& status) {
     return os << getSystemStatusString(status);

@@ -32,8 +32,8 @@
 namespace hector_pose_estimation {
 
 State::State()
-  : state_(StateDimension)
-  , covariance_(StateDimension)
+  : state_(Dimension)
+  , covariance_(Dimension)
   , orientation_(state_.segment<4>(QUATERNION_X))
 #ifdef USE_RATE_SYSTEM_MODEL
   , rate_(state_.segment<3>(RATE_X))
@@ -91,6 +91,10 @@ void State::reset()
   }
 }
 
+bool State::valid() const {
+  return (state_ == state_);
+}
+
 void State::updated()
 {
   normalize();
@@ -138,16 +142,6 @@ void State::addSystemStatusCallback(const SystemStatusCallback& callback) {
 //  for(std::vector<SystemStatusCallback>::const_iterator it = status_callbacks_.begin(); it != status_callbacks_.end(); ++it)
 //    if (*it == callback) return;
   status_callbacks_.push_back(callback);
-}
-
-void State::setRate(const ConstVectorBlock3& rate) {
-  if (!rate_storage_) return;
-  *rate_storage_ = rate;
-}
-
-void State::setAcceleration(const ConstVectorBlock3& acceleration) {
-  if (!acceleration_storage_) return;
-  *acceleration_storage_ = acceleration;
 }
 
 double State::normalize() {

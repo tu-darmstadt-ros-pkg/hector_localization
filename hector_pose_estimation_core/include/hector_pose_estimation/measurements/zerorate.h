@@ -37,18 +37,21 @@ class GyroModel;
 
 class ZeroRateModel : public MeasurementModel_<ZeroRateModel,1,3> {
 public:
-  ZeroRateModel(const GyroModel *gyro_model);
+  ZeroRateModel();
   virtual ~ZeroRateModel();
 
-  bool applyStatusMask(const SystemStatus &status) const;
+  bool init(PoseEstimation &estimator, State &state);
+
+  bool applyStatusMask(const SystemStatus &status) const { return !(status & STATE_RATE_Z); }
+  SystemStatus getStatusFlags() const { return 0; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, SubMeasurementMatrix& Csub, const State& state, bool init);
+  virtual void getStateJacobian(MeasurementMatrix& C0, CrossMeasurementMatrix& C1, const State& state, bool init);
 
 protected:
   double stddev_;
-  const GyroModel *gyro_model_;
+  SubStatePtr gyro_drift_;
 };
 
 typedef Measurement_<ZeroRateModel> ZeroRate;

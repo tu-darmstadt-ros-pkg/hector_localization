@@ -40,10 +40,9 @@
 #include <boost/shared_ptr.hpp>
 #include <vector>
 
-//#include <hector_pose_estimation/measurements/rate.h>
-//#include <hector_pose_estimation/measurements/gravity.h>
-//#include <hector_pose_estimation/measurements/zerorate.h>
-////#include <hector_pose_estimation/measurements/heading.h>
+#include <hector_pose_estimation/measurements/rate.h>
+#include <hector_pose_estimation/measurements/gravity.h>
+#include <hector_pose_estimation/measurements/zerorate.h>
 
 namespace hector_pose_estimation {
 
@@ -95,7 +94,7 @@ public:
 
   InputPtr addInput(const InputPtr& input, const std::string& name = std::string());
   InputPtr addInput(Input *input) { return addInput(InputPtr(input)); }
-  InputPtr setInput(const Input& input, const std::string& name = std::string());
+  InputPtr setInput(const Input& input, std::string name = std::string());
 //  InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
   InputPtr getInput(const std::string& name) const { return inputs_.get(name); }
 
@@ -185,10 +184,10 @@ private:
 
   double gravity_;
 
-//  boost::shared_ptr<Rate> rate_;
-//  boost::shared_ptr<Gravity> gravity_;
-//  boost::shared_ptr<ZeroRate> zerorate_;
-//  boost::shared_ptr<Heading> heading_;
+  boost::shared_ptr<Rate> rate_update_;
+  boost::shared_ptr<Gravity> gravity_update_;
+  boost::shared_ptr<ZeroRate> zerorate_update_;
+//  boost::shared_ptr<Heading> heading_update_;
 };
 
 template <typename ConcreteSystemModel>

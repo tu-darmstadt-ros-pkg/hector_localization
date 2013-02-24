@@ -52,7 +52,7 @@ public:
   using TimeContinuousSystemModel_<GyroModel, 3>::getSystemNoise;
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
   using TimeContinuousSystemModel_<GyroModel, 3>::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, bool init);
+  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init);
 
   const typename SubState::Vector& getBias() const { return drift_->getVector(); }
 
@@ -79,7 +79,7 @@ public:
   using TimeContinuousSystemModel_<AccelerometerModel, 3>::getSystemNoise;
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
   using TimeContinuousSystemModel_<AccelerometerModel, 3>::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& Asub, SubSystemMatrix& Across, const State& state, bool init);
+  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init);
 
   const typename SubState::Vector& getBias() const { return drift_->getVector(); }
 
@@ -87,6 +87,20 @@ private:
   SubStatePtr drift_;
   double acceleration_drift_;
 };
+
+namespace traits {
+
+  template <> struct StateInspector<GyroModel> {
+    static SubState_<3>& state(const GyroModel *model, State &state) { return *(state.getSubState<3>(model)); }
+    static const SubState_<3>& state(const GyroModel *model, const State &state) { return *(state.getSubState<3>(model)); }
+  };
+
+  template <> struct StateInspector<AccelerometerModel> {
+    static SubState_<3>& state(const AccelerometerModel *model, State &state) { return *(state.getSubState<3>(model)); }
+    static const SubState_<3>& state(const AccelerometerModel *model, const State &state) { return *(state.getSubState<3>(model)); }
+  };
+
+} // namespace traits
 
 typedef System_<GyroModel> Gyro;
 typedef System_<AccelerometerModel> Accelerometer;

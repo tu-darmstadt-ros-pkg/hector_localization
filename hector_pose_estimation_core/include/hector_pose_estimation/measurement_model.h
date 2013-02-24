@@ -53,7 +53,7 @@ public:
   virtual void reset(State& state) { }
 
   virtual SystemStatus getStatusFlags() const { return SystemStatus(0); }
-  virtual bool applyStatusMask(const SystemStatus& status) { return true; }
+  virtual bool applyStatusMask(const SystemStatus& status) { return !(status & STATUS_ALIGNMENT); }
 
   ParameterList& parameters() { return parameters_; }
   const ParameterList& parameters() const { return parameters_; }
@@ -65,9 +65,11 @@ protected:
   ParameterList parameters_;
 };
 
+template <class Derived, int _Dimension, int _SubDimension = 0> class MeasurementModel_;
+
 namespace traits {
 
-  template <class Derived, int _Dimension = Derived::MeasurementDimension, int _SubDimension = Derived::SubDimension>
+  template <int _Dimension, int _SubDimension>
   struct MeasurementModel {
     enum { StateDimension = State::Dimension };
     typedef ColumnVector_<StateDimension> StateVector;
@@ -79,53 +81,55 @@ namespace traits {
     typedef Matrix_<MeasurementDimension,StateDimension> MeasurementMatrix;
     typedef Matrix_<StateDimension,MeasurementDimension> GainMatrix;
 
-    enum { InputDimension = traits::Input<Derived>::Dimension };
-    typedef typename traits::Input<Derived>::Type InputType;
-    typedef typename traits::Input<Derived>::Vector InputVector;
-    typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix;
-
     enum { SubDimension = _SubDimension };
     struct HasSubSystem : public boost::integral_constant<bool, (_SubDimension > 0)> {};
+    typedef typename SubState_<SubDimension>::type SubState;
+    typedef typename SubState::Ptr SubStatePtr;
     typedef ColumnVector_<SubDimension> SubStateVector;
     typedef SymmetricMatrix_<SubDimension> SubStateVariance;
-    typedef Matrix_<MeasurementDimension,SubDimension> SubMeasurementMatrix;
-    typedef Matrix_<SubDimension,MeasurementDimension> SubGainMatrix;
+    typedef Matrix_<MeasurementDimension,SubDimension> CrossMeasurementMatrix;
+    typedef Matrix_<SubDimension,MeasurementDimension> CrossGainMatrix;
   };
 
 } // namespace traits
 
-template <class Derived, int _Dimension, int _SubDimension = 0>
+template <class Derived, int _Dimension, int _SubDimension>
 class MeasurementModel_ : public MeasurementModel {
 public:
-  typedef typename traits::MeasurementModel<Derived, _Dimension, _SubDimension> traits;
+  typedef typename traits::MeasurementModel<_Dimension, _SubDimension> trait;
 
-  enum { StateDimension = traits::StateDimension };
-  typedef typename traits::StateVector StateVector;
-  typedef typename traits::StateVariance StateVariance;
+  enum { StateDimension = trait::StateDimension };
+  typedef typename trait::StateVector StateVector;
+  typedef typename trait::StateVariance StateVariance;
 
   enum { MeasurementDimension = _Dimension };
-  typedef typename traits::MeasurementVector MeasurementVector;
-  typedef typename traits::NoiseVariance NoiseVariance;
-  typedef typename traits::MeasurementMatrix MeasurementMatrix;
-  typedef typename traits::GainMatrix GainMatrix;
+  typedef typename trait::MeasurementVector MeasurementVector;
+  typedef typename trait::NoiseVariance NoiseVariance;
+  typedef typename trait::MeasurementMatrix MeasurementMatrix;
+  typedef typename trait::GainMatrix GainMatrix;
 
-  enum { InputDimension = traits::InputDimension };
-  typedef typename traits::InputType InputType;
-  typedef typename traits::InputVector InputVector;
-  typedef typename traits::InputMatrix InputMatrix;
+  enum { InputDimension = traits::Input<Derived>::Dimension };
+  typedef typename traits::Input<Derived>::Type InputType;
+  typedef typename traits::Input<Derived>::Vector InputVector;
+  typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix;
 
-  typedef typename traits::HasSubSystem HasSubSystem;
+  typedef typename trait::HasSubSystem HasSubSystem;
   enum { SubDimension = _SubDimension };
-  typedef typename traits::SubStateVector SubStateVector;
-  typedef typename traits::SubStateVariance SubStateVariance;
-  typedef typename traits::SubMeasurementMatrix SubMeasurementMatrix;
-  typedef typename traits::SubGainMatrix SubGainMatrix;
+  typedef typename trait::SubState SubState;
+  typedef typename trait::SubStatePtr SubStatePtr;
+  typedef typename trait::SubStateVector SubStateVector;
+  typedef typename trait::SubStateVariance SubStateVariance;
+  typedef typename trait::CrossMeasurementMatrix CrossMeasurementMatrix;
+  typedef typename trait::CrossGainMatrix CrossGainMatrix;
 
   MeasurementModel_() {}
   virtual ~MeasurementModel_() {}
 
-  virtual int getDimension() const { return traits::MeasurementDimension; }
-  virtual bool hasSubSystem() const { return traits::HasSubSystem::value; }
+  Derived *derived() { return static_cast<Derived *>(this); }
+  const Derived *derived() const { return static_cast<const Derived *>(this); }
+
+  virtual int getDimension() const { return trait::MeasurementDimension; }
+  virtual bool hasSubSystem() const { return trait::HasSubSystem::value; }
 
   virtual State& state(State& state) const { return state; }
 
@@ -134,10 +138,8 @@ public:
   virtual void getInputJacobian(InputMatrix& D, const State& state, bool init) {}
   virtual void getMeasurementNoise(NoiseVariance& R, const State& state, bool init) {}
 
-  // additionally for MeasurementModels that use a SubSystem
-  virtual void getStateJacobian(MeasurementMatrix& C, SubMeasurementMatrix& Csub, const State& state, bool init) {
-    getStateJacobian(C, state, init);
-  }
+  // variant for MeasurementModels that use a SubSystem
+  virtual void getStateJacobian(MeasurementMatrix& C0, CrossMeasurementMatrix& C1, const State& state, bool init) {}
 
   virtual void limitError(MeasurementVector& error) {}
 };

@@ -160,7 +160,7 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       position_xy_model_.getExpectedValue(x, state);
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x << "], Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
 
-      status_flags_ |= STATE_XY_POSITION;
+      status_flags_ |= STATE_POSITION_XY;
     }
 
     // update PositionZ
@@ -190,7 +190,7 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       position_z_model_.getExpectedValue(x, state);
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) << ", Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
 
-      status_flags_ |= STATE_Z_POSITION;
+      status_flags_ |= STATE_POSITION_Z;
     }
 
     // update Yaw
@@ -282,7 +282,7 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
 
     // update VelocityXY
     if (information(0,0) > 0.0 || information(0,0) > 0.0) {
-      status_flags_ |= STATE_XY_VELOCITY;
+      status_flags_ |= STATE_VELOCITY_XY;
 
       // fixed_velocity_xy_stddev_ = 1.0;
       if (fixed_velocity_xy_stddev_ != 0.0) {
@@ -293,7 +293,7 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
 
     // update VelocityZ
     if (information(2,2) > 0.0) {
-      status_flags_ |= STATE_Z_VELOCITY;
+      status_flags_ |= STATE_VELOCITY_Z;
 
       // fixed_velocity_z_stddev_ = 1.0;
       if (fixed_velocity_z_stddev_ != 0.0) {
@@ -304,6 +304,8 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
 
     // update RateXY
     if (information(3,3) > 0.0 || information(4,4) > 0.0) {
+      status_flags_ |= STATE_RATE_XY;
+
       // fixed_angular_rate_xy_stddev_ = 1.0;
       if (fixed_angular_rate_xy_stddev_ != 0.0) {
         for(int i = 0; i < 6; ++i) Iy(3,i) = Iy(3,i) = Iy(i,4) = Iy(i,4) = 0.0;
@@ -313,6 +315,8 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
 
     // update RateZ
     if (information(5,5) > 0.0) {
+      status_flags_ |= STATE_RATE_Z;
+
       // fixed_angular_rate_z_stddev_ = 1.0;
       if (fixed_angular_rate_z_stddev_ != 0.0) {
         for(int i = 0; i < 6; ++i) Iy(5,i) = Iy(i,5) = 0.0;

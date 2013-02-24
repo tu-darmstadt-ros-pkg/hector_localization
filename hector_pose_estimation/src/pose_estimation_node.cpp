@@ -138,17 +138,17 @@ void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& 
 
 #else
 void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
-  Height::MeasurementVector update(1);
+  Height::MeasurementVector update;
   update = height->point.z;
   pose_estimation_->getMeasurement("height")->add(Height::Update(update));
 }
 #endif
 
 void PoseEstimationNode::magneticCallback(const geometry_msgs::Vector3StampedConstPtr& magnetic) {
-  Magnetic::MeasurementVector update(3);
-  update(1) = magnetic->vector.x;
-  update(2) = magnetic->vector.y;
-  update(3) = magnetic->vector.z;
+  Magnetic::MeasurementVector update;
+  update.x() = magnetic->vector.x;
+  update.y() = magnetic->vector.y;
+  update.z() = magnetic->vector.z;
   pose_estimation_->getMeasurement("magnetic")->add(Magnetic::Update(update));
 }
 

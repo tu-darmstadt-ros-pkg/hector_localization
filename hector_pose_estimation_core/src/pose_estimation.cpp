@@ -43,10 +43,9 @@ namespace {
 
 PoseEstimation::PoseEstimation(const SystemPtr& system)
   : state_()
-//  , rate_(new Rate("rate"))
-//  , gravity_(new Gravity ("gravity"))
-//  , zerorate_(new ZeroRate("zerorate"))
-//  , heading_(new Heading("heading"))
+  , rate_update_(new Rate("rate"))
+  , gravity_update_(new Gravity ("gravity"))
+  , zerorate_update_(new ZeroRate("zerorate"))
 {
   if (!the_instance) the_instance = this;
   if (system) addSystem(system);
@@ -71,10 +70,9 @@ PoseEstimation::PoseEstimation(const SystemPtr& system)
   parameters().add("gravity", gravity_);
 
   // add default measurements
-//  addMeasurement(rate_);
-//  addMeasurement(gravity_);
-//  addMeasurement(zerorate_);
-//  addMeasurement(heading_);
+  addMeasurement(rate_update_);
+  addMeasurement(gravity_update_);
+  addMeasurement(zerorate_update_);
 }
 
 PoseEstimation::~PoseEstimation()
@@ -135,7 +133,7 @@ void PoseEstimation::reset()
   // restart alignment
   alignment_start_ = ros::Time();
   if (alignment_time_ > 0) {
-    state().setSystemStatus(STATE_ALIGNMENT);
+    state().setSystemStatus(STATUS_ALIGNMENT);
   }
 
   // reset systems and measurements
@@ -171,17 +169,21 @@ void PoseEstimation::update(double dt)
     reset();
   else if (dt < 0.0)
     return;
+  else if (dt > 1.0)
+    dt = 1.0;
 
   // check if system and filter is initialized
   if (systems_.empty() || !filter_) return;
 
   // filter rate measurement first
   boost::shared_ptr<ImuInput> imu = boost::shared_dynamic_cast<ImuInput>(getInput("imu"));
+  state_.setRate(imu->getRate());
+  state_.setAcceleration(imu->getAcceleration());
+
 #ifdef USE_RATE_SYSTEM_MODEL
-//  if (imu && rate_) {
-//    ROS_DEBUG("Updating with measurement model %s", rate_->getName().c_str());
-//    rate_->update(*this, Rate::Update(imu->getRate()));
-//  }
+  if (imu && rate_update_) {
+    rate_update_->update(state_, Rate::Update(imu->getRate()));
+  }
 #endif // USE_RATE_SYSTEM_MODEL
 
   // time update step
@@ -189,6 +191,12 @@ void PoseEstimation::update(double dt)
 
   // measurement updates
   filter_->update(state_, measurements_);
+
+  // increase timeout timer for measurements
+  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); it++) {
+    const MeasurementPtr& measurement = *it;
+    measurement->increase_timer(dt);
+  }
 
 //  // iterate through measurements and do the measurement update steps
 //  SystemStatus measurement_status = 0;
@@ -200,27 +208,27 @@ void PoseEstimation::update(double dt)
 ////    // special updates
 ////    if (measurement == rate_) continue;
 
-////    if (imu && measurement == gravity_) {
-////      ROS_DEBUG("Updating with pseudo measurement model %s", gravity_->getName().c_str());
-////      gravity_->update(*this, Gravity::Update(imu->getAccel()));
+////    if (imu && measurement == gravity_update_) {
+////      ROS_DEBUG("Updating with pseudo measurement model %s", gravity_update_->getName().c_str());
+////      gravity_update_->update(*this, Gravity::Update(imu->getAccel()));
 ////      continue;
 ////    }
 
-////    if (imu && measurement == zerorate_) {
-////      ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_->getName().c_str());
-////      zerorate_->update(*this, ZeroRate::Update(imu->getRate()[2]));
+////    if (imu && measurement == zerorate_update_) {
+////      ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_update_->getName().c_str());
+////      zerorate_update_->update(*this, ZeroRate::Update(0.0));
 ////      continue;
 ////    }
 
-////    if (measurement == &heading_) {
-////      ROS_DEBUG("Updating with pseudo measurement model %s", heading_.getName().c_str());
+////    if (measurement == heading_update_) {
+////      ROS_DEBUG("Updating with pseudo measurement model %s", heading_update_->getName().c_str());
 ////      Heading::Update y(0.0);
-////      heading_.update(*this, y);
+////      heading_update_->update(*this, y);
 ////      continue;
 ////    }
 
 //    // skip all other measurements during alignment
-//    if (inSystemStatus(STATE_ALIGNMENT)) continue;
+//    if (inSystemStatus(STATUS_ALIGNMENT)) continue;
 
 //    // process the incoming queue
 //    measurement->process(filter_, state_);
@@ -232,39 +240,37 @@ void PoseEstimation::update(double dt)
 //  setMeasurementStatus(measurement_status);
 
 //  // pseudo updates
-//  if (gravity_.active(getSystemStatus())) {
-//    ROS_DEBUG("Updating with pseudo measurement model %s", gravity_.getName().c_str());
+//  if (gravity_update_->active(getSystemStatus())) {
+//    ROS_DEBUG("Updating with pseudo measurement model %s", gravity_update_->getName().c_str());
 //    Gravity::Update y(imu->getAccel());
-//    // gravity_.enable();
-//    if (gravity_.update(*this, y)) measurement_status |= gravity_.getStatusFlags();
+//    // gravity_update_->enable();
+//    if (gravity_update_->update(*this, y)) measurement_status |= gravity_update_->getStatusFlags();
 //  } else {
-//    // gravity_.disable();
+//    // gravity_update_->disable();
 //  }
 
-//  if (zerorate_.active(getSystemStatus())) {
-//    ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_.getName().c_str());
-//    ZeroRate::Update y(imu->getRate());
-//    // zerorate_.enable();
-//    if (zerorate_.update(*this, y)) measurement_status |= zerorate_.getStatusFlags();
+//  if (zerorate_update_->active(getSystemStatus())) {
+//    ROS_DEBUG("Updating with pseudo measurement model %s", zerorate_update_->getName().c_str());
+//    ZeroRate::Update y(0.0);
+//    // zerorate_update_->enable();
+//    if (zerorate_update_->update(*this, y)) measurement_status |= zerorate_update_->getStatusFlags();
 //  } else {
-//    // zerorate_.disable();
+//    // zerorate_update_->disable();
 //  }
 
 //  std::cout << "x_est = [" << getState().transpose() << "]" << std::endl;
 //  std::cout << "P_est = [" << filter_->PostGet()->CovarianceGet() << "]" << std::endl;
 
-  // switch overall system state
-  if (inSystemStatus(STATE_ALIGNMENT)) {
+  // switch overall system status
+  if (inSystemStatus(STATUS_ALIGNMENT)) {
     if (alignment_start_.isZero()) alignment_start_ = getTimestamp();
     if ((getTimestamp() - alignment_start_).toSec() >= alignment_time_) {
-      updateSystemStatus(STATE_DEGRADED, STATE_ALIGNMENT);
+      updateSystemStatus(STATUS_DEGRADED, STATUS_ALIGNMENT);
     }
-  } else if (inSystemStatus(STATE_ROLLPITCH | STATE_YAW | STATE_XY_POSITION | STATE_Z_POSITION)) {
-    // if (!(status_ & STATE_READY) && (status_ & STATE_ROLLPITCH) && (status_ & STATE_YAW) && (status_ & STATE_XY_POSITION) && (status_ & STATE_Z_POSITION)) {
-    updateSystemStatus(STATE_READY, STATE_DEGRADED);
+  } else if (inSystemStatus(STATE_ROLLPITCH | STATE_YAW | STATE_POSITION_XY | STATE_POSITION_Z)) {
+    updateSystemStatus(STATUS_READY, STATUS_DEGRADED);
   } else {
-    // if ((status_ & STATE_READY) && !((status_ & STATE_ROLLPITCH) && (status_ & STATE_YAW) && (status_ & STATE_XY_POSITION) && (status_ & STATE_Z_POSITION))) {
-    updateSystemStatus(STATE_DEGRADED, STATE_READY);
+    updateSystemStatus(STATUS_DEGRADED, STATUS_READY);
   }
 }
 
@@ -285,10 +291,14 @@ InputPtr PoseEstimation::addInput(const InputPtr& input, const std::string& name
   return inputs_.add(input, input->getName());
 }
 
-InputPtr PoseEstimation::setInput(const Input& value, const std::string& name)
+InputPtr PoseEstimation::setInput(const Input& value, std::string name)
 {
-  InputPtr input = inputs_.get(!name.empty() ? name : input->getName());
-  if (!input) return input;
+  if (name.empty()) name = value.getName();
+  InputPtr input = inputs_.get(name);
+  if (!input) {
+    ROS_WARN("Got input \"%s\", but this input is not registered by any system model", name.c_str());
+    return input;
+  }
 
   *input = value;
   return input;
@@ -727,8 +737,8 @@ void PoseEstimation::updateWorldToOtherTransform(tf::StampedTransform& world_to_
   world_to_other_transform.getBasis().getEulerYPR(y,p,r);
   if (!(getSystemStatus() & STATE_ROLLPITCH))   { r = p = 0.0; }
   if (!(getSystemStatus() & STATE_YAW))         { y = 0.0; }
-  if (!(getSystemStatus() & STATE_XY_POSITION)) { world_to_other_transform.getOrigin().setX(0.0); world_to_other_transform.getOrigin().setY(0.0); }
-  if (!(getSystemStatus() & STATE_Z_POSITION))  { world_to_other_transform.getOrigin().setZ(0.0); }
+  if (!(getSystemStatus() & STATE_POSITION_XY)) { world_to_other_transform.getOrigin().setX(0.0); world_to_other_transform.getOrigin().setY(0.0); }
+  if (!(getSystemStatus() & STATE_POSITION_Z))  { world_to_other_transform.getOrigin().setZ(0.0); }
   world_to_other_transform.getBasis().setEulerYPR(y, p, r);
 }
 

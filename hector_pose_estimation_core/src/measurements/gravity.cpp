@@ -44,15 +44,6 @@ bool GravityModel::init(PoseEstimation &estimator, State &state) {
   return true;
 }
 
-bool GravityModel::applyStatusMask(const SystemStatus &status) const {
-  if (status & STATE_ROLLPITCH) return false;
-  return true;
-}
-
-SystemStatus GravityModel::getStatusFlags() const {
-  return STATE_ROLLPITCH;
-}
-
 void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
   if (init) {

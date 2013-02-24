@@ -39,6 +39,7 @@ Measurement::Measurement(const std::string& name)
   , timer_(0.0)
 {
   parameters().add("enabled", enabled_);
+  parameters().add("timeout", timeout_);
   parameters().add("min_interval", min_interval_);
 }
 
@@ -56,25 +57,21 @@ bool Measurement::init(PoseEstimation& estimator, Filter& filter, State& state)
 
 void Measurement::cleanup()
 {
-  onCleanup();
   if (getModel()) getModel()->cleanup();
+  onCleanup();
 }
 
 void Measurement::reset(State& state)
 {
   queue().clear();
   timer_ = 0;
-  onReset();
+
   if (getModel()) getModel()->reset(state);
+  onReset();
 }
 
 void Measurement::increase_timer(double dt) {
   timer_ += dt;
-}
-
-void Measurement::updated() {
-  timer_ = 0.0;
-  if (getModel()) status_flags_ = getModel()->getStatusFlags();
 }
 
 bool Measurement::timedout() const {
@@ -100,12 +97,13 @@ void Measurement::process(State &state) {
 
 bool Measurement::update(State &state, const MeasurementUpdate &update)
 {
-  if (!enabled()) return false;
+  if (!active(state.getSystemStatus())) return false;
   if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
 
   if (!updateImpl(state, update)) return false;
 
-  updated();
+  timer_ = 0.0;
+  if (getModel()) status_flags_ = getModel()->getStatusFlags();
   return true;
 }
 

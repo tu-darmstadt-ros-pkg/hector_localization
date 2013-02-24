@@ -37,15 +37,6 @@ HeadingModel::HeadingModel()
 
 HeadingModel::~HeadingModel() {}
 
-bool HeadingModel::applyStatusMask(const SystemStatus &status) const {
-  if (status & STATE_YAW) return false;
-  return true;
-}
-
-SystemStatus HeadingModel::getStatusFlags() const {
-  return STATE_YAW;
-}
-
 void HeadingModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
   if (init) {

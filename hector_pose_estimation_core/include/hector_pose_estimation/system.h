@@ -62,6 +62,7 @@ public:
   virtual void reset(State& state);
 
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
+  virtual bool active(const SystemStatus& status) { return (!getModel() || getModel()->applyStatusMask(status)); }
 
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
@@ -109,8 +110,8 @@ public:
   virtual Model *getModel() const { return model_.get(); }
   virtual int getDimension() const { return model_->getDimension(); }
 
-  const boost::shared_ptr< Filter::Predictor_<Model> >& filter() const { return filter_; }
-  void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
+  virtual const boost::shared_ptr< Filter::Predictor_<Model> >& filter() const { return filter_; }
+  virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
   virtual bool updateImpl(Filter &filter, State &state, double dt);
@@ -136,9 +137,7 @@ namespace hector_pose_estimation {
   bool System_<ConcreteModel>::updateImpl(Filter &filter, State &state, double dt) {
     if (!prepareUpdate(state, dt)) return false;
 
-    ROS_DEBUG_NAMED(getName(), "Updating with system model %s", getName().c_str());
-    ROS_DEBUG_STREAM_NAMED(getName(), "dt = " << dt);
-
+    ROS_DEBUG_NAMED(getName(), "Updating with system model %s (dt = %f):", getName().c_str(), dt);
     if (!this->filter() || !this->filter()->predict(state, dt)) return false;
 
     ROS_DEBUG_STREAM_NAMED(getName(), "x_pred = [" << state.getVector().transpose() << "]");

@@ -46,8 +46,8 @@ public:
   virtual void setGravity(double gravity) { gravity_ = gravity; }
   virtual double getGravity() const { return gravity_; }
 
-  bool applyStatusMask(const SystemStatus &status) const;
-  virtual SystemStatus getStatusFlags() const;
+  bool applyStatusMask(const SystemStatus &status) const { return !(status & STATE_ROLLPITCH); }
+  SystemStatus getStatusFlags() const { return STATE_ROLLPITCH; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -57,6 +57,8 @@ protected:
   double stddev_;
   double gravity_;
 };
+
+typedef Measurement_<GravityModel> Gravity;
 
 } // namespace hector_pose_estimation
 

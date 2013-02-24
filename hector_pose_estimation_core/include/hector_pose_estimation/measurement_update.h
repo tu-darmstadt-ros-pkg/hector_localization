@@ -51,18 +51,17 @@ public:
   typedef typename MeasurementModel::NoiseVariance Variance;
 
   Update_()
-    : y_(MeasurementDimension)
-    , has_variance_(false)
-  {}
+    : has_variance_(false)
+  {
+    y_.setZero();
+  }
   Update_(Vector const& y)
-    : y_(MeasurementDimension)
-    , has_variance_(false)
+    : has_variance_(false)
   {
     setValue(y);
   }
   Update_(double y)
-    : y_(MeasurementModel::MeasurementDimension)
-    , has_variance_(false)
+    : has_variance_(false)
   {
     setValue(y);
   }

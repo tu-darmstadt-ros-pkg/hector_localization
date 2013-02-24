@@ -62,9 +62,6 @@ public:
   virtual void cleanup();
   virtual void reset(State& state);
 
-  virtual SystemStatus getStatusFlags() const { return status_flags_; }
-  virtual bool active(const SystemStatus& status) { return enabled(); }
-
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
 
@@ -76,8 +73,10 @@ public:
   void enable() { enabled_ = true; }
   void disable() { enabled_ = false; }
 
+  virtual SystemStatus getStatusFlags() const { return status_flags_; }
+  virtual bool active(const SystemStatus& status) { return enabled() && (!getModel() || getModel()->applyStatusMask(status)); }
+
   void increase_timer(double dt);
-  void updated();
   bool timedout() const;
 
 protected:
@@ -130,24 +129,33 @@ public:
   virtual Model* getModel() const { return model_.get(); }
   virtual int getDimension() const { return MeasurementDimension; }
 
-  virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
-
   virtual MeasurementVector const& getVector(const Update &update, const State &state) {
     return internal::UpdateInspector<ConcreteModel>::getVector(update, state, getModel());
   }
 
   virtual NoiseVariance const& getVariance(const Update &update, const State &state) {
     if (update.hasVariance()) return internal::UpdateInspector<ConcreteModel>::getVariance(update, state, getModel());
-    model_->getMeasurementNoise(R_, state, false);
-    return R_;
+
+    bool init = false;
+    if (!R_) {
+      R_.reset(new NoiseVariance);
+      init = true;
+    }
+    model_->getMeasurementNoise(*R_, state, init);
+    return *R_;
   }
 
   virtual void setNoiseVariance(NoiseVariance const& R) {
-    R_ = R;
+    if (!R_) R_.reset(new NoiseVariance);
+    *R_ = R;
   }
 
-  const boost::shared_ptr< Filter::Corrector_<Model> >& filter() const { return filter_; }
-  void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
+  virtual void clearNoiseVariance() {
+    R_.reset();
+  }
+
+  virtual const boost::shared_ptr< Filter::Corrector_<Model> >& filter() const { return filter_; }
+  virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
   virtual bool updateImpl(State &state, const MeasurementUpdate &update);
@@ -156,7 +164,7 @@ protected:
 
 protected:
   boost::shared_ptr<Model> model_;
-  NoiseVariance R_;
+  boost::shared_ptr<NoiseVariance> R_;
 
   Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
@@ -173,7 +181,7 @@ boost::shared_ptr<Measurement_<ConcreteModel> > Measurement::create(ConcreteMode
 } // namespace hector_pose_estimation
 
 #include <hector_pose_estimation/filter.h>
-//#include <hector_pose_estimation/filter/ekf.h>
+#include <hector_pose_estimation/filter/ekf.h> // only for debugging (show y_pred and C)
 
 namespace hector_pose_estimation {
 
@@ -183,7 +191,7 @@ template <class ConcreteModel>
     Update const &update = dynamic_cast<Update const &>(update_);
     if (!prepareUpdate(state, update)) return false;
 
-    ROS_DEBUG_NAMED(getName(), "Updating with measurement %s", getName().c_str());
+    ROS_DEBUG_NAMED(getName(), "Updating with measurement %s:", getName().c_str());
     const MeasurementVector &y = getVector(update, state);
     const NoiseVariance &R = getVariance(update, state);
 
@@ -194,10 +202,11 @@ template <class ConcreteModel>
 
     if (!this->filter() || !this->filter()->correct(state, y, R)) return false;
 
-//    if (this->filter()->derived<filter::EKF>()) {
-//      ROS_DEBUG_STREAM_NAMED(getName(), "h(x)      = [" << this->filter()->derived<filter::EKF>()->y_pred.transpose() << "]");
-//      ROS_DEBUG_STREAM_NAMED(getName(), "H = dh/dx = [" << this->filter()->derived<filter::EKF>()->C << "]");
-//    }
+    filter::EKF::Corrector_<ConcreteModel>* ekf = this->filter()->template derived<filter::EKF>();
+    if (ekf) {
+      ROS_DEBUG_STREAM_NAMED(getName(), "h(x)      = [" << ekf->y_pred.transpose() << "]");
+      ROS_DEBUG_STREAM_NAMED(getName(), "H = dh/dx = [" << ekf->C << "]");
+    }
     ROS_DEBUG_STREAM_NAMED(getName(), "x_post    = [" << state.getVector().transpose() << "]");
     ROS_DEBUG_STREAM_NAMED(getName(), "P_post    = [" << state.getCovariance() << "]");
 

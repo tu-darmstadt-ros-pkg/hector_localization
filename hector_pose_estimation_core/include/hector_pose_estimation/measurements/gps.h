@@ -39,7 +39,7 @@ public:
   GPSModel();
   virtual ~GPSModel();
 
-  virtual SystemStatus getStatusFlags() const;
+  SystemStatus getStatusFlags() const { return STATE_POSITION_XY | STATE_VELOCITY_XY; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);

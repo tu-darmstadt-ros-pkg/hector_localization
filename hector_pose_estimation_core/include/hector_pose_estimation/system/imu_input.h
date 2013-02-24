@@ -47,6 +47,8 @@ public:
     GYRO_Y,
     GYRO_Z
   };
+  typedef typename Vector::ConstFixedSegmentReturnType<3>::Type AccelerationType;
+  typedef typename Vector::ConstFixedSegmentReturnType<3>::Type RateType;
 
   ImuInput() {}
   ImuInput(const sensor_msgs::Imu& imu) { *this = imu; }
@@ -61,11 +63,13 @@ public:
     u_(GYRO_X)  = imu.angular_velocity.x;
     u_(GYRO_Y)  = imu.angular_velocity.y;
     u_(GYRO_Z)  = imu.angular_velocity.z;
+
+    // TODO: set variance if message contains non-zero covariance matrix
     return *this;
   }
 
-  typename Vector::ConstFixedSegmentReturnType<3>::Type getAcceleration() const { return u_.segment<3>(ACCEL_X); }
-  typename Vector::ConstFixedSegmentReturnType<3>::Type getRate() const  { return u_.segment<3>(GYRO_X); }
+  AccelerationType getAcceleration() const { return u_.segment<3>(ACCEL_X); }
+  RateType getRate() const { return u_.segment<3>(GYRO_X); }
 };
 
 } // namespace hector_pose_estimation

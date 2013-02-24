@@ -31,16 +31,22 @@
 
 namespace hector_pose_estimation {
 
-ZeroRateModel::ZeroRateModel(const GyroModel *gyro_model)
-  : gyro_model_(gyro_model)
+ZeroRateModel::ZeroRateModel()
 {
   parameters().add("stddev", stddev_, 90.0*M_PI/180.0);
 }
 
 ZeroRateModel::~ZeroRateModel() {}
 
-bool ZeroRateModel::applyStatusMask(const SystemStatus &status) const {
-  if (status & STATE_YAW) return false;
+bool ZeroRateModel::init(PoseEstimation &estimator, State &state)
+{
+  gyro_drift_ = state.addSubState<3>(this, "gyro");
+
+  if (!gyro_drift_ && state.getRateIndex() < 0) {
+    ROS_WARN_NAMED("zerorate", "Updating with zero rate is a no-op, as the state does not contain rates and gyro drift estimation is disabled.");
+    // return false;
+  }
+
   return true;
 }
 
@@ -53,12 +59,20 @@ void ZeroRateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool ini
 
 void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  y_pred(0) = state.getSubState<3>(gyro_model_)->getVector().z();
+  y_pred(0) = state.getRate().z();
+
+  if (state.getRateIndex() < 0 && gyro_drift_) {
+    y_pred(0) += gyro_drift_->getVector().z();
+  }
 }
 
-void ZeroRateModel::getStateJacobian(MeasurementMatrix&, SubMeasurementMatrix& Csub, const State& state, bool)
+void ZeroRateModel::getStateJacobian(MeasurementMatrix& C0, CrossMeasurementMatrix& C1, const State& state, bool)
 {
-  Csub(0,GyroModel::BIAS_GYRO_Z)  = -1.0;
+  if (state.getRateIndex() >= 0) {
+    C0(0, State::RATE_Z) = 1.0;
+  } else if (gyro_drift_) {
+    C1(0, GyroModel::BIAS_GYRO_Z) = 1.0;
+  }
 }
 
 } // namespace hector_pose_estimation

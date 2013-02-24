@@ -45,11 +45,10 @@
 #include <sensor_msgs/NavSatFix.h>
 
 // Use system model with angular rates.
-#define USE_RATE_SYSTEM_MODEL
+// #define USE_RATE_SYSTEM_MODEL
 
 namespace hector_pose_estimation {
 
-class SystemModel;
 class SubState;
 template <int Dimension> class SubState_;
 typedef boost::shared_ptr<SubState> SubStatePtr;
@@ -70,12 +69,12 @@ public:
     POSITION_X,
     POSITION_Y,
     POSITION_Z,
-    VELOCITY_X, // body frame
-    VELOCITY_Y, // body frame
-    VELOCITY_Z, // body frame
-    StateDimension
+    VELOCITY_X, // world frame
+    VELOCITY_Y, // world frame
+    VELOCITY_Z, // world frame
+    Dimension
   };
-  enum { Dimension = StateDimension };
+
 //  typedef ColumnVector_<Dimension> Vector;
 //  typedef SymmetricMatrix_<Dimension> Covariance;
   typedef ColumnVector Vector;
@@ -97,6 +96,8 @@ public:
   virtual void reset();
   virtual void updated();
   virtual double normalize();
+
+  virtual bool valid() const;
 
   virtual const Vector& getVector() const { return state_; }
   virtual const Covariance& getCovariance() const { return covariance_; }
@@ -128,8 +129,8 @@ public:
   virtual AccelerationType& acceleration() { return acceleration_; }
   virtual const AccelerationType& getAcceleration() const { return acceleration_; }
 
-  virtual void setRate(const ConstVectorBlock3& rate);
-  virtual void setAcceleration(const ConstVectorBlock3& acceleration);
+  template <typename Derived> void setRate(const Eigen::MatrixBase<Derived>& rate);
+  template <typename Derived> void setAcceleration(const Eigen::MatrixBase<Derived>& acceleration);
 
   virtual IndexType getOrientationIndex() const { return QUATERNION_X; }
 #ifdef USE_RATE_SYSTEM_MODEL
@@ -141,9 +142,10 @@ public:
   virtual IndexType getVelocityIndex() const { return VELOCITY_X; }
   virtual IndexType getAccelerationIndex() const { return IndexType(-1); }
 
-  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > addSubState(const SystemModel *model);
-  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const SystemModel *model) const;
   const SubStates& getSubStates() const { return substates_; }
+  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const void *model) const;
+  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const std::string& name) const;
+  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > addSubState(const void *model, const std::string& name = std::string());
 
   const ros::Time& getTimestamp() const { return timestamp_; }
   void setTimestamp(const ros::Time& timestamp) { timestamp_ = timestamp; }
@@ -166,7 +168,8 @@ private:
   std::vector<SystemStatusCallback> status_callbacks_;
 
   SubStates substates_;
-  std::map<const SystemModel *, SubStateWPtr> substate_map_;
+  std::map<const void *, SubStateWPtr> substates_by_model_;
+  std::map<std::string, SubStateWPtr> substates_by_name_;
 
   ros::Time timestamp_;
 };
@@ -211,7 +214,7 @@ public:
 
   virtual Vector& x() { return state_; }
   virtual Covariance& P() { return covariance_; }
-  virtual CrossVariance& S() { return cross_variance_; }
+  virtual CrossVariance& P01() { return cross_variance_; }
 
 private:
   Vector state_;
@@ -219,16 +222,38 @@ private:
   CrossVariance cross_variance_;
 };
 
-template <int SubDimension>
-boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const SystemModel *model) const {
-  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substate_map_.count(model) ? substate_map_.at(model).lock() : SubStatePtr());
+template <typename Derived>
+void State::setRate(const Eigen::MatrixBase<Derived>& rate) {
+  if (!rate_storage_) return;
+  *rate_storage_ = rate;
+}
+
+template <typename Derived>
+void State::setAcceleration(const Eigen::MatrixBase<Derived>& acceleration) {
+  if (!acceleration_storage_) return;
+  *acceleration_storage_ = acceleration;
 }
 
 template <int SubDimension>
-boost::shared_ptr<SubState_<SubDimension> > State::addSubState(const SystemModel *model) {
-  boost::shared_ptr<SubState_<SubDimension> > substate(new SubState_<SubDimension>);
-  substates_.push_back(boost::shared_static_cast<SubState>(substate));
-  substate_map_[model] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
+boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const void *model) const {
+  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substates_by_model_.count(model) ? substates_by_model_.at(model).lock() : SubStatePtr());
+}
+
+template <int SubDimension>
+boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const std::string& name) const {
+  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substates_by_name_.count(name) ? substates_by_name_.at(name).lock() : SubStatePtr());
+}
+
+template <int SubDimension>
+boost::shared_ptr<SubState_<SubDimension> > State::addSubState(const void *model, const std::string& name) {
+  boost::shared_ptr<SubState_<SubDimension> > substate;
+  if (!name.empty()) substate = getSubState<SubDimension>(name);
+  if (!substate) {
+    substate.reset(new SubState_<SubDimension>);
+    substates_.push_back(boost::shared_static_cast<SubState>(substate));
+    if (!name.empty()) substates_by_name_[name] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
+  }
+  substates_by_model_[model] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
   return substate;
 }
 

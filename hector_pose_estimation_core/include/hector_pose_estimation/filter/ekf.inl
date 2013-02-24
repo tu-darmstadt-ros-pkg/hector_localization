@@ -36,30 +36,38 @@ namespace hector_pose_estimation {
 namespace filter {
 
 template <typename ConcreteModel, typename Enabled>
-bool EKF::PredictorImpl<ConcreteModel, Enabled>::predict(State &state, double dt) {
-  this->model_->getExpectedValue(x_pred, state, dt);
-  this->model_->getStateJacobian(A, state, dt, this->init_);
+bool EKF::PredictorImpl_<ConcreteModel, Enabled>::predict(State &state, double dt) {
+  this->model_->getExpectedValue(filter_->x_pred, state, dt);
+  this->model_->getStateJacobian(filter_->A, state, dt, this->init_);
   this->model_->getSystemNoise(Q, state, dt, this->init_);
 
-  state.P() = A * state.P() * A.transpose() + Q;
-  state.x() = x_pred;
+  state.P() = filter_->A * state.P() * filter_->A.transpose() + Q;
+  state.x() = filter_->x_pred;
 
   this->init_ = false;
   return true;
 }
 
 template <typename ConcreteModel>
-bool EKF::PredictorImpl<ConcreteModel, typename boost::enable_if< typename ConcreteModel::IsSubSystem >::type>::predict(State &state, double dt) {
+bool EKF::PredictorImpl_<ConcreteModel, typename boost::enable_if< typename ConcreteModel::IsSubSystem >::type>::predict(State &state, double dt) {
+  typename ConcreteModel::StateType& sub = this->model_->state(state);
+
   this->model_->getExpectedValue(x_pred, state, dt);
-  this->model_->getStateJacobian(Asub, Across, state, dt, this->init_);
+  this->model_->getStateJacobian(A1, A01, state, dt, this->init_);
   this->model_->getSystemNoise(Q, state, dt, this->init_);
+
+  // Attention: do not reorder the following lines as each statement overwrites inputs of previous ones
+  state.P() += (filter_->A * sub.P01() + A01 * sub.P()) * A01.transpose() + A01 * sub.P01().transpose() * filter_->A.transpose();
+  sub.P01()  = (filter_->A * sub.P01() + A01 * sub.P()) * A1.transpose();
+  sub.P()    = A1 * sub.P() * A1.transpose() + Q;
+  sub.x()    = x_pred;
 
   this->init_ = false;
   return true;
 }
 
 template <typename ConcreteModel, typename Enabled>
-bool EKF::CorrectorImpl<ConcreteModel, Enabled>::correct(State &state, const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
+bool EKF::CorrectorImpl_<ConcreteModel, Enabled>::correct(State &state, const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
   this->model_->getExpectedValue(y_pred, state);
   this->model_->getStateJacobian(C, state, this->init_);
 
@@ -75,8 +83,8 @@ bool EKF::CorrectorImpl<ConcreteModel, Enabled>::correct(State &state, const typ
 }
 
 template <typename ConcreteModel>
-bool EKF::CorrectorImpl<ConcreteModel, typename boost::enable_if< typename ConcreteModel::HasSubSystem >::type>::correct(State &state, const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
-  ROS_FATAL_NAMED(this->model_->getName(), "EKF corrections with sub systems are currently not implemented");
+bool EKF::CorrectorImpl_<ConcreteModel, typename boost::enable_if< typename ConcreteModel::HasSubSystem >::type>::correct(State &state, const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
+  ROS_WARN("EKF corrections with sub systems are currently not implemented");
   return false;
 }
 

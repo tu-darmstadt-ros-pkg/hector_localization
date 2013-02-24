@@ -62,8 +62,8 @@ public:
     virtual bool predict(State& state, double dt) = 0;
     virtual bool reset() { init_ = true; return true; }
 
-    template <typename Derived> typename Derived::template Predictor<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Predictor<ConcreteModel> *>(this); }
-    template <typename Derived> const typename Derived::template Predictor<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Predictor<ConcreteModel> *>(this); }
+    template <typename Derived> typename Derived::template Predictor_<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Predictor_<ConcreteModel> *>(this); }
+    template <typename Derived> const typename Derived::template Predictor_<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Predictor_<ConcreteModel> *>(this); }
 
   protected:
     ConcreteModel *model_;
@@ -76,8 +76,8 @@ public:
     virtual bool correct(State& state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R) = 0;
     virtual bool reset() { init_ = true; return true; }
 
-    template <typename Derived> typename Derived::template Corrector<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Corrector<ConcreteModel> *>(this); }
-    template <typename Derived> const typename Derived::template Corrector<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Corrector<ConcreteModel> *>(this); }
+    template <typename Derived> typename Derived::template Corrector_<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Corrector_<ConcreteModel> *>(this); }
+    template <typename Derived> const typename Derived::template Corrector_<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Corrector_<ConcreteModel> *>(this); }
 
   protected:
     ConcreteModel *model_;
@@ -90,10 +90,10 @@ public:
   template <typename Derived>
   struct Factory {
     Factory(Derived *filter) : filter_(filter) {}
-//    template <typename ConcreteModel> boost::shared_ptr<typename Derived::template Predictor<ConcreteModel> > addPredictor(ConcreteModel *model) { return boost::make_shared<typename Derived::template Predictor<ConcreteModel> >(filter_, model); }
-//    template <typename ConcreteModel> boost::shared_ptr<typename Derived::template Corrector<ConcreteModel> > addCorrector(ConcreteModel *model) { return boost::make_shared<typename Derived::template Corrector<ConcreteModel> >(filter_, model); }
-    template <typename ConcreteModel> boost::shared_ptr<Predictor_<ConcreteModel> > addPredictor(ConcreteModel *model) { return boost::shared_static_cast<Predictor_<ConcreteModel> >(boost::make_shared<typename Derived::template Predictor<ConcreteModel> >(filter_, model)); }
-    template <typename ConcreteModel> boost::shared_ptr<Corrector_<ConcreteModel> > addCorrector(ConcreteModel *model) { return boost::shared_static_cast<Corrector_<ConcreteModel> >(boost::make_shared<typename Derived::template Corrector<ConcreteModel> >(filter_, model)); }
+//    template <typename ConcreteModel> boost::shared_ptr<typename Derived::template Predictor<ConcreteModel> > addPredictor(ConcreteModel *model) { return boost::make_shared<typename Derived::template Predictor_<ConcreteModel> >(filter_, model); }
+//    template <typename ConcreteModel> boost::shared_ptr<typename Derived::template Corrector<ConcreteModel> > addCorrector(ConcreteModel *model) { return boost::make_shared<typename Derived::template Corrector_<ConcreteModel> >(filter_, model); }
+    template <typename ConcreteModel> boost::shared_ptr<Predictor_<ConcreteModel> > addPredictor(ConcreteModel *model) { return boost::shared_static_cast<Predictor_<ConcreteModel> >(boost::make_shared<typename Derived::template Predictor_<ConcreteModel> >(filter_, model)); }
+    template <typename ConcreteModel> boost::shared_ptr<Corrector_<ConcreteModel> > addCorrector(ConcreteModel *model) { return boost::shared_static_cast<Corrector_<ConcreteModel> >(boost::make_shared<typename Derived::template Corrector_<ConcreteModel> >(filter_, model)); }
 
   private:
     Derived *filter_;
