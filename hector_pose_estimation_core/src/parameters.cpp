@@ -33,40 +33,110 @@
 
 namespace hector_pose_estimation {
 
-template <typename T>
-class RegisterParameterImpl {
-public:
-  static bool registerParam(ParameterPtr& parameter, ros::NodeHandle nh) {
+const std::string ParameterList::s_separator = "/";
+
+ParameterList& ParameterList::add(ParameterPtr const& parameter) {
+  erase(parameter->key);
+  push_back(parameter);
+  update(parameter);
+  return *this;
+}
+
+ParameterList& ParameterList::add(ParameterList const& other) {
+  for(ParameterList::const_iterator it = other.begin(); it != other.end(); ++it) push_back(*it);
+  return *this;
+}
+
+ParameterList& ParameterList::copy(const std::string& prefix, ParameterList const& parameters) {
+  for(ParameterList::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
+    ParameterPtr copy((*it)->clone());
+    if (!prefix.empty()) copy->key = prefix + s_separator + copy->key;
+    push_back(copy);
+  }
+  return *this;
+}
+
+ParameterList& ParameterList::copy(ParameterList const& parameters) {
+  copy(std::string(), parameters);
+  return *this;
+}
+
+ParameterPtr const& ParameterList::get(const std::string& key) const {
+  for(const_iterator it = begin(); it != end(); ++it) {
+    if ((*it)->key == key) {
+      return *it;
+    }
+  }
+  throw std::runtime_error("parameter not found");
+}
+
+ParameterList::iterator ParameterList::erase(const std::string& key) {
+  iterator it = begin();
+  for(; it != end(); ++it) {
+    if ((*it)->key == key) return erase(it);
+  }
+  return it;
+}
+
+namespace internal {
+  template <typename T>
+  static bool registerParamRos(ParameterPtr& parameter, std::string key, const ros::NodeHandle &nh) {
     try {
       TypedParameter<T> p(*parameter);
-      std::string param_key(boost::algorithm::to_lower_copy(parameter->key));
-      if (!nh.getParam(param_key, p.value)) {
-        nh.setParam(param_key, p.value);
-        ROS_DEBUG_STREAM("Registered parameter " << param_key << " with new value " << p.value);
+      boost::algorithm::to_lower(key);
+      if (!nh.getParam(key, p.value)) {
+        nh.setParam(key, p.value);
+        ROS_DEBUG_STREAM("Registered parameter " << key << " with new value " << p.value);
       } else {
-        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value);
+        ROS_DEBUG_STREAM("Found parameter " << key << " with value " << p.value);
       }
       return true;
+
     } catch(std::bad_cast&) {
       return false;
     }
   }
-};
-
-static void registerParamRos(ParameterPtr& parameter, ros::NodeHandle nh) {
-  if (RegisterParameterImpl<std::string>::registerParam(parameter, nh)) return;
-  if (RegisterParameterImpl<double>::registerParam(parameter, nh)) return;
-  if (RegisterParameterImpl<int>::registerParam(parameter, nh)) return;
-  if (RegisterParameterImpl<bool>::registerParam(parameter, nh)) return;
-  ROS_ERROR("Could not register parameter %s due to unknown type %s!", parameter->key.c_str(), parameter->type());
 }
 
-void ParameterList::registerParamsRos(ros::NodeHandle nh) const {
-  registerParams(boost::bind(&registerParamRos, _1, nh));
+static bool registerParamRos(ParameterPtr& parameter, const std::string& key, const ros::NodeHandle &nh) {
+  if (internal::registerParamRos<std::string>(parameter, key, nh)) return true;
+  if (internal::registerParamRos<double>(parameter, key, nh)) return true;
+  if (internal::registerParamRos<int>(parameter, key, nh)) return true;
+  if (internal::registerParamRos<bool>(parameter, key, nh)) return true;
+  ROS_ERROR("Could not register parameter %s due to unknown type %s!", key.c_str(), parameter->type());
+  return false;
 }
 
-void ParameterList::registerParams(const ParameterRegisterFunc& func) const {
-  for(const_iterator it = begin(); it != end(); ++it) func(*it);
+void ParameterList::setRegistry(const ParameterUpdateFunc& func, bool recursive, bool update) {
+  register_func_ = func;
+  register_recursive_ = recursive;
+  if (update) this->update();
+}
+
+void ParameterList::setNodeHandle(const ros::NodeHandle &nh, bool update) {
+  setRegistry(boost::bind(&registerParamRos, _1, _2, ros::NodeHandle(nh)), update);
+}
+
+bool ParameterList::update() {
+  bool result = true;
+  for(const_iterator it = begin(); it != end(); ++it) result &= update(*it);
+  return result;
+}
+
+bool ParameterList::update(const ParameterPtr& parameter) {
+  std::string key = parameter->key;
+  if (!prefix_.empty()) key = prefix_ + s_separator + key;
+
+  if (parameter->hasType<ParameterList>()) {
+    if (!register_recursive_) return true;
+    ParameterList& nested = parameter->as<ParameterList>();
+    nested.prefix_ = key;
+    nested.setRegistry(register_func_, false);
+    return nested.update();
+  }
+
+  if (!register_func_) return false;
+  return register_func_(parameter, key);
 }
 
 } // namespace hector_pose_estimation

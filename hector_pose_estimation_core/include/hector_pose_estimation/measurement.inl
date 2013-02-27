@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,16 +26,30 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurement_model.h>
+#ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
+#define HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
+
+#include <hector_pose_estimation/measurement.h>
+#include <hector_pose_estimation/filter/ekf.h>
 
 namespace hector_pose_estimation {
 
-MeasurementModel::MeasurementModel()
+template <class ConcreteModel>
+bool Measurement_<ConcreteModel>::updateImpl(const MeasurementUpdate &update_)
 {
-}
+  Update const &update = dynamic_cast<Update const &>(update_);
+  if (!prepareUpdate(filter()->state(), update)) return false;
 
-MeasurementModel::~MeasurementModel()
-{
+  ROS_DEBUG("Updating with measurement %s", getName().c_str());
+  const MeasurementVector &y = getVector(update, filter()->state());
+  const NoiseVariance &R = getVariance(update, filter()->state());
+
+  this->corrector()->correct(y, R);
+
+  afterUpdate(filter()->state());
+  return true;
 }
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_MEASUREMENT_INL

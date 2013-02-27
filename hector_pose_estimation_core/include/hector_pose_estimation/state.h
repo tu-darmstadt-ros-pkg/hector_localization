@@ -45,7 +45,7 @@
 #include <sensor_msgs/NavSatFix.h>
 
 // Use system model with angular rates.
-#define USE_RATE_SYSTEM_MODEL
+// #define USE_RATE_SYSTEM_MODEL
 
 namespace hector_pose_estimation {
 
@@ -120,8 +120,8 @@ public:
 
   virtual bool valid() const;
 
-  virtual SubState_<0>& base() { return *base_; }
-  virtual const SubState_<0>& base() const { return *base_; }
+  virtual BaseState& base() { return *base_; }
+  virtual const BaseState& base() const { return *base_; }
 
   virtual const Vector& getVector() const { return vector_; }
   virtual const Covariance& getCovariance() const { return covariance_; }
@@ -168,9 +168,9 @@ public:
   virtual IndexType getAccelerationIndex() const { return ACCELERATION_X; }
 
   const SubStates& getSubStates() const { return substates_; }
-  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const void *model) const;
+  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const Model *model) const;
   template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const std::string& name) const;
-  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > addSubState(const void *model, const std::string& name = std::string());
+  template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > addSubState(const Model *model, const std::string& name = std::string());
 
   const ros::Time& getTimestamp() const { return timestamp_; }
   void setTimestamp(const ros::Time& timestamp) { timestamp_ = timestamp; }
@@ -191,27 +191,13 @@ private:
   std::vector<SystemStatusCallback> status_callbacks_;
 
   SubStates substates_;
-  std::map<const void *, SubStateWPtr> substates_by_model_;
+  std::map<const Model *, SubStateWPtr> substates_by_model_;
   std::map<std::string, SubStateWPtr> substates_by_name_;
 
-  SubState_<0> *base_;
+  boost::shared_ptr<BaseState> base_;
 
   ros::Time timestamp_;
 };
-
-namespace traits {
-
-  template <class Derived, typename Enabled = void>
-  struct StateInspector {
-    static SubState_<0>& sub(const Derived *model, State &state) { return state.base(); }
-    static const SubState_<0>& sub(const Derived *model, const State &state) { return state.base(); }
-  };
-
-  template <class Derived>
-  struct StateInspector<Derived, typename boost::enable_if< typename Derived::IsSubSystem >::type> {
-  };
-
-} // namespace traits
 
 template <typename Derived>
 void State::setOrientation(const Eigen::MatrixBase<Derived>& orientation) {

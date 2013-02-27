@@ -39,9 +39,9 @@ public:
   MagneticModel();
   virtual ~MagneticModel();
 
-  bool init(PoseEstimation &estimator, State &state);
+  virtual bool init(PoseEstimation &estimator, State &state);
 
-  SystemStatus getStatusFlags() const { return STATE_YAW; }
+  virtual SystemStatus getStatusFlags() { return STATE_YAW; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);

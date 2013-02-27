@@ -122,7 +122,7 @@ private:
 
   bool jump_on_max_error_;
 
-  double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const;
+  double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy);
 
   template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
   double updateInternal(const State::Covariance &Px, const State::Vector &x, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, State::Covariance &Pxy, State::Vector &xy, const std::string& text, const double max_error = 0.0);

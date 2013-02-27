@@ -36,8 +36,8 @@ template class System_<AccelerometerModel>;
 
 GyroModel::GyroModel()
 {
-  rate_drift_ = 1.0e-2 * M_PI/180.0;
-  parameters().add("rate_drift", rate_drift_);
+  rate_drift_ = 1.0e-1 * M_PI/180.0;
+  parameters().add("drift", rate_drift_);
 }
 
 GyroModel::~GyroModel()
@@ -49,16 +49,6 @@ bool GyroModel::init(PoseEstimation& estimator, State& state)
   return drift_;
 }
 
-void GyroModel::getPrior(State &state)
-{
-  if (!drift_) return;
-  drift_->x().setZero();
-
-    drift_->P()(BIAS_GYRO_X,BIAS_GYRO_X)
-  = drift_->P()(BIAS_GYRO_Y,BIAS_GYRO_Y)
-  = drift_->P()(BIAS_GYRO_Z,BIAS_GYRO_Z) = 0.0;
-}
-
 void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, bool init)
 {
   if (init) {
@@ -68,8 +58,9 @@ void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, bool init)
 
 void GyroModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool)
 {
-  State::ConstOrientationType q(state.getOrientation());
+  if (state.getRateIndex() >= 0) return;
 
+  State::ConstOrientationType q(state.getOrientation());
   if (state.getOrientationIndex() >= 0) {
     A01(State::QUATERNION_W, BIAS_GYRO_X)  = -0.5*q.x();
     A01(State::QUATERNION_W, BIAS_GYRO_Y)  = -0.5*q.y();
@@ -91,8 +82,8 @@ void GyroModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const
 
 AccelerometerModel::AccelerometerModel()
 {
-  acceleration_drift_ = 1.0e-6;
-  parameters().add("acceleration_drift", acceleration_drift_);
+  acceleration_drift_ = 1.0e-3;
+  parameters().add("drift", acceleration_drift_);
 }
 
 AccelerometerModel::~AccelerometerModel()
@@ -100,18 +91,8 @@ AccelerometerModel::~AccelerometerModel()
 
 bool AccelerometerModel::init(PoseEstimation& estimator, State& state)
 {
-  drift_ = state.addSubState<3>(this, "accel");
+  drift_ = state.addSubState<3>(this, "accelerometer");
   return drift_;
-}
-
-void AccelerometerModel::getPrior(State &state)
-{
-  if (!drift_) return;
-  drift_->x().setZero();
-
-    drift_->P()(BIAS_ACCEL_X,BIAS_ACCEL_X)
-  = drift_->P()(BIAS_ACCEL_Y,BIAS_ACCEL_Y)
-  = drift_->P()(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = 0.0;
 }
 
 void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State& state, bool init)
@@ -124,8 +105,9 @@ void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State& state, bo
 
 void AccelerometerModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool)
 {
-  State::ConstOrientationType q(state.getOrientation());
+  if (state.getAccelerationIndex() >= 0) return;
 
+  State::ConstOrientationType q(state.getOrientation());
   if (state.getVelocityIndex() >= 0) {
     if (state.getSystemStatus() & STATE_VELOCITY_XY) {
       A01(State::VELOCITY_X, BIAS_ACCEL_X) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());

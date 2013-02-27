@@ -32,6 +32,9 @@
 #include <Eigen/Geometry>
 #include <stdexcept>
 
+#define BREAK_IF_SYMMETRIC_MATRIX_IS_NOT_SYMMETRIC
+#define FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
+
 namespace hector_pose_estimation {
   using Eigen::Dynamic;
   using Eigen::Lower;
@@ -58,14 +61,19 @@ namespace hector_pose_estimation {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
+    typedef ColumnVector_<Rows> Derived;
     typedef Eigen::Matrix<ScalarType,Rows,1> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
+    typedef Eigen::Map<Base> Map;
+    typedef Eigen::Map<const Base> ConstMap;
 
     ColumnVector_() { this->setZero(); }
     ColumnVector_(Scalar value) { this->setConstant(value); }
     ColumnVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,Rows,1>(x, y, z) {}
-    template <typename Derived> ColumnVector_(const Eigen::EigenBase<Derived>& other) : Base(other) {}
+    template <typename OtherDerived> ColumnVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
+
+    EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
   };
 
   template <int Cols>
@@ -73,14 +81,19 @@ namespace hector_pose_estimation {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
+    typedef RowVector_<Cols> Derived;
     typedef Eigen::Matrix<ScalarType,1,Cols> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
+    typedef Eigen::Map<Base> Map;
+    typedef Eigen::Map<const Base> ConstMap;
 
     RowVector_() { this->setZero(); }
     RowVector_(Scalar value) { this->setConstant(value); }
     RowVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,1,Cols>(x, y, z) {}
-    template <typename Derived> RowVector_(const Eigen::EigenBase<Derived>& other) : Base(other) {}
+    template <typename OtherDerived> RowVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
+
+    EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
   };
 
   template <int Rows, int Cols>
@@ -88,13 +101,18 @@ namespace hector_pose_estimation {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic || Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
+    typedef Matrix_<Rows,Cols> Derived;
     typedef Eigen::Matrix<ScalarType,Rows,Cols> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
+    typedef Eigen::Map<Base> Map;
+    typedef Eigen::Map<const Base> ConstMap;
 
     Matrix_() { this->setZero(); }
     Matrix_(Scalar value) { this->setConstant(value); }
-    template <typename Derived> Matrix_(const Eigen::EigenBase<Derived>& other) : Base(other) {}
+    template <typename OtherDerived> Matrix_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
+
+    EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
 
   protected:
     explicit Matrix_(Index rows, Index cols) : Base(rows, cols) {}
@@ -110,7 +128,7 @@ namespace hector_pose_estimation {
 //      typedef typename Eigen::internal::traits<Base>::Index Index;
 
 //      SymmetricMatrixStorage() {}
-//      template <typename Derived> SymmetricMatrixStorage(const Eigen::EigenBase<Derived>& other) : storage_(other) {}
+//      template <typename OtherDerived> SymmetricMatrixStorage(const Eigen::MatrixBase<OtherDerived>& other) : storage_(other) {}
 
 //    protected:
 //      explicit SymmetricMatrixStorage(Index dim) : storage_(dim) {}
@@ -133,7 +151,7 @@ namespace hector_pose_estimation {
 //    SymmetricMatrix_() : SelfAdjointViewType(storage_) {}
 //    SymmetricMatrix_(Scalar value) : SelfAdjointViewType(storage_) { this->setConstant(value); }
 //    template <int OtherRowsCols> SymmetricMatrix_(const SymmetricMatrix_<OtherRowsCols>& other) : Storage(other), SelfAdjointViewType(storage_) {}
-//    template <typename Derived> SymmetricMatrix_(const Eigen::EigenBase<Derived>& other) : Storage(other), SelfAdjointViewType(storage_) {}
+//    template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other), SelfAdjointViewType(storage_) {}
 
 //    SymmetricMatrix_<RowsCols>& setZero() {
 //      storage_.setZero();
@@ -175,23 +193,23 @@ namespace hector_pose_estimation {
 //      return *this;
 //    }
 
-//    template <typename Derived> SymmetricMatrix_<RowsCols>& operator=(const Derived& other) {
+//    template <typename OtherDerived> SymmetricMatrix_<RowsCols>& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
 //      storage_ = other;
 //      return *this;
 //    }
 
-//    template <typename Derived> SymmetricMatrix_<RowsCols>& operator+(const Derived& other) {
+//    template <typename Other> SymmetricMatrix_<RowsCols>& operator+(const Other& other) {
 //      storage_ += other;
 //      return *this;
 //    }
 
-//    template <typename Derived> SymmetricMatrix_<RowsCols>& operator-(const Derived& other) {
+//    template <typename Other> SymmetricMatrix_<RowsCols>& operator-(const Other& other) {
 //      storage_ -= other;
 //      return *this;
 //    }
 
-//    template <typename Derived> SymmetricMatrix_<Derived::RowsAtCompileTime> quadratic(const Eigen::MatrixBase<Derived>& other) {
-//      return SymmetricMatrix_<Derived::RowsAtCompileTime>(other * (*this) * other.transpose());
+//    template <typename OtherDerived> SymmetricMatrix_<Derived::RowsAtCompileTime> quadratic(const Eigen::MatrixBase<OtherDerived>& other) {
+//      return other * (*this) * other.transpose();
 //    }
 
 //    SymmetricMatrix_<RowsCols> inverse() const {
@@ -212,30 +230,41 @@ namespace hector_pose_estimation {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(RowsCols != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
+    typedef SymmetricMatrix_<RowsCols> Derived;
     typedef Matrix_<RowsCols,RowsCols> Storage;
     typedef typename Storage::Base Base;
     typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
+    typedef Eigen::Map<Base> Map;
+    typedef Eigen::Map<const Base> ConstMap;
 
     // Constructors
     SymmetricMatrix_() {}
     SymmetricMatrix_(Scalar value) { this->setConstant(value); }
-    // template <typename Derived> SymmetricMatrix_(const Eigen::MatrixBase<Derived>& other) : Storage(other.template triangularView<Upper>()) { symmetric(); }
-    template <typename Derived> SymmetricMatrix_(const Eigen::EigenBase<Derived>& other) : Storage(other) { symmetric(); }
+    template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) { symmetric(); }
 
-    SymmetricMatrix_<RowsCols>& symmetric() {
+    template <typename OtherDerived> Derived& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
+      this->Base::operator=(other);
+      return symmetric();
+    }
+
+    Derived& symmetric() {
+#if defined(BREAK_IF_SYMMETRIC_MATRIX_IS_NOT_SYMMETRIC)
+      eigen_assert(this->isApprox(this->transpose()));
+#elif defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
       this->template triangularView<Eigen::Lower>() = this->transpose();
+#endif
       return *this;
     }
 
-    template <typename Derived> SymmetricMatrix_<Derived::RowsAtCompileTime> quadratic(const Eigen::MatrixBase<Derived>& other) {
-      return other * this->template selfadjointView<Upper>() * other.transpose().nestedExpression();
- //     return other * (*this) * other.transpose();
-    }
+//    template <typename OtherDerived> SymmetricMatrix_<Derived::RowsAtCompileTime> quadratic(const Eigen::MatrixBase<OtherDerived>& other) {
+//      return other * this->template selfadjointView<Upper>() * other.transpose();
+//    }
 
-    SymmetricMatrix_<RowsCols> inverse() const {
-      return SymmetricMatrix_<RowsCols>(Base::inverse());
+    Derived inverse() const {
+//      return this->template selfadjointView<Upper>().inverse();
+      return this->Storage::inverse().eval();
     }
 
   protected:
@@ -244,13 +273,31 @@ namespace hector_pose_estimation {
 
   class SymmetricMatrix : public SymmetricMatrix_<Dynamic> {
   public:
+    typedef SymmetricMatrix Derived;
+    typedef SymmetricMatrix_<Dynamic> Storage;
+    typedef typename Storage::Base Base;
+    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
+    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
+    typedef typename Eigen::internal::traits<Base>::Index Index;
+    typedef Eigen::Map<Base> Map;
+    typedef Eigen::Map<const Base> ConstMap;
+
     // Constructors
     SymmetricMatrix() : SymmetricMatrix_<Dynamic>() {}
     SymmetricMatrix(Index dim) : SymmetricMatrix_<Dynamic>(dim) { this->setZero(); }
     SymmetricMatrix(Index dim, Scalar value) : SymmetricMatrix_<Dynamic>(dim) { this->setConstant(value); }
     template <int OtherRowsCols> SymmetricMatrix(const SymmetricMatrix_<OtherRowsCols>& other) : SymmetricMatrix_<Dynamic>(other) {}
-    template <typename Derived> SymmetricMatrix(const Eigen::MatrixBase<Derived>& other) : SymmetricMatrix_<Dynamic>(other) {}
-    template <typename Derived> SymmetricMatrix(const Eigen::EigenBase<Derived>& other) : SymmetricMatrix_<Dynamic>(other) {}
+    template <typename OtherDerived> SymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : SymmetricMatrix_<Dynamic>(other) {}
+
+    template <typename OtherDerived> Derived& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
+      this->Base::operator=(other);
+      return symmetric();
+    }
+
+    Derived& symmetric() {
+      Storage::symmetric();
+      return *this;
+    }
 
     void resize(Index size) {
       Base::resize(size, size);

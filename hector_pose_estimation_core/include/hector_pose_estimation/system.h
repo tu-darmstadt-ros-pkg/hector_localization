@@ -39,7 +39,7 @@
 
 namespace hector_pose_estimation {
 
-template <typename ConcreteModel> class System_;
+template <class ConcreteModel> class System_;
 
 class System
 {
@@ -47,7 +47,7 @@ public:
   System(const std::string& name);
   virtual ~System();
 
-  template <typename ConcreteModel> static boost::shared_ptr<System_<ConcreteModel> > create(ConcreteModel *model, const std::string& name = "system");
+  template <class ConcreteModel> static boost::shared_ptr<System_<ConcreteModel> > create(ConcreteModel *model, const std::string& name = "system");
 
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
@@ -73,7 +73,7 @@ public:
   virtual bool update(double dt);
 
   virtual void updated();
-  virtual bool limitState(State& state) const;
+  virtual bool limitState(State& state);
 
 protected:
   virtual bool updateImpl(double dt) = 0;
@@ -86,7 +86,7 @@ protected:
   SystemStatus status_flags_;
 };
 
-template <typename ConcreteModel>
+template <class ConcreteModel>
 class System_ : public System
 {
 public:
@@ -118,19 +118,21 @@ public:
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
-  virtual bool updateImpl(double dt) { return predictor()->predict(dt); }
+  virtual bool updateImpl(double dt);
 
 private:
   boost::shared_ptr<Model> model_;
   boost::shared_ptr< Filter::Predictor_<Model> > predictor_;
 };
 
-template <typename ConcreteModel>
+template <class ConcreteModel>
 boost::shared_ptr<System_<ConcreteModel> > System::create(ConcreteModel *model, const std::string& name)
 {
   return boost::make_shared<System_<ConcreteModel> >(model, name);
 }
 
 } // namespace hector_pose_estimation
+
+#include "system.inl"
 
 #endif // HECTOR_POSE_ESTIMATION_SYSTEM_H

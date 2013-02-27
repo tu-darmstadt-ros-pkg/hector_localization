@@ -45,12 +45,14 @@ namespace hector_pose_estimation {
   template <typename T> class TypedParameter;
   typedef boost::shared_ptr<Parameter> ParameterPtr;
   typedef boost::shared_ptr<const Parameter> ParameterConstPtr;
-  typedef boost::function<void(ParameterPtr)> ParameterRegisterFunc;
+  typedef boost::function<bool(ParameterPtr, std::string)> ParameterUpdateFunc;
 
   class Parameter {
   public:
     std::string key;
     Parameter(const std::string& key) : key(key) {}
+    virtual ~Parameter() {}
+
     virtual ParameterPtr clone() = 0;
     virtual const char *type() const = 0;
 
@@ -69,6 +71,8 @@ namespace hector_pose_estimation {
   public:
     typedef typename boost::remove_reference<typename boost::remove_const<T>::type>::type param_type;
 
+    virtual ~TypedParameter() {}
+
     param_type& value;
     TypedParameter(const std::string& key, param_type &value) : Parameter(key), value(value) {}
     TypedParameter(const Parameter& other) : Parameter(other), value(dynamic_cast<const TypedParameter<T> &>(other).value) {}
@@ -82,69 +86,47 @@ namespace hector_pose_estimation {
     using std::list<ParameterPtr>::iterator;
     using std::list<ParameterPtr>::const_iterator;
 
-    ParameterList() {}
     ~ParameterList() {}
 
-    template <typename T>
-    ParameterList& add(const std::string& key, T& value, const T& default_value) {
+    template <typename T> ParameterList& add(const std::string& key, T& value, const T& default_value) {
       value = default_value;
       return add(key, value);
     }
 
-    template <typename T>
-    ParameterList& add(const std::string& key, T& value) {
-      erase(key);
-      push_back(ParameterPtr(new TypedParameter<T>(key, value)));
-      return *this;
+    template <typename T> ParameterList& add(const std::string& key, T* value) {
+      return add(key, *value);
     }
 
-    template <typename T>
-    ParameterList& add(const std::string& key, T* value) {
-      erase(key);
-      push_back(ParameterPtr(new TypedParameter<T>(key, *value)));
-      return *this;
+    template <typename T> ParameterList& add(const std::string& key, T& value) {
+      return add(ParameterPtr(new TypedParameter<T>(key, value)));
     }
 
-    ParameterList& add(ParameterList const& other) {
-      for(ParameterList::const_iterator it = other.begin(); it != other.end(); ++it) push_back(*it);
-      return *this;
-    }
+    ParameterList& add(ParameterPtr const& parameter);
+    ParameterList& add(ParameterList const& other);
 
-    ParameterList& copy(const std::string& prefix, ParameterList const& parameters) {
-      for(ParameterList::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
-        ParameterPtr copy((*it)->clone());
-        if (!prefix.empty()) copy->key = prefix + "/" + copy->key;
-        push_back(copy);
-      }
-      return *this;
-    }
+    ParameterList& copy(const std::string& prefix, ParameterList const& parameters);
+    ParameterList& copy(ParameterList const& parameters);
 
-    ParameterList& copy(ParameterList const& parameters) {
-      copy(std::string(), parameters);
-      return *this;
-    }
-
-    template <typename T>
-    T& get(const std::string& key) const {
-      for(const_iterator it = begin(); it != end(); ++it) {
-        if ((*it)->key == key) {
-          return (*it)->as<T>();
-        }
-      }
-      throw std::bad_cast();
+    ParameterPtr const& get(const std::string& key) const;
+    template <typename T> T& getAs(const std::string& key) const {
+      return get(key)->as<T>();
     }
 
     using std::list<ParameterPtr>::erase;
-    iterator erase(const std::string& key) {
-      iterator it = begin();
-      for(; it != end(); ++it) {
-        if ((*it)->key == key) return erase(it);
-      }
-      return it;
-    }
+    iterator erase(const std::string& key);
 
-    void registerParamsRos(ros::NodeHandle nh) const;
-    void registerParams(const ParameterRegisterFunc& func) const;
+    bool update();
+    void setRegistry(const ParameterUpdateFunc& func, bool recursive = true, bool update = true);
+    void setNodeHandle(const ros::NodeHandle &nh, bool update = true);
+
+  private:
+    ParameterUpdateFunc register_func_;
+    bool register_recursive_;
+
+    std::string prefix_;
+    static const std::string s_separator;
+
+    bool update(const ParameterPtr& parameter);
   };
 
   static inline ParameterList operator+(ParameterList const& list1, ParameterList const& list2)

@@ -104,36 +104,25 @@ public:
   int getDimension() const { return Dimension; }
   int getIndex() const { return index_; }
 
-  void reset()
-  {
-//    vector_.setZero();
-//    covariance_.setZero();
-//    cross_variance_.setZero();
-  }
-
   ConstVectorSegment getVector() const { return state_.getVector().segment<Dimension>(index_); }
   ConstCovarianceBlock getCovariance() const { return state_.getCovariance().block<Dimension,Dimension>(index_,index_); }
   template <int Size> VectorBlock<const typename Vector::Base, Size> getSegment(IndexType start) const { return state_.getVector().segment<Dimension>(index_ + start); }
 
-//  VectorSegment& x() { return vector_; }
-//  CovarianceBlock& P() { return covariance_; }
-//  CrossVarianceBlock& P01() { return cross_variance_; }
   VectorSegment x() { return state_.x().segment<Dimension>(index_); }
   CovarianceBlock P() { return state_.P().block<Dimension,Dimension>(index_,index_); }
   CrossVarianceBlock P01() { return state_.P().block<State::Dimension,Dimension>(0,index_); }
-
-
-private:
-//  VectorSegment vector_;
-//  CovarianceBlock covariance_;
-//  CrossVarianceBlock cross_variance_;
 };
 
 extern template class SubState_<0>;
 
 template <int SubDimension>
-boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const void *model) const {
+boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const Model *model) const {
   return boost::shared_dynamic_cast<SubState_<SubDimension> >(substates_by_model_.count(model) ? substates_by_model_.at(model).lock() : SubStatePtr());
+}
+
+template <>
+inline boost::shared_ptr<BaseState> State::getSubState<0>(const Model *) const {
+  return base_;
 }
 
 template <int SubDimension>
@@ -142,7 +131,7 @@ boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const std::string
 }
 
 template <int SubDimension>
-boost::shared_ptr<SubState_<SubDimension> > State::addSubState(const void *model, const std::string& name) {
+boost::shared_ptr<SubState_<SubDimension> > State::addSubState(const Model *model, const std::string& name) {
   boost::shared_ptr<SubState_<SubDimension> > substate;
   if (!name.empty()) substate = getSubState<SubDimension>(name);
   if (!substate) {

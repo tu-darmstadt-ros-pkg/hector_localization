@@ -61,7 +61,7 @@ PoseEstimationNode::~PoseEstimationNode()
 }
 
 bool PoseEstimationNode::init() {
-  pose_estimation_->getParameters().registerParamsRos(getPrivateNodeHandle());
+  pose_estimation_->parameters().setNodeHandle(getPrivateNodeHandle());
 
   if (!pose_estimation_->init()) {
     ROS_ERROR("Intitialization of pose estimation failed!");
@@ -241,7 +241,7 @@ void PoseEstimationNode::publish() {
 
     if (publish_world_other_transform_) {
       tf::StampedTransform world_to_other_transform;
-      std::string nav_frame = pose_estimation_->parameters().get<std::string>("nav_frame");
+      std::string nav_frame = pose_estimation_->parameters().getAs<std::string>("nav_frame");
       try {
         getTransformListener()->lookupTransform(nav_frame, other_frame_, ros::Time(), world_to_other_transform);
         pose_estimation_->updateWorldToOtherTransform(world_to_other_transform);

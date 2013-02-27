@@ -62,8 +62,8 @@ double BaroModel::getAltitude(const Update_<BaroModel>& update)
 }
 
 BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { setValue(pressure); }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { setValue(pressure); }
+BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
+BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
 
 void Baro::onReset()
 {

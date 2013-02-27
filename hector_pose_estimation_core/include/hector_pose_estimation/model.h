@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2011, Johannes Meyer and Martin Nowara, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,21 +26,35 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_CONVERSION_H
-#define HECTOR_POSE_ESTIMATION_CONVERSION_H
+#ifndef HECTOR_POSE_ESTIMATION_MODEL_H
+#define HECTOR_POSE_ESTIMATION_MODEL_H
 
-#include <boost/array.hpp>
-#include <Eigen/Core>
+#include <hector_pose_estimation/parameters.h>
+#include <hector_pose_estimation/types.h>
+#include <hector_pose_estimation/state.h>
 
 namespace hector_pose_estimation {
 
-template <typename EigenMatrix, size_t N>
-static inline void covarianceMsgToEigen(const boost::array<double,N>& msg, EigenMatrix& eigen)
-{
-  assert(N == eigen.cols() * eigen.rows());
-  std::copy(msg.begin(), msg.end(), eigen.data());
-}
+class Model {
+public:
+  template <class Model> struct traits;
+
+  virtual ~Model() {}
+
+  virtual int getDimension() const = 0;
+  virtual bool hasSubsystem() const { return false; }
+
+  virtual bool init(PoseEstimation& estimator, State& state) { return true; }
+  virtual void cleanup() { }
+  virtual void reset(State& state) { }
+
+  ParameterList& parameters() { return parameters_; }
+  const ParameterList& parameters() const { return parameters_; }
+
+protected:
+  ParameterList parameters_;
+};
 
 } // namespace hector_pose_estimation
 
-#endif // HECTOR_POSE_ESTIMATION_CONVERSION_H
+#endif // HECTOR_POSE_ESTIMATION_MODEL_H

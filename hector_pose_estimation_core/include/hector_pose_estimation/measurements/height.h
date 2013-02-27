@@ -38,7 +38,7 @@ public:
   HeightModel();
   virtual ~HeightModel();
 
-  SystemStatus getStatusFlags() const { return STATE_POSITION_Z; }
+  virtual SystemStatus getStatusFlags() { return STATE_POSITION_Z; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -60,7 +60,7 @@ public:
   HeightBaroCommon(Measurement *measurement);
   virtual ~HeightBaroCommon();
 
-  void onReset();
+  virtual void onReset();
   double resetElevation(const State &state, boost::function<double()> altitude_func);
 
 private:

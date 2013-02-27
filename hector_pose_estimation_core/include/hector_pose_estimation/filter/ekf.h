@@ -40,13 +40,12 @@ public:
   EKF();
   virtual ~EKF();
 
-  std::string getType() const { return "EKF"; }
+  virtual std::string getType() const { return "EKF"; }
 
-  bool init(PoseEstimation &estimator);
+  virtual bool init(PoseEstimation &estimator);
+  virtual bool doPredict(double dt);
 
-  bool predict(double dt);
-
-  template <typename ConcreteModel, typename Enabled = void>
+  template <class ConcreteModel, typename Enabled = void>
   class PredictorImpl_ : public Filter::template Predictor_<ConcreteModel>
   {
   public:
@@ -74,8 +73,8 @@ public:
     typename Model::NoiseVarianceBlock Q;
   };
 
-  template <typename ConcreteModel>
-  class PredictorImpl_<ConcreteModel, typename boost::enable_if<typename ConcreteModel::IsSubSystem >::type> : public Filter::template Predictor_<ConcreteModel>
+  template <class ConcreteModel>
+  class PredictorImpl_<ConcreteModel, typename boost::enable_if<class ConcreteModel::IsSubSystem >::type> : public Filter::template Predictor_<ConcreteModel>
   {
   public:
     typedef ConcreteModel Model;
@@ -87,7 +86,7 @@ public:
       : Base(filter, model)
       , filter_(filter)
       , x_pred(filter_->x_pred.segment<ConcreteModel::Dimension>(model->getStateIndex(state())))
-      , A1(filter_->A.block<ConcreteModel::Dimension,ConcreteModel::Dimension>(model->getStateIndex(state()), model->getStateIndex(state())))
+      , A11(filter_->A.block<ConcreteModel::Dimension,ConcreteModel::Dimension>(model->getStateIndex(state()), model->getStateIndex(state())))
       , A01(filter_->A.block<State::Dimension,ConcreteModel::Dimension>(0, model->getStateIndex(state())))
       , Q1(filter->Q.block<ConcreteModel::Dimension,ConcreteModel::Dimension>(model->getStateIndex(state()), model->getStateIndex(state())))
     {}
@@ -100,12 +99,12 @@ public:
 
   public:
     typename Model::StateVectorSegment x_pred;
-    typename Model::SystemMatrixBlock A1;
+    typename Model::SystemMatrixBlock A11;
     typename Model::CrossSystemMatrixBlock A01;
     typename Model::NoiseVarianceBlock Q1;
   };
 
-  template <typename ConcreteModel, typename Enabled = void>
+  template <class ConcreteModel, typename Enabled = void>
   class CorrectorImpl_ : public Filter::template Corrector_<ConcreteModel>
   {
   public:
@@ -130,8 +129,8 @@ public:
     typename Model::GainMatrix K;
   };
 
-  template <typename ConcreteModel>
-  class CorrectorImpl_<ConcreteModel, typename boost::enable_if<typename ConcreteModel::HasSubSystem >::type> : public Filter::template Corrector_<ConcreteModel>
+  template <class ConcreteModel>
+  class CorrectorImpl_<ConcreteModel, typename boost::enable_if<class ConcreteModel::HasSubSystem >::type> : public Filter::template Corrector_<ConcreteModel>
   {
   public:
     typedef ConcreteModel Model;
@@ -157,14 +156,14 @@ public:
     typename Model::GainMatrix K;
   };
 
-  template <typename ConcreteModel>
+  template <class ConcreteModel>
   class Predictor_ : public PredictorImpl_<ConcreteModel> {
   public:
      Predictor_(EKF *filter, ConcreteModel *model) : PredictorImpl_<ConcreteModel>(filter, model) {}
      virtual ~Predictor_() {}
   };
 
-  template <typename ConcreteModel>
+  template <class ConcreteModel>
   class Corrector_ : public CorrectorImpl_<ConcreteModel> {
   public:
      Corrector_(EKF *filter, ConcreteModel *model) : CorrectorImpl_<ConcreteModel>(filter, model) {}
@@ -180,6 +179,6 @@ public:
 } // namespace filter
 } // namespace hector_pose_estimation
 
-#include <hector_pose_estimation/filter/ekf.inl>
+#include "ekf.inl"
 
 #endif // HECTOR_POSE_ESTIMATION_FILTER_EKF_H

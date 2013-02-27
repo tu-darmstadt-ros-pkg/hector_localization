@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer and Martin Nowara, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,47 +26,25 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/system_model.h>
+#ifndef HECTOR_POSE_ESTIMATION_SYSTEM_INL
+#define HECTOR_POSE_ESTIMATION_SYSTEM_INL
+
+#include <hector_pose_estimation/system.h>
 
 namespace hector_pose_estimation {
 
-SystemModel::SystemModel()
+template <class ConcreteModel>
+bool System_<ConcreteModel>::updateImpl(double dt)
 {
-}
+  if (!prepareUpdate(filter()->state(), dt)) return false;
 
-SystemModel::~SystemModel()
-{
-}
+  ROS_DEBUG("Updating with system model %s (dt = %f)", getName().c_str(), dt);
+  if (!predictor()->predict(dt)) return false;
 
-void SystemModel::getPrior(State &state) {
-  state.x().setZero();
-  state.P().setZero();
-
-  if (state.getOrientationIndex() >= 0) {
-    state.orientation() = Eigen::Quaternion<ScalarType>::Identity().coeffs();
-    state.P()(State::QUATERNION_W,State::QUATERNION_W) = 0.25 * 1.0;
-    state.P()(State::QUATERNION_X,State::QUATERNION_X) = 0.25 * 1.0;
-    state.P()(State::QUATERNION_Y,State::QUATERNION_Y) = 0.25 * 1.0;
-    state.P()(State::QUATERNION_Z,State::QUATERNION_Z) = 0.25 * 1.0;
-  }
-
-  if (state.getRateIndex() >= 0) {
-    state.P()(State::RATE_X,State::RATE_X) = pow(0.0 * M_PI/180.0, 2);
-    state.P()(State::RATE_Y,State::RATE_Y) = pow(0.0 * M_PI/180.0, 2);
-    state.P()(State::RATE_Z,State::RATE_Z) = pow(0.0 * M_PI/180.0, 2);
-  }
-
-  if (state.getPositionIndex() >= 0) {
-    state.P()(State::POSITION_X,State::POSITION_X) = 0.0;
-    state.P()(State::POSITION_Y,State::POSITION_Y) = 0.0;
-    state.P()(State::POSITION_Z,State::POSITION_Z) = 0.0;
-  }
-
-  if (state.getVelocityIndex() >= 0) {
-    state.P()(State::VELOCITY_X,State::VELOCITY_X) = 0.0;
-    state.P()(State::VELOCITY_Y,State::VELOCITY_Y) = 0.0;
-    state.P()(State::VELOCITY_Z,State::VELOCITY_Z) = 0.0;
-  }
+  afterUpdate(filter()->state());
+  return true;
 }
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_SYSTEM_INL

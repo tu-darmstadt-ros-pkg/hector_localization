@@ -46,8 +46,10 @@ public:
   GyroModel();
   virtual ~GyroModel();
 
+  SubState& sub(State& state) const { return *drift_; }
+  const SubState& sub(const State& state) const { return *drift_; }
+
   virtual bool init(PoseEstimation& estimator, State& state);
-  virtual void getPrior(State &state);
 
   using TimeContinuousSystemModel_<GyroModel, 3>::getSystemNoise;
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
@@ -73,8 +75,10 @@ public:
   AccelerometerModel();
   virtual ~AccelerometerModel();
 
+  SubState& sub(State& state) const { return *drift_; }
+  const SubState& sub(const State& state) const { return *drift_; }
+
   virtual bool init(PoseEstimation& estimator, State& state);
-  virtual void getPrior(State &state);
 
   using TimeContinuousSystemModel_<AccelerometerModel, 3>::getSystemNoise;
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
@@ -87,20 +91,6 @@ private:
   SubStatePtr drift_;
   double acceleration_drift_;
 };
-
-namespace traits {
-
-  template <> struct StateInspector<GyroModel> {
-    static SubState_<3>& sub(const GyroModel *model, State &state) { return *(state.getSubState<3>(model)); }
-    static const SubState_<3>& sub(const GyroModel *model, const State &state) { return *(state.getSubState<3>(model)); }
-  };
-
-  template <> struct StateInspector<AccelerometerModel> {
-    static SubState_<3>& sub(const AccelerometerModel *model, State &state) { return *(state.getSubState<3>(model)); }
-    static const SubState_<3>& sub(const AccelerometerModel *model, const State &state) { return *(state.getSubState<3>(model)); }
-  };
-
-} // namespace traits
 
 typedef System_<GyroModel> Gyro;
 extern template class System_<GyroModel>;

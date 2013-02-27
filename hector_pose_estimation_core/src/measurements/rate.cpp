@@ -40,6 +40,12 @@ RateModel::RateModel()
 
 RateModel::~RateModel() {}
 
+bool RateModel::init(PoseEstimation &estimator, State &state)
+{
+  gyro_drift_ = state.addSubState<3>(this, "gyro");
+  return true;
+}
+
 void RateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
   if (init) {
@@ -55,10 +61,15 @@ void RateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 //  y_pred(0) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()) * rate.x() + (2.0*q.x()*q.y()+2.0*q.w()*q.z())                 * rate.y() + (2.0*q.x()*q.z()-2.0*q.w()*q.y())                 * rate.z();
 //  y_pred(1) = (2.0*q.x()*q.y()-2.0*q.w()*q.z())                 * rate.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()) * rate.y() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                 * rate.z();
 //  y_pred(2) = (2.0*q.x()*q.z()+2.0*q.w()*q.y())                 * rate.x() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                 * rate.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z()) * rate.z();
+
   y_pred = state.getRate();
+
+  if (gyro_drift_) {
+    y_pred += gyro_drift_->getVector();
+  }
 }
 
-void RateModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init)
+void RateModel::getStateJacobian(MeasurementMatrix &C0, SubMeasurementMatrix &C1, const State &state, bool init)
 {
 //  const State::OrientationType& q = state.getOrientation();
 //  const State::RateType& rate = state.getRate();
@@ -90,10 +101,16 @@ void RateModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool 
 //    C(2,State::RATE_Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
 //  }
 
-  if (init && state.getRateIndex() >= 0) {
-   C(0,State::RATE_X) = 1.0;
-   C(1,State::RATE_Y) = 1.0;
-   C(2,State::RATE_Z) = 1.0;
+  if (!init) return;
+
+  if (state.getRateIndex() >= 0) {
+   C0(0,State::RATE_X) = 1.0;
+   C0(1,State::RATE_Y) = 1.0;
+   C0(2,State::RATE_Z) = 1.0;
+  }
+
+  if (gyro_drift_) {
+    C1.setIdentity();
   }
 }
 

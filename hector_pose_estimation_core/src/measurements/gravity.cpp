@@ -43,7 +43,7 @@ GravityModel::GravityModel()
 GravityModel::~GravityModel() {}
 
 bool GravityModel::init(PoseEstimation &estimator, State &state) {
-  setGravity(estimator.parameters().get<double>("gravity"));
+  setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
   return true;
 }
 

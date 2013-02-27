@@ -29,46 +29,32 @@
 #ifndef HECTOR_POSE_ESTIMATION_SYSTEM_MODEL_H
 #define HECTOR_POSE_ESTIMATION_SYSTEM_MODEL_H
 
-#include <hector_pose_estimation/types.h>
-#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation/model.h>
 #include <hector_pose_estimation/substate.h>
 #include <hector_pose_estimation/input.h>
-#include <hector_pose_estimation/parameters.h>
 
 namespace hector_pose_estimation {
 
-class SystemModel {
+class SystemModel : public Model {
 public:
-  SystemModel();
-  virtual ~SystemModel();
+  virtual ~SystemModel() {}
 
   virtual int getDimension() const = 0;
-
   virtual bool isSubSystem() const { return false; }
   virtual IndexType getStateIndex(const State&) const { return 0; }
 
-  enum SystemTypeEnum { TIME_DISCRETE, TIME_CONTINUOUS };
-  virtual SystemTypeEnum getSystemType() const = 0;
+  enum SystemTypeEnum { UNKNOWN_SYSTEM_TYPE, TIME_DISCRETE, TIME_CONTINUOUS };
+  virtual SystemTypeEnum getSystemType() const { return UNKNOWN_SYSTEM_TYPE; }
 
-  virtual bool init(PoseEstimation& estimator, State& state) { return true; }
-  virtual void cleanup() { }
-  virtual void reset(State& state) { }
-
-  virtual SystemStatus getStatusFlags(const State& state) const { return SystemStatus(0); }
+  virtual SystemStatus getStatusFlags(const State& state) { return SystemStatus(0); }
   virtual bool applyStatusMask(const SystemStatus& status) { return true; }
 
-  ParameterList& parameters() { return parameters_; }
-  const ParameterList& parameters() const { return parameters_; }
-
-  virtual void getPrior(State &state);
+  virtual void getPrior(State &state) {}
 
   virtual bool prepareUpdate(State& state, double dt) { return true; }
   virtual void afterUpdate(State& state) {}
 
-  virtual bool limitState(State& x) const { return true; }
-
-private:
-  ParameterList parameters_;
+  virtual bool limitState(State& state) { return true; }
 };
 
 template <int _SubDimension>
@@ -76,7 +62,6 @@ class SubSystemModel_ : public SystemModel {
 public:
   enum { SubDimension = _SubDimension };
 
-  SubSystemModel_() {}
   virtual ~SubSystemModel_() {}
 
   virtual bool isSubSystem() const { return true; }
@@ -158,17 +143,18 @@ template <class Derived, int _SubDimension>
 class SystemModel_ : public SubSystemModel_<_SubDimension> {
 public:
   SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
-
-  SystemModel_() {}
   virtual ~SystemModel_() {}
 
   int getDimension() const { return trait::Dimension; }
+  virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_DISCRETE; }
+
+  virtual void getPrior(State &state);
 
   Derived *derived() { return static_cast<Derived *>(this); }
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
-  SubState& sub(State& state) const { return traits::StateInspector<Derived>::sub(derived(), state); }
-  const SubState& sub(const State& state) const { return traits::StateInspector<Derived>::sub(derived(), state); }
+  SubState& sub(State& state) const { return *state.getSubState<SubDimension>(this); }
+  const SubState& sub(const State& state) const { return *state.getSubState<SubDimension>(this); }
 
   // time discrete models should overwrite the following virtual methods if required:
   virtual void getExpectedValue(StateVectorSegment& x_pred, const State& state, double dt) { x_pred = this->sub(state).getVector(); }
@@ -190,11 +176,7 @@ template <class Derived, int _SubDimension = 0>
 class TimeDiscreteSystemModel_ : public SystemModel_<Derived, _SubDimension> {
 public:
   SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
-
-  TimeDiscreteSystemModel_() {}
   virtual ~TimeDiscreteSystemModel_() {}
-
-  virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_DISCRETE; }
 };
 
 template <class Derived, int _SubDimension = 0>
@@ -202,8 +184,8 @@ class TimeContinuousSystemModel_ : public SystemModel_<Derived, _SubDimension> {
 public:
   SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
 
-  TimeContinuousSystemModel_() {}
-  virtual ~TimeContinuousSystemModel_() {}
+  TimeContinuousSystemModel_();
+  virtual ~TimeContinuousSystemModel_();
 
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_CONTINUOUS; }
 
@@ -222,49 +204,20 @@ public:
   virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state) {}
   virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init) { getStateJacobian(A1, A01, state); }
 
-  void getExpectedValue(StateVectorSegment& x_pred, const State& state, double dt) {
-    getDerivative(internal_.x_dot, state);
-    x_pred = this->sub(state).getVector() + dt * internal_.x_dot;
-  }
-
-  void getStateJacobian(SystemMatrixBlock& A, const State& state, double dt, bool init) {
-    if (init) internal_.A.setZero();
-    getStateJacobian(internal_.A, state, init);
-    A = SystemMatrix::Identity() + dt * internal_.A;
-  }
-
-  void getStateJacobian(SystemMatrixBlock& A1, CrossSystemMatrixBlock& A01, const State& state, double dt, bool init) {
-    if (init) {
-      internal_.A.setZero();
-      internal_.A01.setZero();
-    }
-    getStateJacobian(internal_.A, internal_.A01, state, init);
-    A1 = SystemMatrix::Identity() + dt * internal_.A;
-    A01 = dt * internal_.A01;
-  }
-
-  void getInputJacobian(InputMatrixBlock& B, const State& state, double dt, bool init) {
-    if (init) internal_.B.setZero();
-    getInputJacobian(internal_.B, state, init);
-    B = dt * internal_.B;
-  }
-
-  void getSystemNoise(NoiseVarianceBlock& Q, const State& state, double dt, bool init) {
-    if (init) internal_.Q.setZero();
-    getSystemNoise(internal_.Q, state, init);
-    Q = dt * internal_.Q;
-  }
+  // the time discrete model functions are implemented in system_model.inl
+  void getExpectedValue(StateVectorSegment& x_pred, const State& state, double dt);
+  void getStateJacobian(SystemMatrixBlock& A, const State& state, double dt, bool init);
+  void getStateJacobian(SystemMatrixBlock& A1, CrossSystemMatrixBlock& A01, const State& state, double dt, bool init);
+  void getInputJacobian(InputMatrixBlock& B, const State& state, double dt, bool init);
+  void getSystemNoise(NoiseVarianceBlock& Q, const State& state, double dt, bool init);
 
 private:
-  struct internal {
-    StateVector x_dot;
-    SystemMatrix A;
-    CrossSystemMatrix A01;
-    InputMatrix B;
-    NoiseVariance Q;
-  } internal_;
+  struct internal;
+  struct internal *internal_;
 };
 
 } // namespace hector_pose_estimation
+
+#include "system_model.inl"
 
 #endif // HECTOR_POSE_ESTIMATION_SYSTEM_MODEL_H

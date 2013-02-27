@@ -54,8 +54,10 @@ public:
 
   virtual bool init(PoseEstimation& estimator, State& state);
 
+  virtual void getPrior(State &state);
+
   virtual bool prepareUpdate(State& state, double dt);
-  virtual SystemStatus getStatusFlags(const State& state) const;
+  virtual SystemStatus getStatusFlags(const State& state);
 
   using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getDerivative;
   virtual void getDerivative(StateVector& x_dot, const State& state);

@@ -60,6 +60,8 @@ namespace hector_pose_estimation {
     return os << getSystemStatusString(status);
   }
 
+  class Model;
+
   class SystemModel;
   class System;
   template <class Derived> class System_;
@@ -85,6 +87,7 @@ namespace hector_pose_estimation {
 
   class SubState;
   template <int Dimension> class SubState_;
+  typedef SubState_<0> BaseState;
   typedef boost::shared_ptr<SubState> SubStatePtr;
   typedef boost::weak_ptr<SubState> SubStateWPtr;
 

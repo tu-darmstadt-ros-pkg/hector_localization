@@ -29,39 +29,24 @@
 #ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 
-#include <hector_pose_estimation/parameters.h>
-#include <hector_pose_estimation/types.h>
-#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation/model.h>
 #include <hector_pose_estimation/substate.h>
 #include <hector_pose_estimation/input.h>
 
 namespace hector_pose_estimation {
 
-class MeasurementModel {
+class MeasurementModel : public Model {
 public:
-  template <class Model> struct traits;
-
-  MeasurementModel();
-  virtual ~MeasurementModel();
+  virtual ~MeasurementModel() {}
 
   virtual int getDimension() const = 0;
   virtual bool hasSubsystem() const { return false; }
 
-  virtual bool init(PoseEstimation& estimator, State& state) { return true; }
-  virtual void cleanup() { }
-  virtual void reset(State& state) { }
-
-  virtual SystemStatus getStatusFlags() const { return SystemStatus(0); }
+  virtual SystemStatus getStatusFlags() { return SystemStatus(0); }
   virtual bool applyStatusMask(const SystemStatus& status) { return !(status & STATUS_ALIGNMENT); }
-
-  ParameterList& parameters() { return parameters_; }
-  const ParameterList& parameters() const { return parameters_; }
 
   virtual bool prepareUpdate(State& state, const MeasurementUpdate& update) { return true; }
   virtual void afterUpdate(State& state) {}
-
-protected:
-  ParameterList parameters_;
 };
 
 template <class Derived, int _Dimension, int _SubDimension = 0> class MeasurementModel_;
@@ -133,8 +118,6 @@ template <class Derived, int _Dimension, int _SubDimension>
 class MeasurementModel_ : public MeasurementModel {
 public:
   MEASUREMENT_MODEL_TRAIT(_Dimension, _SubDimension)
-
-  MeasurementModel_() {}
   virtual ~MeasurementModel_() {}
 
   virtual int getDimension() const { return trait::MeasurementDimension; }
@@ -143,8 +126,8 @@ public:
   Derived *derived() { return static_cast<Derived *>(this); }
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
-  SubState& sub(State& state) const { return traits::StateInspector<Derived>::sub(derived(), state); }
-  const SubState& sub(const State& state) const { return traits::StateInspector<Derived>::sub(derived(), state); }
+  SubState& sub(State& state) const { return *state.getSubState<SubDimension>(this); }
+  const SubState& sub(const State& state) const { return *state.getSubState<SubDimension>(this); }
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state) {}
   virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init) {}

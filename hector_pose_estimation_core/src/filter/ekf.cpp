@@ -48,9 +48,19 @@ bool EKF::init(PoseEstimation &estimator)
   return true;
 }
 
-bool EKF::predict(double dt) {
-  state().P() = state().P().quadratic(A) + Q;
+bool EKF::doPredict(double dt) {
+  ROS_DEBUG("EKF prediction (dt = %f):", dt);
+
+  ROS_DEBUG_STREAM("A      = [" << A << "]");
+  ROS_DEBUG_STREAM("Q      = [" << Q << "]");
+
+  state().P() = A * state().P().selfadjointView<Upper>() * A.transpose() + Q;
   state().x() = x_pred;
+
+  ROS_DEBUG_STREAM("x_pred = [" << state().getVector().transpose() << "]");
+  ROS_DEBUG_STREAM("P_pred = [" << state().getCovariance() << "]");
+
+  Filter::doPredict(dt);
   return true;
 }
 

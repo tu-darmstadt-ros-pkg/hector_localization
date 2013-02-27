@@ -64,6 +64,8 @@ public:
   double qnh() const { return qnh_; }
   BaroUpdate& qnh(double qnh) { qnh_ = qnh; return *this; }
 
+  using Update_<BaroModel>::operator =;
+
 private:
   double qnh_;
 };

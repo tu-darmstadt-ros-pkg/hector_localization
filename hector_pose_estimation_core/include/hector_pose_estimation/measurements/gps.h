@@ -39,7 +39,7 @@ public:
   GPSModel();
   virtual ~GPSModel();
 
-  SystemStatus getStatusFlags() const { return STATE_POSITION_XY | STATE_VELOCITY_XY; }
+  virtual SystemStatus getStatusFlags() { return STATE_POSITION_XY | STATE_VELOCITY_XY; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -69,10 +69,10 @@ public:
   GPS(const std::string& name = "gps");
   virtual ~GPS();
 
-  void onReset();
+  virtual void onReset();
 
-  GPSModel::MeasurementVector const& getVector(const GPSUpdate &update, const State&);
-  bool prepareUpdate(State &state, const GPSUpdate &update);
+  virtual GPSModel::MeasurementVector const& getVector(const GPSUpdate &update, const State&);
+  virtual bool prepareUpdate(State &state, const GPSUpdate &update);
 
 private:
   GlobalReferencePtr reference_;

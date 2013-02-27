@@ -49,7 +49,6 @@ State::State(const Vector &vector, const Covariance& covariance)
 
 State::~State()
 {
-  delete base_;
 }
 
 void State::reset()
@@ -74,11 +73,6 @@ void State::reset()
   fake_velocity_ << 0.0, 0.0, 0.0;
   fake_acceleration_.resize(3,1);
   fake_acceleration_ << 0.0, 0.0, 0.0;
-
-  // reset all substates
-  for(SubStates::iterator sub = substates_.begin(); sub != substates_.end(); ++sub) {
-    (*sub)->reset();
-  }
 }
 
 bool State::valid() const {
@@ -136,8 +130,8 @@ void State::addSystemStatusCallback(const SystemStatusCallback& callback) {
 }
 
 double State::normalize() {
-  double s = orientation().norm();
-  orientation() = orientation() / s;
+  double s = 1.0 / orientation().norm();
+  orientation() = orientation() * s;
   return s;
 }
 

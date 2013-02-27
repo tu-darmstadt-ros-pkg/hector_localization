@@ -27,7 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/hector_pose_estimation_rtt.h>
-#include <hector_pose_estimation/services.h>
+#include "services.h"
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
@@ -43,7 +43,7 @@ PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, co
   : RTT::TaskContext(name, RTT::TaskContext::PreOperational)
   , PoseEstimation(system)
 {
-  if (!system) setSystemModel(new GenericQuaternionSystemModel);
+  if (!system) addSystem(System::create(new GenericQuaternionSystemModel));
 
   this->addEventPort("raw_imu", imu_input_);
   this->addPort("poseupdate", pose_update_input_);
@@ -72,13 +72,16 @@ PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, co
   PoseEstimation::addMeasurement(new Magnetic("Magnetic"));
   PoseEstimation::addMeasurement(new GPS("GPS"));
 
-  this->provides()->addService(RTT::Service::shared_ptr(new SystemService(this, getSystem(), "System")));
+  for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it) {
+    this->provides()->addService(RTT::Service::shared_ptr(new SystemService(this, *it)));
+  }
+
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it) {
     this->provides()->addService(RTT::Service::shared_ptr(new MeasurementService(this, *it)));
   }
 
-  PoseEstimation::getParameters().registerParamsRos(ros::NodeHandle(param_namespace_));
-  PoseEstimation::parameters().registerParams(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  PoseEstimation::parameters().setNodeHandle(ros::NodeHandle(param_namespace_));
+  PoseEstimation::parameters().setRegistry(boost::bind(&registerParamAsProperty, _1, _2, this->properties()), false);
 }
 
 PoseEstimationTaskContext::~PoseEstimationTaskContext()
@@ -155,7 +158,8 @@ void PoseEstimationTaskContext::updateHook()
   }
 
   while(imu_input_.read(imu_in_) == RTT::NewData) {
-    PoseEstimation::update(ImuInput(imu_in_), imu_in_.header.stamp);
+    setInput(ImuInput(imu_in_));
+    PoseEstimation::update(imu_in_.header.stamp);
     updateOutputs();
   }
 }
@@ -185,15 +189,7 @@ void PoseEstimationTaskContext::updateOutputs()
   }
 
   if (global_position_output_.connected()) {
-    global_position_.header = state_.header;
-    getGlobalPosition(global_position_.latitude, global_position_.longitude, global_position_.altitude);
-    global_position_.latitude *= 180.0/M_PI;
-    global_position_.longitude *= 180.0/M_PI;
-    if (getSystemStatus() & STATE_XY_POSITION) {
-      global_position_.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
-    } else {
-      global_position_.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
-    }
+    getGlobalPosition(global_position_);
     global_position_output_.write(global_position_);
   }
 

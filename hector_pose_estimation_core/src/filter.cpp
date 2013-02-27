@@ -59,22 +59,12 @@ bool Filter::predict(const Systems& systems, double dt) {
 
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
-    result |= predict(system, dt);
+    result &= predict(system, dt);
     system_status |= system->getStatusFlags();
-
-    if (!state_.valid()) {
-      ROS_ERROR("Invalid state after predicting %s", system->getName().c_str());
-    }
   }
 
-  // call the filter's predict method
-  result |= predict(dt);
-
-  if (!state_.valid()) {
-    ROS_ERROR("Invalid state after prediction");
-    state_.updateSystemStatus(0, STATE_MASK);
-    return false;
-  }
+  // call the filter's global predict method
+  result &= doPredict(dt);
 
   state_.updateSystemStatus(system_status, STATE_MASK);
   return result;
@@ -84,30 +74,35 @@ bool Filter::predict(const SystemPtr& system, double dt) {
   return system->update(dt);
 }
 
-bool Filter::predict(double dt) {
+bool Filter::doPredict(double dt) {
+  state_.updated();
   return true;
 }
 
-bool Filter::update(const Measurements& measurements) {
+bool Filter::correct(const Measurements& measurements) {
   SystemStatus measurement_status = 0;
   bool result = true;
 
   for(Measurements::iterator it = measurements.begin(); it != measurements.end(); it++) {
     const MeasurementPtr& measurement = *it;
-    result |= update(measurement);
+    result &= correct(measurement);
     measurement_status |= measurement->getStatusFlags();
-
-    if (!state_.valid()) {
-      ROS_ERROR("Invalid state after updating with measurement %s", measurement->getName().c_str());
-    }
   }
+
+  // call the filter's global correct method
+  result &= doCorrect();
 
   state_.setMeasurementStatus(measurement_status);
   return result;
 }
 
-bool Filter::update(const MeasurementPtr& measurement) {
+bool Filter::correct(const MeasurementPtr& measurement) {
   return measurement->process();
+}
+
+bool Filter::doCorrect() {
+  state_.updated();
+  return true;
 }
 
 } // namespace hector_pose_estimation

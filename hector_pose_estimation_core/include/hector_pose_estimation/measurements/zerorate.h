@@ -40,10 +40,13 @@ public:
   ZeroRateModel();
   virtual ~ZeroRateModel();
 
-  bool init(PoseEstimation &estimator, State &state);
+  SubState& sub(State& state) const { return *gyro_drift_; }
+  const SubState& sub(const State& state) const { return *gyro_drift_; }
 
-  bool applyStatusMask(const SystemStatus &status) const { return !(status & STATE_RATE_Z); }
-  SystemStatus getStatusFlags() const { return 0; }
+  virtual bool init(PoseEstimation &estimator, State &state);
+
+  virtual bool applyStatusMask(const SystemStatus &status) { return !(status & STATE_RATE_Z); }
+  virtual SystemStatus getStatusFlags() { return 0; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
@@ -53,15 +56,6 @@ protected:
   double stddev_;
   SubStatePtr gyro_drift_;
 };
-
-namespace traits {
-
-template <> struct StateInspector<ZeroRateModel> {
-  static SubState_<3>& sub(const ZeroRateModel *model, State &state) { return *(state.getSubState<3>(model)); }
-  static const SubState_<3>& sub(const ZeroRateModel *model, const State &state) { return *(state.getSubState<3>(model)); }
-};
-
-} // namespace traits
 
 typedef Measurement_<ZeroRateModel> ZeroRate;
 extern template class Measurement_<ZeroRateModel>;

@@ -55,7 +55,7 @@ public:
   virtual ~MeasurementService();
 };
 
-void registerParamAsProperty(ParameterPtr&, RTT::PropertyBag*);
+bool registerParamAsProperty(const ParameterPtr &parameter, std::string key, RTT::PropertyBag *bag);
 
 } // namespace hector_pose_estimation
 

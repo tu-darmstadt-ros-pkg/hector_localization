@@ -28,7 +28,6 @@
 
 #include <hector_pose_estimation/measurements/poseupdate.h>
 #include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/conversion.h>
 
 #include <Eigen/Core>
 
@@ -100,8 +99,7 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
 
     // information is the information matrix if interpret_covariance_as_information_matrix_ is true and a covariance matrix otherwise
     // zero elements are counted as zero information in any case
-    SymmetricMatrix_<6> information;
-    covarianceMsgToEigen(update.pose->pose.covariance, information);
+    SymmetricMatrix_<6> information(SymmetricMatrix_<6>::ConstMap(update.pose->pose.covariance.data()));
 
     ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: x = [ " << state.getVector().transpose() << " ], P = [ " << state.getCovariance() << " ]" << std::endl
                                       << "update: pose = [ " << update_pose.transpose() << " ], euler = [ " << update_euler.transpose() << " ], information = [ " << information << " ]");
@@ -237,8 +235,7 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
 
     // information is the information matrix if interpret_covariance_as_information_matrix_ is true and a covariance matrix otherwise
     // zero elements are counted as zero information in any case
-    SymmetricMatrix information(6);
-    covarianceMsgToEigen(update.twist->twist.covariance, information);
+    SymmetricMatrix_<6> information(SymmetricMatrix_<6>::ConstMap(update.twist->twist.covariance.data()));
 
     ROS_DEBUG_STREAM_NAMED("poseupdate", "TwistUpdate:  state = [ " << state.getVector().transpose() << " ], P = [ " << state.getCovariance() << " ]" << std::endl
                                       << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]");
@@ -338,7 +335,7 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
   return true;
 }
 
-double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const {
+double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) {
   double tr_x = Ix.trace();
   double tr_y = Iy.trace();
   return tr_y / (tr_x + tr_y);

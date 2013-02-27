@@ -46,8 +46,8 @@ public:
   virtual void setGravity(double gravity) { gravity_ = gravity; }
   virtual double getGravity() const { return gravity_; }
 
-  bool applyStatusMask(const SystemStatus &status) const { return !(status & STATE_ROLLPITCH); }
-  SystemStatus getStatusFlags() const { return STATE_ROLLPITCH; }
+  virtual bool applyStatusMask(const SystemStatus &status) { return !(status & STATE_ROLLPITCH); }
+  virtual SystemStatus getStatusFlags() { return STATE_ROLLPITCH; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);

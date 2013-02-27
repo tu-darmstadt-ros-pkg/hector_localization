@@ -148,8 +148,6 @@ public:
   virtual void getTransforms(std::vector<tf::StampedTransform>& transforms);
   virtual void updateWorldToOtherTransform(tf::StampedTransform& world_to_other_transform);
 
-  virtual ParameterList getParameters() const;
-
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
 

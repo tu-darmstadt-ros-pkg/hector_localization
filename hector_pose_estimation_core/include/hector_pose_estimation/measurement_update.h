@@ -58,26 +58,27 @@ public:
   Update_(Vector const& y)
     : has_variance_(false)
   {
-    setValue(y);
+    *this = y;
   }
   Update_(double y)
     : has_variance_(false)
   {
-    setValue(y);
+    *this = y;
   }
+  template <typename OtherDerived> Update_(const Eigen::MatrixBase<OtherDerived>& other)
+    : y_(other)
+    , has_variance_(false)
+  {}
   virtual ~Update_() {}
 
-  virtual void setValue(Vector const& y) { y_ = y; }
-  virtual void setValue(double y) { y_(1) = y; }
+  virtual Vector &operator=(Vector const& y) {  y_ = y; return y_; }
+  virtual Vector &operator=(double y) { y_(0) = y; return y_; }
 
-  virtual void setVariance(Variance const& R) { R_ = R; has_variance_ = true; }
   virtual Vector const &getVector() const { return y_; }
-  virtual Variance const &getVariance() const { return R_; }
-
-  virtual Vector &operator=(Vector const& y) { setValue(y); return y_; }
-  virtual Vector &operator=(double y) { setValue(y); return y_; }
 
   virtual bool hasVariance() const { return has_variance_; }
+  virtual Variance const &getVariance() const { return R_; }
+  virtual void setVariance(Variance const& R) { R_ = R; has_variance_ = true; }
 
 protected:
   Vector y_;
@@ -86,23 +87,31 @@ protected:
 };
 
 namespace traits {
-  template <typename ConcreteModel> struct Update { typedef Update_<ConcreteModel> type; };
-}
 
-namespace internal {
+template <class ConcreteModel> struct Update { typedef Update_<ConcreteModel> type; };
+
   template <class ConcreteModel, class Enable = void>
-  struct UpdateInspector {
-    static typename ConcreteModel::MeasurementVector const& getVector(const typename traits::Update<ConcreteModel>::type&, const State&, const ConcreteModel*) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
-    static typename ConcreteModel::NoiseVariance const& getVariance(const typename traits::Update<ConcreteModel>::type&, const State&, const ConcreteModel*) { return *static_cast<typename ConcreteModel::NoiseVariance *>(0); }
+  class UpdateInspector {
+  public:
+    UpdateInspector(const typename Update<ConcreteModel>::type& update) : update_(update) {}
+    typename ConcreteModel::MeasurementVector const& getVector(const State&) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
+    typename ConcreteModel::NoiseVariance const& getVariance(const State&) { return *static_cast<typename ConcreteModel::NoiseVariance *>(0); }
+  private:
+    const typename Update<ConcreteModel>::type& update_;
   };
 
   template <class ConcreteModel>
-  struct UpdateInspector<ConcreteModel, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>, typename traits::Update<ConcreteModel>::type> >::type >
+  class UpdateInspector<ConcreteModel, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>, typename Update<ConcreteModel>::type> >::type >
   {
-    static typename ConcreteModel::MeasurementVector const& getVector(const typename traits::Update<ConcreteModel>::type& update, const State&, const ConcreteModel*) { return update.getVector(); }
-    static typename ConcreteModel::NoiseVariance const& getVariance(const typename traits::Update<ConcreteModel>::type& update, const State&, const ConcreteModel*) { return update.getVariance(); }
+  public:
+    UpdateInspector(const typename Update<ConcreteModel>::type& update) : update_(update) {}
+    typename ConcreteModel::MeasurementVector const& getVector(const State&) { return update_.getVector(); }
+    typename ConcreteModel::NoiseVariance const& getVariance(const State&) { return update_.getVariance(); }
+  private:
+    const typename Update<ConcreteModel>::type& update_;
   };
-}
+
+} // namespace traits
 
 } // namespace hector_pose_estimation
 

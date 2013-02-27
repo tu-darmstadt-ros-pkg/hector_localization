@@ -26,14 +26,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/services.h>
+#include "services.h"
 
 namespace hector_pose_estimation {
 
 SystemService::SystemService(RTT::TaskContext *owner, const SystemPtr& system, const std::string& name)
   : RTT::Service(name.empty() ? system->getName() : name, owner)
 {
-  system->parameters().registerParams(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  system->parameters().setRegistry(boost::bind(&registerParamAsProperty, _1, _2, this->properties()), false);
 }
 
 SystemService::~SystemService()
@@ -42,18 +42,19 @@ SystemService::~SystemService()
 MeasurementService::MeasurementService(RTT::TaskContext *owner, const MeasurementPtr& measurement, const std::string& name)
   : RTT::Service(name.empty() ? measurement->getName() : name, owner)
 {
-  measurement->parameters().registerParams(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  measurement->parameters().setRegistry(boost::bind(&registerParamAsProperty, _1, _2, this->properties()), false);
 }
 
 MeasurementService::~MeasurementService()
 {}
 
-void registerParamAsProperty(ParameterPtr &parameter, RTT::PropertyBag *bag) {
-  bag->removeProperty(bag->getProperty(parameter->key));
-  if (parameter->hasType<std::string>()) bag->addProperty(parameter->key, parameter->as<std::string>());
-  if (parameter->hasType<double>()) bag->addProperty(parameter->key, parameter->as<double>());
-  if (parameter->hasType<int>()) bag->addProperty(parameter->key, parameter->as<int>());
-  if (parameter->hasType<bool>()) bag->addProperty(parameter->key, parameter->as<bool>());
+bool registerParamAsProperty(const ParameterPtr &parameter, std::string key, RTT::PropertyBag *bag) {
+  bag->removeProperty(bag->getProperty(key));
+  if (parameter->hasType<std::string>()) { bag->addProperty(key, parameter->as<std::string>()); return true; }
+  if (parameter->hasType<double>())      { bag->addProperty(key, parameter->as<double>()); return true; }
+  if (parameter->hasType<int>())         { bag->addProperty(key, parameter->as<int>()); return true; }
+  if (parameter->hasType<bool>())        { bag->addProperty(key, parameter->as<bool>()); return true; }
+  return false;
 }
 
 } // namespace hector_pose_estimation

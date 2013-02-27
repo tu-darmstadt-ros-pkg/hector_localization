@@ -63,16 +63,10 @@ void System::reset(State& state)
 
 bool System::update(double dt) {
   if (!filter() || !active(filter()->state().getSystemStatus())) return false;
-  if (!prepareUpdate(filter()->state(), dt)) return false;
 
-  ROS_DEBUG_NAMED(getName(), "Updating with system model %s (dt = %f)", getName().c_str(), dt);
+  if (getModel()) status_flags_ = getModel()->getStatusFlags(filter()->state());
   if (!this->updateImpl(dt)) return false;
 
-//  ROS_DEBUG_STREAM_NAMED(getName(), "x_pred = [" << filter()->state().getVector().transpose() << "]");
-//  ROS_DEBUG_STREAM_NAMED(getName(), "P_pred = [" << filter()->state().getCovariance() << "]");
-
-  afterUpdate(filter()->state());
-  if (getModel()) status_flags_ = getModel()->getStatusFlags(filter()->state());
   updated();
   return true;
 }
@@ -80,7 +74,7 @@ bool System::update(double dt) {
 void System::updated() {
 }
 
-bool System::limitState(State &state) const {
+bool System::limitState(State &state) {
   return getModel()->limitState(state);
 }
 

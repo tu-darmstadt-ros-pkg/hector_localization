@@ -69,12 +69,18 @@ void Measurement::reset(State& state)
   onReset();
 }
 
+bool Measurement::active(const SystemStatus &status) {
+ return enabled()
+         && (!getModel() || getModel()->applyStatusMask(status))
+         && (min_interval_ <= 0.0 || timer_ >= min_interval_);
+}
+
 void Measurement::increase_timer(double dt) {
   timer_ += dt;
 }
 
 bool Measurement::timedout() const {
-  if (timer_ > timeout_) {
+  if (timeout_ > 0.0 && timer_ > timeout_) {
     if (status_flags_ > 0) ROS_WARN("Measurement %s timed out.", getName().c_str());
     return true;
   }
@@ -89,7 +95,7 @@ bool Measurement::process() {
   bool result = true;
 
   while(!(queue().empty())) {
-    result |= update(queue().pop());
+    result &= update(queue().pop());
   }
 
   // check for timeout
@@ -100,7 +106,6 @@ bool Measurement::process() {
 bool Measurement::update(const MeasurementUpdate &update)
 {
   if (!filter() || !active(filter()->state().getSystemStatus())) return false;
-  if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
 
   if (!updateImpl(update)) return false;
 

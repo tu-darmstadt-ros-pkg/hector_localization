@@ -64,12 +64,39 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 
 bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, State& state)
 {
-  gravity_ = estimator.parameters().get<double>("gravity");
+  gravity_ = estimator.parameters().getAs<double>("gravity_magnitude");
 
   imu_ = estimator.registerInput<InputType>("raw_imu");
   estimator.addSystem(gyro_, "gyro");
   estimator.addSystem(accelerometer_, "accelerometer");
   return true;
+}
+
+void GenericQuaternionSystemModel::getPrior(State &state) {
+  if (state.getOrientationIndex() >= 0) {
+    state.P()(State::QUATERNION_W,State::QUATERNION_W) = 0.25 * 1.0;
+    state.P()(State::QUATERNION_X,State::QUATERNION_X) = 0.25 * 1.0;
+    state.P()(State::QUATERNION_Y,State::QUATERNION_Y) = 0.25 * 1.0;
+    state.P()(State::QUATERNION_Z,State::QUATERNION_Z) = 0.25 * 1.0;
+  }
+
+  if (state.getRateIndex() >= 0) {
+    state.P()(State::RATE_X,State::RATE_X) = pow(0.0 * M_PI/180.0, 2);
+    state.P()(State::RATE_Y,State::RATE_Y) = pow(0.0 * M_PI/180.0, 2);
+    state.P()(State::RATE_Z,State::RATE_Z) = pow(0.0 * M_PI/180.0, 2);
+  }
+
+  if (state.getPositionIndex() >= 0) {
+    state.P()(State::POSITION_X,State::POSITION_X) = 0.0;
+    state.P()(State::POSITION_Y,State::POSITION_Y) = 0.0;
+    state.P()(State::POSITION_Z,State::POSITION_Z) = 0.0;
+  }
+
+  if (state.getVelocityIndex() >= 0) {
+    state.P()(State::VELOCITY_X,State::VELOCITY_X) = 0.0;
+    state.P()(State::VELOCITY_Y,State::VELOCITY_Y) = 0.0;
+    state.P()(State::VELOCITY_Z,State::VELOCITY_Z) = 0.0;
+  }
 }
 
 bool GenericQuaternionSystemModel::prepareUpdate(State& state, double dt)
@@ -258,7 +285,7 @@ void GenericQuaternionSystemModel::getInputJacobian(InputMatrix& B, const State&
   throw std::runtime_error("not implemented");
 }
 
-SystemStatus GenericQuaternionSystemModel::getStatusFlags(const State& state) const
+SystemStatus GenericQuaternionSystemModel::getStatusFlags(const State& state)
 {
   SystemStatus flags = state.getMeasurementStatus();
 //     flags |= STATE_POSITION_XY | STATE_POSITION_Z;
