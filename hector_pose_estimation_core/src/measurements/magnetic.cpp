@@ -27,11 +27,13 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/magnetic.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 #include <Eigen/Geometry>
 
 namespace hector_pose_estimation {
+
+template class Measurement_<MagneticModel>;
 
 MagneticModel::MagneticModel()
   : declination_(0.0), inclination_(60.0 * M_PI/180.0), magnitude_(0.0)
@@ -68,7 +70,7 @@ void MagneticModel::getMeasurementNoise(NoiseVariance& R, const State&, bool ini
 
 void MagneticModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
 
   y_pred(0) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()) * magnetic_field_reference_(0) + (2.0*q.x()*q.y()+2.0*q.w()*q.z())                 * magnetic_field_reference_.y() + (2.0*q.x()*q.z()-2.0*q.w()*q.y())                 * magnetic_field_reference_.z();
   y_pred(1) = (2.0*q.x()*q.y()-2.0*q.w()*q.z())                 * magnetic_field_reference_(0) + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()) * magnetic_field_reference_.y() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                 * magnetic_field_reference_.z();
@@ -77,7 +79,7 @@ void MagneticModel::getExpectedValue(MeasurementVector& y_pred, const State& sta
 
 void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
 
   if (state.getOrientationIndex() >= 0) {
     C_full_(0,State::QUATERNION_W) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();

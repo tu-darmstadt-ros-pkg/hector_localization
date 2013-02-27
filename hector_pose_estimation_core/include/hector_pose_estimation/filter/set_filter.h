@@ -41,7 +41,7 @@ namespace hector_pose_estimation {
 template <typename ConcreteModel>
 void System_<ConcreteModel>::setFilter(Filter *filter) {
   if (filter->derived<filter::EKF>()) {
-    filter_ = Filter::factory(filter->derived<filter::EKF>()).addPredictor<ConcreteModel>(this->getModel());
+    predictor_ = Filter::factory(filter->derived<filter::EKF>()).addPredictor<ConcreteModel>(this->getModel());
   } else {
     ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
   }
@@ -50,7 +50,7 @@ void System_<ConcreteModel>::setFilter(Filter *filter) {
 template <typename ConcreteModel>
 void Measurement_<ConcreteModel>::setFilter(Filter *filter) {
   if (filter->derived<filter::EKF>()) {
-    filter_ = Filter::factory(filter->derived<filter::EKF>()).addCorrector<ConcreteModel>(this->getModel());
+    corrector_ = Filter::factory(filter->derived<filter::EKF>()).addCorrector<ConcreteModel>(this->getModel());
   } else {
     ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
   }

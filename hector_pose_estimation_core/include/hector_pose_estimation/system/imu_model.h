@@ -54,7 +54,7 @@ public:
   using TimeContinuousSystemModel_<GyroModel, 3>::getStateJacobian;
   virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init);
 
-  const typename SubState::Vector& getBias() const { return drift_->getVector(); }
+  ConstStateVectorSegment getBias() const { return drift_->getVector(); }
 
 private:
   SubStatePtr drift_;
@@ -81,7 +81,7 @@ public:
   using TimeContinuousSystemModel_<AccelerometerModel, 3>::getStateJacobian;
   virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init);
 
-  const typename SubState::Vector& getBias() const { return drift_->getVector(); }
+  ConstStateVectorSegment getBias() const { return drift_->getVector(); }
 
 private:
   SubStatePtr drift_;
@@ -91,19 +91,22 @@ private:
 namespace traits {
 
   template <> struct StateInspector<GyroModel> {
-    static SubState_<3>& state(const GyroModel *model, State &state) { return *(state.getSubState<3>(model)); }
-    static const SubState_<3>& state(const GyroModel *model, const State &state) { return *(state.getSubState<3>(model)); }
+    static SubState_<3>& sub(const GyroModel *model, State &state) { return *(state.getSubState<3>(model)); }
+    static const SubState_<3>& sub(const GyroModel *model, const State &state) { return *(state.getSubState<3>(model)); }
   };
 
   template <> struct StateInspector<AccelerometerModel> {
-    static SubState_<3>& state(const AccelerometerModel *model, State &state) { return *(state.getSubState<3>(model)); }
-    static const SubState_<3>& state(const AccelerometerModel *model, const State &state) { return *(state.getSubState<3>(model)); }
+    static SubState_<3>& sub(const AccelerometerModel *model, State &state) { return *(state.getSubState<3>(model)); }
+    static const SubState_<3>& sub(const AccelerometerModel *model, const State &state) { return *(state.getSubState<3>(model)); }
   };
 
 } // namespace traits
 
 typedef System_<GyroModel> Gyro;
+extern template class System_<GyroModel>;
+
 typedef System_<AccelerometerModel> Accelerometer;
+extern template class System_<AccelerometerModel>;
 
 }
 

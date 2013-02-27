@@ -28,8 +28,11 @@
 
 #include <hector_pose_estimation/measurements/zerorate.h>
 #include <hector_pose_estimation/system/imu_model.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 namespace hector_pose_estimation {
+
+template class Measurement_<ZeroRateModel>;
 
 ZeroRateModel::ZeroRateModel()
 {
@@ -66,7 +69,7 @@ void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& sta
   }
 }
 
-void ZeroRateModel::getStateJacobian(MeasurementMatrix& C0, CrossMeasurementMatrix& C1, const State& state, bool)
+void ZeroRateModel::getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool)
 {
   if (state.getRateIndex() >= 0) {
     C0(0, State::RATE_Z) = 1.0;

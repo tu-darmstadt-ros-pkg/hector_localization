@@ -125,10 +125,10 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
           information = information / (1.0 - dt/max_time_difference_);
       }
 
-      const State::VelocityType& state_velocity(state.getVelocity());
+      State::ConstVelocityType state_velocity(state.getVelocity());
       update_pose = update_pose + dt * state_velocity;
 
-      const State::RateType& state_rate(state.getRate());
+      State::ConstRateType state_rate(state.getRate());
       Eigen::AngleAxisd state_angle_offset(state_rate.norm() * dt, state_rate.normalized());
       update_orientation = state_angle_offset * update_orientation;
     }
@@ -425,12 +425,12 @@ void PositionZModel::getStateJacobian(MeasurementMatrix &C, const State &state, 
 }
 
 void YawModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
-  const State::OrientationType& q(state.getOrientation());
+  State::ConstOrientationType q(state.getOrientation());
   y_pred(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
 }
 
 void YawModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
-  const State::OrientationType& q(state.getOrientation());
+  State::ConstOrientationType q(state.getOrientation());
   if (init && state.getOrientationIndex() >= 0) {
     const double t1 = q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z();
     const double t2 = 2*(q.x()*q.y() + q.w()*q.z());

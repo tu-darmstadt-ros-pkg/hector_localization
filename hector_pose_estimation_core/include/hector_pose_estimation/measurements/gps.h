@@ -61,6 +61,8 @@ namespace traits {
   template <> struct Update<GPSModel> { typedef GPSUpdate type; };
 }
 
+extern template class Measurement_<GPSModel>;
+
 class GPS : public Measurement_<GPSModel>
 {
 public:

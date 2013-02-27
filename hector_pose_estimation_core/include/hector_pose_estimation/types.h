@@ -62,6 +62,7 @@ namespace hector_pose_estimation {
 
   class SystemModel;
   class System;
+  template <class Derived> class System_;
   typedef boost::shared_ptr<System> SystemPtr;
   typedef boost::weak_ptr<System> SystemWPtr;
   typedef Collection<System> Systems;
@@ -69,6 +70,7 @@ namespace hector_pose_estimation {
   class MeasurementModel;
   class MeasurementUpdate;
   class Measurement;
+  template <class Derived> class Measurement_;
   typedef boost::shared_ptr<Measurement> MeasurementPtr;
   typedef boost::weak_ptr<Measurement> MeasurementWPtr;
   typedef Collection<Measurement> Measurements;
@@ -80,7 +82,11 @@ namespace hector_pose_estimation {
 
   class PoseEstimation;
   class Filter;
-  class State;
+
+  class SubState;
+  template <int Dimension> class SubState_;
+  typedef boost::shared_ptr<SubState> SubStatePtr;
+  typedef boost::weak_ptr<SubState> SubStateWPtr;
 
   class GlobalReference;
   typedef boost::shared_ptr<GlobalReference> GlobalReferencePtr;

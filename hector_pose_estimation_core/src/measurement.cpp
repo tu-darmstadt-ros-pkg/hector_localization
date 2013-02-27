@@ -47,11 +47,10 @@ Measurement::~Measurement()
 {
 }
 
-bool Measurement::init(PoseEstimation& estimator, Filter& filter, State& state)
+bool Measurement::init(PoseEstimation& estimator, State& state)
 {
   if (getModel() && !getModel()->init(estimator, state)) return false;
-  setFilter(&filter);
-  if (!onInit(estimator, state)) return false;
+  if (!onInit(estimator)) return false;
   return true;
 }
 
@@ -86,21 +85,24 @@ void Measurement::add(const MeasurementUpdate& update) {
   queue().push(update);
 }
 
-void Measurement::process(State &state) {
+bool Measurement::process() {
+  bool result = true;
+
   while(!(queue().empty())) {
-    update(state, queue().pop());
+    result |= update(queue().pop());
   }
 
   // check for timeout
   if (timedout()) status_flags_ = 0;
+  return result;
 }
 
-bool Measurement::update(State &state, const MeasurementUpdate &update)
+bool Measurement::update(const MeasurementUpdate &update)
 {
-  if (!active(state.getSystemStatus())) return false;
+  if (!filter() || !active(filter()->state().getSystemStatus())) return false;
   if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
 
-  if (!updateImpl(state, update)) return false;
+  if (!updateImpl(update)) return false;
 
   timer_ = 0.0;
   if (getModel()) status_flags_ = getModel()->getStatusFlags();

@@ -47,14 +47,24 @@ public:
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C0, CrossMeasurementMatrix& C1, const State& state, bool init);
+  virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init);
 
 protected:
   double stddev_;
   SubStatePtr gyro_drift_;
 };
 
+namespace traits {
+
+template <> struct StateInspector<ZeroRateModel> {
+  static SubState_<3>& sub(const ZeroRateModel *model, State &state) { return *(state.getSubState<3>(model)); }
+  static const SubState_<3>& sub(const ZeroRateModel *model, const State &state) { return *(state.getSubState<3>(model)); }
+};
+
+} // namespace traits
+
 typedef Measurement_<ZeroRateModel> ZeroRate;
+extern template class Measurement_<ZeroRateModel>;
 
 } // namespace hector_pose_estimation
 

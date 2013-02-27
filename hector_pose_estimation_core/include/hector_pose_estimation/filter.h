@@ -38,48 +38,69 @@ namespace hector_pose_estimation {
 
 class Filter {
 public:
-  Filter(State &state);
+  Filter();
   virtual ~Filter();
 
   virtual std::string getType() const = 0;
 
-  virtual bool reset();
+  virtual bool init(PoseEstimation& estimator);
+  virtual void cleanup();
+  virtual void reset();
 
   virtual const State& state() const { return state_; }
   virtual State& state() { return state_; }
 
-  virtual void predict(State& state, const Systems& systems, double dt);
-  virtual void predict(State& state, const SystemPtr& system, double dt);
-  template <typename ConcreteModel> bool predict(ConcreteModel *model, State& state, double dt);
+  virtual bool predict(const Systems& systems, double dt);
+  virtual bool predict(const SystemPtr& system, double dt);
+  virtual bool predict(double dt);
 
-  virtual void update(State& state, const Measurements& measurements);
-  virtual void update(State& state, const MeasurementPtr& measurement);
-  template <typename ConcreteModel> bool update(ConcreteModel *model, State& state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
+  virtual bool update(const Measurements& measurements);
+  virtual bool update(const MeasurementPtr& measurement);
 
   // struct Predictor {};
   template <typename ConcreteModel> struct Predictor_ /* : public Predictor */ {
-    Predictor_(Filter *filter, ConcreteModel *model) : model_(model) { reset(); }
-    virtual bool predict(State& state, double dt) = 0;
-    virtual bool reset() { init_ = true; return true; }
+    Predictor_(Filter *filter, ConcreteModel *model) : filter_(filter), model_(model) { reset(); }
+    virtual bool predict(double dt) = 0;
+    virtual void reset() { init_ = true; }
+
+    Filter *base() { return filter_; }
+    const Filter *base() const { return filter_; }
+
+    State& state() { return filter_->state(); }
+    const State& state() const { return filter_->state(); }
+
+    typename ConcreteModel::SubState& sub() { return model_->state(filter_->state()); }
+    const typename ConcreteModel::SubState& sub() const { return model_->state(filter_->state()); }
 
     template <typename Derived> typename Derived::template Predictor_<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Predictor_<ConcreteModel> *>(this); }
     template <typename Derived> const typename Derived::template Predictor_<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Predictor_<ConcreteModel> *>(this); }
 
   protected:
+    Filter *filter_;
     ConcreteModel *model_;
     bool init_;
   };
 
   // class Corrector {};
   template <typename ConcreteModel> struct Corrector_ /* : public Corrector */ {
-    Corrector_(Filter *filter, ConcreteModel *model) : model_(model) { reset(); }
-    virtual bool correct(State& state, const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R) = 0;
-    virtual bool reset() { init_ = true; return true; }
+    Corrector_(Filter *filter, ConcreteModel *model) : filter_(filter), model_(model) { reset(); }
+    virtual bool correct(const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R) = 0;
+    virtual void reset() { init_ = true; }
+
+    Filter *base() { return filter_; }
+    const Filter *base() const { return filter_; }
+
+    State& state() { return filter_->state(); }
+    const State& state() const { return filter_->state(); }
+
+    typename ConcreteModel::SubState& sub() { return model_->sub(filter_->state()); }
+    const typename ConcreteModel::SubState& sub() const { return model_->sub(filter_->state()); }
 
     template <typename Derived> typename Derived::template Corrector_<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Corrector_<ConcreteModel> *>(this); }
     template <typename Derived> const typename Derived::template Corrector_<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Corrector_<ConcreteModel> *>(this); }
 
   protected:
+    Filter *filter_;
     ConcreteModel *model_;
     bool init_;
   };
@@ -100,8 +121,8 @@ public:
   };
   template <typename Derived> static Factory<Derived> factory(Derived *filter) { return Factory<Derived>(filter); }
 
-private:
-  State& state_;
+protected:
+  State state_;
 };
 
 } // namespace hector_pose_estimation

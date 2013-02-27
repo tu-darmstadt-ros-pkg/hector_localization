@@ -45,11 +45,10 @@ void System::getPrior(State &state) const
   getModel()->getPrior(state);
 }
 
-bool System::init(PoseEstimation& estimator, Filter& filter, State& state)
+bool System::init(PoseEstimation& estimator, State& state)
 {
-  if (!getModel()) return false;
-  setFilter(&filter);
-  return getModel()->init(estimator, state);
+  if (!getModel() || !getModel()->init(estimator, state)) return false;
+  return true;
 }
 
 void System::cleanup()
@@ -62,10 +61,18 @@ void System::reset(State& state)
   if (getModel()) getModel()->reset(state);
 }
 
-bool System::update(Filter &filter, State &state, double dt) {
-  if (!active(state.getSystemStatus())) return false;
-  if (!this->updateImpl(filter, state, dt)) return false;
-  if (getModel()) status_flags_ = getModel()->getStatusFlags(state);
+bool System::update(double dt) {
+  if (!filter() || !active(filter()->state().getSystemStatus())) return false;
+  if (!prepareUpdate(filter()->state(), dt)) return false;
+
+  ROS_DEBUG_NAMED(getName(), "Updating with system model %s (dt = %f)", getName().c_str(), dt);
+  if (!this->updateImpl(dt)) return false;
+
+//  ROS_DEBUG_STREAM_NAMED(getName(), "x_pred = [" << filter()->state().getVector().transpose() << "]");
+//  ROS_DEBUG_STREAM_NAMED(getName(), "P_pred = [" << filter()->state().getCovariance() << "]");
+
+  afterUpdate(filter()->state());
+  if (getModel()) status_flags_ = getModel()->getStatusFlags(filter()->state());
   updated();
   return true;
 }

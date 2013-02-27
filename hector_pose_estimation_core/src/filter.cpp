@@ -31,8 +31,7 @@
 
 namespace hector_pose_estimation {
 
-Filter::Filter(State& state)
-  : state_(state)
+Filter::Filter()
 {
 }
 
@@ -40,51 +39,75 @@ Filter::~Filter()
 {
 }
 
-bool Filter::reset()
+bool Filter::init(PoseEstimation& estimator)
 {
-  state_.reset();
   return true;
 }
 
-void Filter::predict(State& state, const Systems& systems, double dt) {
+void Filter::cleanup()
+{
+}
+
+void Filter::reset()
+{
+  state_.reset();
+}
+
+bool Filter::predict(const Systems& systems, double dt) {
   SystemStatus system_status = 0;
-  dt = 0.01;
+  bool result = true;
 
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
-    predict(state, system, dt);
+    result |= predict(system, dt);
     system_status |= system->getStatusFlags();
 
-    if (!state.valid()) {
+    if (!state_.valid()) {
       ROS_ERROR("Invalid state after predicting %s", system->getName().c_str());
     }
   }
 
-  state.updateSystemStatus(system_status, STATE_MASK);
+  // call the filter's predict method
+  result |= predict(dt);
+
+  if (!state_.valid()) {
+    ROS_ERROR("Invalid state after prediction");
+    state_.updateSystemStatus(0, STATE_MASK);
+    return false;
+  }
+
+  state_.updateSystemStatus(system_status, STATE_MASK);
+  return result;
 }
 
-void Filter::predict(State& state, const SystemPtr& system, double dt) {
-  system->update(*this, state, dt);
+bool Filter::predict(const SystemPtr& system, double dt) {
+  return system->update(dt);
 }
 
-void Filter::update(State& state, const Measurements& measurements) {
+bool Filter::predict(double dt) {
+  return true;
+}
+
+bool Filter::update(const Measurements& measurements) {
   SystemStatus measurement_status = 0;
+  bool result = true;
 
   for(Measurements::iterator it = measurements.begin(); it != measurements.end(); it++) {
     const MeasurementPtr& measurement = *it;
-    update(state, measurement);
+    result |= update(measurement);
     measurement_status |= measurement->getStatusFlags();
 
-    if (!state.valid()) {
+    if (!state_.valid()) {
       ROS_ERROR("Invalid state after updating with measurement %s", measurement->getName().c_str());
     }
   }
 
-  state.setMeasurementStatus(measurement_status);
+  state_.setMeasurementStatus(measurement_status);
+  return result;
 }
 
-void Filter::update(State& state, const MeasurementPtr& measurement) {
-  measurement->process(state);
+bool Filter::update(const MeasurementPtr& measurement) {
+  return measurement->process();
 }
 
 } // namespace hector_pose_estimation

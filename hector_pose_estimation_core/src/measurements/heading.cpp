@@ -27,8 +27,11 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/heading.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 namespace hector_pose_estimation {
+
+template class Measurement_<HeadingModel>;
 
 HeadingModel::HeadingModel()
 {
@@ -46,13 +49,13 @@ void HeadingModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init
 
 void HeadingModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
   y_pred(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
 }
 
 void HeadingModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
   const double t1 = q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z();
   const double t2 = 2*(q.x()*q.y() + q.w()*q.z());
   const double t3 = 1.0 / (t1*t1 + t2*t2);

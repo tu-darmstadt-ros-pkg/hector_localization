@@ -49,13 +49,15 @@
 
 namespace hector_pose_estimation {
 
-class SubState;
-template <int Dimension> class SubState_;
-typedef boost::shared_ptr<SubState> SubStatePtr;
-typedef boost::weak_ptr<SubState> SubStateWPtr;
-
 class State {
 public:
+  enum VectorIndex {
+    X = 0,
+    Y = 1,
+    Z = 2,
+    W = 3
+  };
+
   enum StateIndex {
     QUATERNION_X = 0,
     QUATERNION_Y,
@@ -84,16 +86,23 @@ public:
     ACCELERATION_Z = -1
   };
 
-//  typedef ColumnVector_<Dimension> Vector;
-//  typedef SymmetricMatrix_<Dimension> Covariance;
   typedef ColumnVector Vector;
   typedef SymmetricMatrix Covariance;
+  typedef VectorBlock<Vector,Dimension> VectorSegment;
+  typedef Block<Covariance::Base,Dimension,Dimension> CovarianceBlock;
+  typedef VectorBlock<const Vector,Dimension> ConstVectorSegment;
+  typedef Block<const Covariance::Base,Dimension,Dimension> ConstCovarianceBlock;
 
   typedef VectorBlock<Vector,4> OrientationType;
+  typedef VectorBlock<const Vector,4> ConstOrientationType;
   typedef VectorBlock<Vector,3> RateType;
+  typedef VectorBlock<const Vector,3> ConstRateType;
   typedef VectorBlock<Vector,3> PositionType;
+  typedef VectorBlock<const Vector,3> ConstPositionType;
   typedef VectorBlock<Vector,3> VelocityType;
+  typedef VectorBlock<const Vector,3> ConstVelocityType;
   typedef VectorBlock<Vector,3> AccelerationType;
+  typedef VectorBlock<const Vector,3> ConstAccelerationType;
 
   typedef std::vector<SubStatePtr> SubStates;
 
@@ -102,18 +111,26 @@ public:
   State(const Vector &vector, const Covariance& covariance);
   virtual ~State();
 
+  static IndexType getDimension0() { return Dimension; }
+  virtual IndexType getDimension() const { return vector_.rows(); }
+
   virtual void reset();
   virtual void updated();
   virtual double normalize();
 
   virtual bool valid() const;
 
-  virtual const Vector& getVector() const { return state_; }
-  virtual const Covariance& getCovariance() const { return covariance_; }
-  template <int Size> VectorBlock<const Vector, Size> getSegment(IndexType start) const { return state_.segment<Size>(start); }
+  virtual SubState_<0>& base() { return *base_; }
+  virtual const SubState_<0>& base() const { return *base_; }
 
-  virtual Vector& x() { return state_; }
+  virtual const Vector& getVector() const { return vector_; }
+  virtual const Covariance& getCovariance() const { return covariance_; }
+  template <int Size> VectorBlock<const Vector, Size> getSegment(IndexType start) const { return vector_.segment<Size>(start); }
+
+  virtual Vector& x() { return vector_; }
   virtual Covariance& P() { return covariance_; }
+  virtual VectorSegment x0() { return vector_.segment<Dimension>(0); }
+  virtual CovarianceBlock P0() { return covariance_.block<Dimension,Dimension>(0, 0); }
 
   virtual SystemStatus getSystemStatus() const { return system_status_; }
   virtual SystemStatus getMeasurementStatus() const { return measurement_status_; }
@@ -127,29 +144,28 @@ public:
   typedef boost::function<bool(SystemStatus&)> SystemStatusCallback;
   virtual void addSystemStatusCallback(const SystemStatusCallback& callback);
 
-  virtual OrientationType& orientation() { return orientation_; }
-  virtual const OrientationType& getOrientation() const { return orientation_; }
-  virtual RateType& rate() { return rate_; }
-  virtual const RateType& getRate() const { return rate_; }
-  virtual PositionType& position() { return position_; }
-  virtual const PositionType& getPosition() const { return position_; }
-  virtual VelocityType& velocity() { return velocity_; }
-  virtual const VelocityType& getVelocity() const { return velocity_; }
-  virtual AccelerationType& acceleration() { return acceleration_; }
-  virtual const AccelerationType& getAcceleration() const { return acceleration_; }
+  virtual OrientationType orientation()                 { return (getOrientationIndex() >= 0) ? vector_.segment<4>(getOrientationIndex()) : fake_orientation_.segment<4>(0); }
+  virtual ConstOrientationType getOrientation() const   { return (getOrientationIndex() >= 0) ? vector_.segment<4>(getOrientationIndex()) : fake_orientation_.segment<4>(0); }
+  virtual RateType rate()                               { return (getRateIndex() >= 0) ? vector_.segment<3>(getRateIndex()) : fake_rate_.segment<3>(0); }
+  virtual ConstRateType getRate() const                 { return (getRateIndex() >= 0) ? vector_.segment<3>(getRateIndex()) : fake_rate_.segment<3>(0); }
+  virtual PositionType position()                       { return (getPositionIndex() >= 0) ? vector_.segment<3>(getPositionIndex()) : fake_position_.segment<3>(0); }
+  virtual ConstPositionType getPosition() const         { return (getPositionIndex() >= 0) ? vector_.segment<3>(getPositionIndex()) : fake_position_.segment<3>(0); }
+  virtual VelocityType velocity()                       { return (getVelocityIndex() >= 0) ? vector_.segment<3>(getVelocityIndex()) : fake_velocity_.segment<3>(0); }
+  virtual ConstVelocityType getVelocity() const         { return (getVelocityIndex() >= 0) ? vector_.segment<3>(getVelocityIndex()) : fake_velocity_.segment<3>(0); }
+  virtual AccelerationType acceleration()               { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
+  virtual ConstAccelerationType getAcceleration() const { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
 
+  template <typename Derived> void setOrientation(const Eigen::MatrixBase<Derived>& orientation);
   template <typename Derived> void setRate(const Eigen::MatrixBase<Derived>& rate);
+  template <typename Derived> void setPosition(const Eigen::MatrixBase<Derived>& position);
+  template <typename Derived> void setVelocity(const Eigen::MatrixBase<Derived>& velocity);
   template <typename Derived> void setAcceleration(const Eigen::MatrixBase<Derived>& acceleration);
 
   virtual IndexType getOrientationIndex() const { return QUATERNION_X; }
-#ifdef USE_RATE_SYSTEM_MODEL
   virtual IndexType getRateIndex() const { return RATE_X; }
-#else
-  virtual IndexType getRateIndex() const { return IndexType(-1); }
-#endif
   virtual IndexType getPositionIndex() const { return POSITION_X; }
   virtual IndexType getVelocityIndex() const { return VELOCITY_X; }
-  virtual IndexType getAccelerationIndex() const { return IndexType(-1); }
+  virtual IndexType getAccelerationIndex() const { return ACCELERATION_X; }
 
   const SubStates& getSubStates() const { return substates_; }
   template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const void *model) const;
@@ -160,19 +176,17 @@ public:
   void setTimestamp(const ros::Time& timestamp) { timestamp_ = timestamp; }
 
 private:
-  Vector state_;
+  Vector vector_;
   Covariance covariance_;
 
   SystemStatus system_status_;
   SystemStatus measurement_status_;
 
-  OrientationType orientation_;
-  boost::shared_ptr<ColumnVector> rate_storage_;
-  RateType rate_;
-  PositionType position_;
-  VelocityType velocity_;
-  boost::shared_ptr<ColumnVector> acceleration_storage_;
-  AccelerationType acceleration_;
+  Vector fake_orientation_;
+  Vector fake_rate_;
+  Vector fake_position_;
+  Vector fake_velocity_;
+  Vector fake_acceleration_;
 
   std::vector<SystemStatusCallback> status_callbacks_;
 
@@ -180,90 +194,53 @@ private:
   std::map<const void *, SubStateWPtr> substates_by_model_;
   std::map<std::string, SubStateWPtr> substates_by_name_;
 
+  SubState_<0> *base_;
+
   ros::Time timestamp_;
 };
 
-class SubState
-{
-public:
-  virtual ~SubState() {}
-  virtual int getDimension() const = 0;
+namespace traits {
 
-  virtual void reset() = 0;
-  virtual void updated() {}
-  virtual void normalize() {}
-};
+  template <class Derived, typename Enabled = void>
+  struct StateInspector {
+    static SubState_<0>& sub(const Derived *model, State &state) { return state.base(); }
+    static const SubState_<0>& sub(const Derived *model, const State &state) { return state.base(); }
+  };
 
-template <int _Dimension>
-class SubState_ : public SubState
-{
-public:
-  static const unsigned int Dimension = _Dimension;
-  typedef SubState_<Dimension> type;
-  typedef ColumnVector_<Dimension> Vector;
-  typedef SymmetricMatrix_<Dimension> Covariance;
-  typedef Matrix_<State::Dimension, Dimension> CrossVariance;
+  template <class Derived>
+  struct StateInspector<Derived, typename boost::enable_if< typename Derived::IsSubSystem >::type> {
+  };
 
-  typedef boost::shared_ptr<SubState_<Dimension> > Ptr;
+} // namespace traits
 
-public:
-  virtual ~SubState_() {}
-  virtual int getDimension() const { return Dimension; }
-
-  virtual void reset()
-  {
-    state_.setZero();
-    covariance_.setZero();
-    cross_variance_.setZero();
-  }
-
-  virtual const Vector& getVector() const { return state_; }
-  virtual const Covariance& getCovariance() const { return covariance_; }
-  template <int Size> VectorBlock<const typename Vector::Base, Size> getSegment(IndexType start) const { return state_.segment<Size>(start); }
-
-  virtual Vector& x() { return state_; }
-  virtual Covariance& P() { return covariance_; }
-  virtual CrossVariance& P01() { return cross_variance_; }
-
-private:
-  Vector state_;
-  Covariance covariance_;
-  CrossVariance cross_variance_;
-};
+template <typename Derived>
+void State::setOrientation(const Eigen::MatrixBase<Derived>& orientation) {
+  eigen_assert(orientation.rows() == 4 && orientation.cols() == 1);
+  fake_orientation_ = orientation;
+}
 
 template <typename Derived>
 void State::setRate(const Eigen::MatrixBase<Derived>& rate) {
-  if (!rate_storage_) return;
-  *rate_storage_ = rate;
+  eigen_assert(rate.rows() == 3 && rate.cols() == 1);
+  fake_rate_ = rate;
+}
+
+template <typename Derived>
+void State::setPosition(const Eigen::MatrixBase<Derived>& position) {
+  eigen_assert(position.rows() == 3 && position.cols() == 1);
+  fake_position_ = position;
+}
+
+template <typename Derived>
+void State::setVelocity(const Eigen::MatrixBase<Derived>& velocity) {
+  eigen_assert(velocity.rows() == 3 && velocity.cols() == 1);
+  fake_velocity_ = velocity;
 }
 
 template <typename Derived>
 void State::setAcceleration(const Eigen::MatrixBase<Derived>& acceleration) {
-  if (!acceleration_storage_) return;
-  *acceleration_storage_ = acceleration;
-}
-
-template <int SubDimension>
-boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const void *model) const {
-  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substates_by_model_.count(model) ? substates_by_model_.at(model).lock() : SubStatePtr());
-}
-
-template <int SubDimension>
-boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const std::string& name) const {
-  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substates_by_name_.count(name) ? substates_by_name_.at(name).lock() : SubStatePtr());
-}
-
-template <int SubDimension>
-boost::shared_ptr<SubState_<SubDimension> > State::addSubState(const void *model, const std::string& name) {
-  boost::shared_ptr<SubState_<SubDimension> > substate;
-  if (!name.empty()) substate = getSubState<SubDimension>(name);
-  if (!substate) {
-    substate.reset(new SubState_<SubDimension>);
-    substates_.push_back(boost::shared_static_cast<SubState>(substate));
-    if (!name.empty()) substates_by_name_[name] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
-  }
-  substates_by_model_[model] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
-  return substate;
+  eigen_assert(acceleration.rows() == 3 && acceleration.cols() == 1);
+  fake_acceleration_ = acceleration;
 }
 
 } // namespace hector_pose_estimation

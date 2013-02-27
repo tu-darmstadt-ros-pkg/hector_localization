@@ -27,8 +27,12 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/system/imu_model.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 namespace hector_pose_estimation {
+
+template class System_<GyroModel>;
+template class System_<AccelerometerModel>;
 
 GyroModel::GyroModel()
 {
@@ -64,7 +68,7 @@ void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, bool init)
 
 void GyroModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
 
   if (state.getOrientationIndex() >= 0) {
     A01(State::QUATERNION_W, BIAS_GYRO_X)  = -0.5*q.x();
@@ -120,7 +124,7 @@ void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State& state, bo
 
 void AccelerometerModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
 
   if (state.getVelocityIndex() >= 0) {
     if (state.getSystemStatus() & STATE_VELOCITY_XY) {

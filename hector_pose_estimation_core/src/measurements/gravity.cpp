@@ -28,8 +28,11 @@
 
 #include <hector_pose_estimation/measurements/gravity.h>
 #include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 namespace hector_pose_estimation {
+
+template class Measurement_<GravityModel>;
 
 GravityModel::GravityModel()
   : gravity_(0.0)
@@ -53,7 +56,7 @@ void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init
 
 void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
 
   // y = q * [0 0 1] * q';
   y_pred(0) = -gravity_ * (2*q.x()*q.z() - 2*q.w()*q.y());
@@ -63,7 +66,7 @@ void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& stat
 
 void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
 
   if (state.getOrientationIndex() >= 0) {
     C(0,State::QUATERNION_W) =  gravity_*2*q.y();

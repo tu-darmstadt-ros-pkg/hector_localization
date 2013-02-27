@@ -27,53 +27,35 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/state.h>
-#include <hector_pose_estimation/system_model.h>
+#include <hector_pose_estimation/substate.h>
 
 namespace hector_pose_estimation {
 
 State::State()
-  : state_(Dimension)
+  : vector_(Dimension)
   , covariance_(Dimension)
-  , orientation_(state_.segment<4>(QUATERNION_X))
-#ifdef USE_RATE_SYSTEM_MODEL
-  , rate_(state_.segment<3>(RATE_X))
-#else
-  , rate_storage_(new ColumnVector(3))
-  , rate_(rate_storage_->segment<3>(0))
-#endif
-  , position_(state_.segment<3>(POSITION_X))
-  , velocity_(state_.segment<3>(VELOCITY_X))
-  , acceleration_storage_(new ColumnVector(3))
-  , acceleration_(acceleration_storage_->segment<3>(0))
+  , base_(new SubState_<0>(*this))
 {
   reset();
 }
 
 State::State(const Vector &vector, const Covariance& covariance)
-  : state_(vector)
+  : vector_(vector)
   , covariance_(covariance)
-  , orientation_(state_.segment<4>(QUATERNION_X))
-#ifdef USE_RATE_SYSTEM_MODEL
-  , rate_(state_.segment<3>(RATE_X))
-#else
-  , rate_storage_(new ColumnVector(3))
-  , rate_(rate_storage_->segment<3>(0))
-#endif
-  , position_(state_.segment<3>(POSITION_X))
-  , velocity_(state_.segment<3>(VELOCITY_X))
-  , acceleration_storage_(new ColumnVector(3))
-  , acceleration_(acceleration_storage_->segment<3>(0))
+  , base_(new SubState_<0>(*this))
 {
   reset();
 }
 
 State::~State()
-{}
+{
+  delete base_;
+}
 
 void State::reset()
 {
   // reset state
-  state_.setZero();
+  vector_.setZero();
   covariance_.setZero();
   orientation().w() = 1.0;
 
@@ -82,8 +64,16 @@ void State::reset()
   measurement_status_ = 0;
 
   // reset pseudo-states
-  if (rate_storage_)         rate_storage_->setZero();
-  if (acceleration_storage_) acceleration_storage_->setZero();
+  fake_rate_.resize(3,1);
+  fake_rate_ << 0.0, 0.0, 0.0;
+  fake_orientation_.resize(4,1);
+  fake_orientation_ << 0.0, 0.0, 0.0, 1.0;
+  fake_position_.resize(3,1);
+  fake_position_ << 0.0, 0.0, 0.0;
+  fake_velocity_.resize(3,1);
+  fake_velocity_ << 0.0, 0.0, 0.0;
+  fake_acceleration_.resize(3,1);
+  fake_acceleration_ << 0.0, 0.0, 0.0;
 
   // reset all substates
   for(SubStates::iterator sub = substates_.begin(); sub != substates_.end(); ++sub) {
@@ -92,12 +82,13 @@ void State::reset()
 }
 
 bool State::valid() const {
-  return (state_ == state_);
+  return (vector_ == vector_);
 }
 
 void State::updated()
 {
   normalize();
+  P().symmetric();
 }
 
 bool State::inSystemStatus(SystemStatus test_status) const {
@@ -149,5 +140,7 @@ double State::normalize() {
   orientation() = orientation() / s;
   return s;
 }
+
+template class SubState_<0>;
 
 } // namespace hector_pose_estimation

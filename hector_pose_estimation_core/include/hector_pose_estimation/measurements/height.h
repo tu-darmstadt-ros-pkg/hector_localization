@@ -52,6 +52,8 @@ protected:
   double elevation_;
 };
 
+extern template class Measurement_<HeightModel>;
+
 class HeightBaroCommon
 {
 public:

@@ -49,6 +49,7 @@ protected:
 };
 
 typedef Measurement_<RateModel> Rate;
+extern template class Measurement_<RateModel>;
 
 } // namespace hector_pose_estimation
 

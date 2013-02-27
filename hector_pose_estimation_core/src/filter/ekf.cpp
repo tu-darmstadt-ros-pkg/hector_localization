@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,66 +26,33 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_MAGNETIC_H
-#define HECTOR_POSE_ESTIMATION_MAGNETIC_H
-
-#include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/global_reference.h>
+#include <hector_pose_estimation/filter/ekf.h>
 
 namespace hector_pose_estimation {
+namespace filter {
 
-class MagneticModel : public MeasurementModel_<MagneticModel,3> {
-public:
-  MagneticModel();
-  virtual ~MagneticModel();
+EKF::EKF()
+{}
 
-  bool init(PoseEstimation &estimator, State &state);
+EKF::~EKF()
+{}
 
-  SystemStatus getStatusFlags() const { return STATE_YAW; }
-
-  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
-  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
-
-  double getMagneticHeading(const MeasurementVector& y) const;
-  double getTrueHeading(const MeasurementVector& y) const;
-
-  void setReference(const GlobalReference::Heading &reference_heading);
-  bool hasMagnitude() const { return magnitude_ != 0.0; }
-
-protected:
-  double stddev_;
-  double declination_, inclination_, magnitude_;
-  void updateMagneticField();
-
-  MeasurementVector magnetic_field_north_;
-  MeasurementVector magnetic_field_reference_;
-  mutable Matrix C_full_;
-};
-
-extern template class Measurement_<MagneticModel>;
-
-class Magnetic : public Measurement_<MagneticModel>
+bool EKF::init(PoseEstimation &estimator)
 {
-public:
-  Magnetic(const std::string& name = "height");
-  virtual ~Magnetic() {}
+  x_pred.resize(state_.getDimension());
+  x_pred.setZero();
+  A.resize(state_.getDimension(), state_.getDimension());
+  A.setZero();
+  Q.resize(state_.getDimension());
+  Q.setZero();
+  return true;
+}
 
-  virtual void onReset();
+bool EKF::predict(double dt) {
+  state().P() = state().P().quadratic(A) + Q;
+  state().x() = x_pred;
+  return true;
+}
 
-  virtual MeasurementVector const& getVector(const Update &update, const State&);
-  virtual NoiseVariance const& getVariance(const Update &update, const State&);
-
-  virtual bool prepareUpdate(State &state, const Update &update);
-
-private:
-  bool auto_heading_;
-  GlobalReferencePtr reference_;
-
-  MeasurementVector y_;
-  NoiseVariance R_;
-};
-
+} // namespace filter
 } // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_MAGNETIC_H

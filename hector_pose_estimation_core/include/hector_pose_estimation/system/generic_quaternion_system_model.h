@@ -84,6 +84,8 @@ protected:
   ColumnVector_<3> acceleration;
 };
 
+extern template class System_<GenericQuaternionSystemModel>;
+
 } // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_GENERIC_QUATERNION_SYSTEM_MODEL_H

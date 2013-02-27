@@ -52,6 +52,7 @@ protected:
 };
 
 typedef Measurement_<HeadingModel> Heading;
+extern template class Measurement_<HeadingModel>;
 
 } // namespace hector_pose_estimation
 

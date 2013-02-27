@@ -6,6 +6,7 @@ set(hector_pose_estimation_SOURCES
   state.cpp
 
   filter.cpp
+  filter/ekf.cpp
 
   system.cpp
   system_model.cpp

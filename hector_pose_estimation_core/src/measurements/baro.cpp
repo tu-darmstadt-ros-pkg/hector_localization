@@ -27,11 +27,13 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/baro.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 #include <boost/bind.hpp>
 
 namespace hector_pose_estimation {
+
+template class Measurement_<BaroModel>;
 
 BaroModel::BaroModel()
 {

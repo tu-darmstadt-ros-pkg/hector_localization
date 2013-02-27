@@ -72,6 +72,8 @@ namespace traits {
   template <> struct Update<BaroModel> { typedef BaroUpdate type; };
 }
 
+extern template class Measurement_<BaroModel>;
+
 class Baro : public Measurement_<BaroModel>, HeightBaroCommon
 {
 public:

@@ -28,8 +28,11 @@
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 namespace hector_pose_estimation {
+
+template class System_<GenericQuaternionSystemModel>;
 
 GenericQuaternionSystemModel::GenericQuaternionSystemModel()
 {
@@ -86,9 +89,9 @@ bool GenericQuaternionSystemModel::prepareUpdate(State& state, double dt)
 
 void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State& state)
 {
-  const State::OrientationType& q = state.getOrientation();
-  const State::VelocityType& v = state.getVelocity();
-  // const State::PositionType& p = state.getPosition();
+  State::ConstOrientationType q(state.getOrientation());
+  State::ConstVelocityType v(state.getVelocity());
+  // State::ConstPositionType p(state.getPosition());
 
   if (state.getOrientationIndex() >= 0) {
     x_dot(State::QUATERNION_W) = 0.5*(                  (-rate.x())*q.x()+(-rate.y())*q.y()+(-rate.z())*q.z());
@@ -129,7 +132,7 @@ void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State&
   }
 
   if (rate_stddev_ > 0.0 && state.getOrientationIndex() >= 0) {
-    const State::OrientationType& q = state.getOrientation();
+    State::ConstOrientationType q(state.getOrientation());
     double rate_variance_4 = 0.25 * pow(rate_stddev_, 2);
     Q(State::QUATERNION_W,State::QUATERNION_W) = rate_variance_4 * (q.x()*q.x()+q.y()*q.y()+q.z()*q.z());
     Q(State::QUATERNION_X,State::QUATERNION_X) = rate_variance_4 * (q.w()*q.w()+q.y()*q.y()+q.z()*q.z());
@@ -140,7 +143,7 @@ void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State&
 
 void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State& state, bool)
 {
-  const State::OrientationType& q = state.getOrientation();
+  State::ConstOrientationType q(state.getOrientation());
 
   //--> Set A-Matrix
   //----------------------------------------------------------

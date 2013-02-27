@@ -55,9 +55,10 @@ public:
   virtual SystemModel *getModel() const { return 0; }
   virtual int getDimension() const = 0;
 
+  virtual Filter *filter() const = 0;
   virtual void setFilter(Filter *filter) = 0;
 
-  virtual bool init(PoseEstimation& estimator, Filter& filter, State& state);
+  virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
   virtual void reset(State& state);
 
@@ -69,13 +70,15 @@ public:
 
   virtual void getPrior(State &state) const;
 
-  virtual bool update(Filter &filter, State &state, double dt);
+  virtual bool update(double dt);
 
   virtual void updated();
   virtual bool limitState(State& state) const;
 
 protected:
-  virtual bool updateImpl(Filter &filter, State &state, double dt) = 0;
+  virtual bool updateImpl(double dt) = 0;
+  virtual bool prepareUpdate(State &state, double dt) { return getModel()->prepareUpdate(state, dt); }
+  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
 
 protected:
   std::string name_;
@@ -110,17 +113,16 @@ public:
   virtual Model *getModel() const { return model_.get(); }
   virtual int getDimension() const { return model_->getDimension(); }
 
-  virtual const boost::shared_ptr< Filter::Predictor_<Model> >& filter() const { return filter_; }
+  virtual Filter *filter() const { return predictor_ ? predictor_->base() : 0; }
+  virtual const boost::shared_ptr< Filter::Predictor_<Model> >& predictor() const { return predictor_; }
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
-  virtual bool updateImpl(Filter &filter, State &state, double dt);
-  virtual bool prepareUpdate(State &state, double dt) { return getModel()->prepareUpdate(state, dt); }
-  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
+  virtual bool updateImpl(double dt) { return predictor()->predict(dt); }
 
 private:
   boost::shared_ptr<Model> model_;
-  boost::shared_ptr< Filter::Predictor_<Model> > filter_;
+  boost::shared_ptr< Filter::Predictor_<Model> > predictor_;
 };
 
 template <typename ConcreteModel>
@@ -129,23 +131,6 @@ boost::shared_ptr<System_<ConcreteModel> > System::create(ConcreteModel *model, 
   return boost::make_shared<System_<ConcreteModel> >(model, name);
 }
 
-} // namespace hector_pose_estimation
-
-#include <hector_pose_estimation/filter.h>
-namespace hector_pose_estimation {
-  template <typename ConcreteModel>
-  bool System_<ConcreteModel>::updateImpl(Filter &filter, State &state, double dt) {
-    if (!prepareUpdate(state, dt)) return false;
-
-    ROS_DEBUG_NAMED(getName(), "Updating with system model %s (dt = %f):", getName().c_str(), dt);
-    if (!this->filter() || !this->filter()->predict(state, dt)) return false;
-
-    ROS_DEBUG_STREAM_NAMED(getName(), "x_pred = [" << state.getVector().transpose() << "]");
-    ROS_DEBUG_STREAM_NAMED(getName(), "P_pred = [" << state.getCovariance() << "]");
-
-    afterUpdate(state);
-    return true;
-  }
 } // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_SYSTEM_H

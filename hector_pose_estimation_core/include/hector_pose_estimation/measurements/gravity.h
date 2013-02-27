@@ -59,6 +59,7 @@ protected:
 };
 
 typedef Measurement_<GravityModel> Gravity;
+extern template class Measurement_<GravityModel>;
 
 } // namespace hector_pose_estimation
 

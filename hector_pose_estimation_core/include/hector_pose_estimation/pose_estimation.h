@@ -35,8 +35,6 @@
 #include <hector_pose_estimation/measurement.h>
 #include <hector_pose_estimation/parameters.h>
 
-#include <hector_pose_estimation/filter/set_filter.h> // pulls in all filter types
-
 #include <boost/shared_ptr.hpp>
 #include <vector>
 
@@ -98,8 +96,8 @@ public:
 //  InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
   InputPtr getInput(const std::string& name) const { return inputs_.get(name); }
 
-  virtual const State& state() const { return state_; }
-  virtual State& state() { return state_; }
+  virtual const State& state() const { return filter_->state(); }
+  virtual State& state() { return filter_->state(); }
 
   virtual const State::Vector& getStateVector();
   virtual const State::Covariance& getCovariance();
@@ -168,7 +166,6 @@ protected:
 private:
   boost::shared_ptr<Filter> filter_;
 
-  State state_;
   ParameterList parameters_;
 
   ros::Time timestamp_;
