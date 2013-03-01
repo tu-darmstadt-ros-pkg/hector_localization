@@ -47,6 +47,11 @@ ParameterList& ParameterList::add(ParameterList const& other) {
   return *this;
 }
 
+ParameterList& ParameterList::add(Alias& alias, const std::string& key) {
+  if (!key.empty()) alias.key = key;
+  return add(ParameterPtr(&alias, null_deleter()));
+}
+
 ParameterList& ParameterList::copy(const std::string& prefix, ParameterList const& parameters) {
   for(ParameterList::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
     ParameterPtr copy((*it)->clone());
@@ -80,12 +85,12 @@ ParameterList::iterator ParameterList::erase(const std::string& key) {
 
 namespace internal {
   template <typename T>
-  static bool registerParamRos(ParameterPtr& parameter, std::string key, const ros::NodeHandle &nh) {
+  static bool registerParamRosTyped(ParameterPtr& parameter, std::string key, const ros::NodeHandle &nh, bool set_all = false) {
     try {
       TypedParameter<T> p(*parameter);
       boost::algorithm::to_lower(key);
       if (!nh.getParam(key, p.value)) {
-        nh.setParam(key, p.value);
+        if (set_all) nh.setParam(key, p.value);
         ROS_DEBUG_STREAM("Registered parameter " << key << " with new value " << p.value);
       } else {
         ROS_DEBUG_STREAM("Found parameter " << key << " with value " << p.value);
@@ -96,15 +101,23 @@ namespace internal {
       return false;
     }
   }
-}
 
-static bool registerParamRos(ParameterPtr& parameter, const std::string& key, const ros::NodeHandle &nh) {
-  if (internal::registerParamRos<std::string>(parameter, key, nh)) return true;
-  if (internal::registerParamRos<double>(parameter, key, nh)) return true;
-  if (internal::registerParamRos<int>(parameter, key, nh)) return true;
-  if (internal::registerParamRos<bool>(parameter, key, nh)) return true;
-  ROS_ERROR("Could not register parameter %s due to unknown type %s!", key.c_str(), parameter->type());
-  return false;
+  static bool getSetAllFlag(const ros::NodeHandle &nh) {
+    bool set_all = false;
+    nh.getParam("set_all_parameters", set_all);
+    return set_all;
+  }
+
+  static bool registerParamRos(ParameterPtr& parameter, const std::string& key, const ros::NodeHandle &nh) {
+    static bool set_all = getSetAllFlag(nh);
+
+    if (registerParamRosTyped<std::string>(parameter, key, nh, set_all)) return true;
+    if (registerParamRosTyped<double>(parameter, key, nh, set_all)) return true;
+    if (registerParamRosTyped<int>(parameter, key, nh, set_all)) return true;
+    if (registerParamRosTyped<bool>(parameter, key, nh, set_all)) return true;
+    ROS_ERROR("Could not register parameter %s due to unknown type %s!", key.c_str(), parameter->type());
+    return false;
+  }
 }
 
 void ParameterList::setRegistry(const ParameterUpdateFunc& func, bool recursive, bool update) {
@@ -114,7 +127,7 @@ void ParameterList::setRegistry(const ParameterUpdateFunc& func, bool recursive,
 }
 
 void ParameterList::setNodeHandle(const ros::NodeHandle &nh, bool update) {
-  setRegistry(boost::bind(&registerParamRos, _1, _2, ros::NodeHandle(nh)), update);
+  setRegistry(boost::bind(&internal::registerParamRos, _1, _2, ros::NodeHandle(nh)), update);
 }
 
 bool ParameterList::update() {
@@ -124,6 +137,9 @@ bool ParameterList::update() {
 }
 
 bool ParameterList::update(const ParameterPtr& parameter) {
+  if (parameter->empty()) return false;
+  if (parameter->isAlias()) return true;
+
   std::string key = parameter->key;
   if (!prefix_.empty()) key = prefix_ + s_separator + key;
 

@@ -36,26 +36,17 @@ template class System_<GenericQuaternionSystemModel>;
 
 GenericQuaternionSystemModel::GenericQuaternionSystemModel()
 {
-  gravity_ = 0.0;
-#ifdef USE_RATE_SYSTEM_MODEL
-  rate_stddev_ = 0.0;
   angular_acceleration_stddev_ = 360.0 * M_PI/180.0;
-#else // USE_RATE_SYSTEM_MODEL
-  rate_stddev_ = 1.0 * M_PI/180.0;
-#endif // USE_RATE_SYSTEM_MODEL
-  acceleration_stddev_ = 1.0e-2;
+  // rate_stddev_ = 1.0 * M_PI/180.0;
+  // acceleration_stddev_ = 1.0e-2;
   velocity_stddev_ = 0.0;
-//  accelerationdrift_ = 1.0e-6;
+//  acceleration_drift_ = 1.0e-6;
 //  rate_drift_ = 1.0e-2 * M_PI/180.0;
-  parameters().add("rate_stddev", rate_stddev_);
-#ifdef USE_RATE_SYSTEM_MODEL
+  parameters().add("gravity", gravity_);
   parameters().add("angular_acceleration_stddev", angular_acceleration_stddev_);
-#endif // USE_RATE_SYSTEM_MODEL
+  parameters().add("rate_stddev", rate_stddev_);
   parameters().add("acceleration_stddev", acceleration_stddev_);
   parameters().add("velocity_stddev", velocity_stddev_);
-
-  gyro_ = System::create(new GyroModel, "gyro");
-  accelerometer_ = System::create(new AccelerometerModel, "accelerometer");
 }
 
 GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
@@ -64,7 +55,12 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 
 bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, State& state)
 {
-  gravity_ = estimator.parameters().getAs<double>("gravity_magnitude");
+  gyro_ = System::create(new GyroModel, "gyro");
+  accelerometer_ = System::create(new AccelerometerModel, "accelerometer");
+
+  gravity_ = estimator.parameters().get("gravity_magnitude");
+  rate_stddev_ = gyro_->parameters().get("stddev");
+  acceleration_stddev_ = accelerometer_->parameters().get("stddev");
 
   imu_ = estimator.registerInput<InputType>("raw_imu");
   estimator.addSystem(gyro_, "gyro");
@@ -128,19 +124,19 @@ void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State
   }
 
   if (state.getSystemStatus() & STATE_VELOCITY_XY && state.getVelocityIndex() >= 0) {
-    x_dot(State::VELOCITY_X)  = ((q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z())*acceleration.x() + (2.0*q.x()*q.y()-2.0*q.w()*q.z())                *acceleration.y() + (2.0*q.x()*q.z()+2.0*q.w()*q.y())                *acceleration.z());
-    x_dot(State::VELOCITY_Y)  = ((2.0*q.x()*q.y()+2.0*q.w()*q.z())                *acceleration.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z())*acceleration.y() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                *acceleration.z());
+    x_dot(State::VELOCITY_X)  = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z())*acceleration.x() + (2.0*q.x()*q.y()-2.0*q.w()*q.z())                *acceleration.y() + (2.0*q.x()*q.z()+2.0*q.w()*q.y())                *acceleration.z();
+    x_dot(State::VELOCITY_Y)  = (2.0*q.x()*q.y()+2.0*q.w()*q.z())                *acceleration.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z())*acceleration.y() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                *acceleration.z();
   }
   if (state.getSystemStatus() & STATE_VELOCITY_Z && state.getVelocityIndex() >= 0) {
-    x_dot(State::VELOCITY_Z)  = ((2.0*q.x()*q.z()-2.0*q.w()*q.y())                *acceleration.x() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                *acceleration.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z())*acceleration.z() + gravity_);
+    x_dot(State::VELOCITY_Z)  = (2.0*q.x()*q.z()-2.0*q.w()*q.y())                *acceleration.x() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                *acceleration.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z())*acceleration.z() + (double) gravity_;
   }
 
   if (state.getSystemStatus() & STATE_POSITION_XY) {
-    x_dot(State::POSITION_X)  = (v.x());
-    x_dot(State::POSITION_Y)  = (v.y());
+    x_dot(State::POSITION_X)  = v.x();
+    x_dot(State::POSITION_Y)  = v.y();
   }
   if (state.getSystemStatus() & STATE_POSITION_Z) {
-    x_dot(State::POSITION_Z)  = (v.z());
+    x_dot(State::POSITION_Z)  = v.z();
   }
 }
 
@@ -155,10 +151,10 @@ void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State&
       Q(State::VELOCITY_X,State::VELOCITY_X) = Q(State::VELOCITY_Y,State::VELOCITY_Y) = Q(State::VELOCITY_Z,State::VELOCITY_Z) = pow(acceleration_stddev_, 2);
 //    Q(BIAS_ACCEL_X,BIAS_ACCEL_X) = Q(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2);
 //    Q(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = pow(acceleration_drift_, 2);
-//    Q(BIAS_GYRO_X,BIAS_GYRO_X) = Q(BIAS_GYRO_Y,BIAS_GYRO_Y) = Q(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(ratedrift_, 2);
+//    Q(BIAS_GYRO_X,BIAS_GYRO_X) = Q(BIAS_GYRO_Y,BIAS_GYRO_Y) = Q(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(rate_drift_, 2);
   }
 
-  if (rate_stddev_ > 0.0 && state.getOrientationIndex() >= 0) {
+  if ((double) rate_stddev_ > 0.0 && state.getOrientationIndex() >= 0) {
     State::ConstOrientationType q(state.getOrientation());
     double rate_variance_4 = 0.25 * pow(rate_stddev_, 2);
     Q(State::QUATERNION_W,State::QUATERNION_W) = rate_variance_4 * (q.x()*q.x()+q.y()*q.y()+q.z()*q.z());

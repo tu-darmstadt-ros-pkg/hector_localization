@@ -36,7 +36,9 @@ template class System_<AccelerometerModel>;
 
 GyroModel::GyroModel()
 {
+  rate_stddev_ = 1.0 * M_PI/180.0;
   rate_drift_ = 1.0e-1 * M_PI/180.0;
+  parameters().add("stddev", rate_stddev_);
   parameters().add("drift", rate_drift_);
 }
 
@@ -82,7 +84,9 @@ void GyroModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const
 
 AccelerometerModel::AccelerometerModel()
 {
+  acceleration_stddev_ = 1.0e-2;
   acceleration_drift_ = 1.0e-3;
+  parameters().add("stddev", acceleration_stddev_);
   parameters().add("drift", acceleration_drift_);
 }
 

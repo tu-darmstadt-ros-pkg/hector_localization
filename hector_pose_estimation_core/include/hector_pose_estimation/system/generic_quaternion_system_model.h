@@ -72,10 +72,10 @@ public:
   double getGravity() const { return gravity_; }
 
 protected:
-  double gravity_;
-  double rate_stddev_;
+  Alias gravity_;
+  Alias rate_stddev_;
+  Alias acceleration_stddev_;
   double angular_acceleration_stddev_;
-  double acceleration_stddev_;
   double velocity_stddev_;
 
   boost::shared_ptr<ImuInput> imu_;

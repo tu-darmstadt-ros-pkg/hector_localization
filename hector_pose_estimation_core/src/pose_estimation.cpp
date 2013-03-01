@@ -686,10 +686,10 @@ void PoseEstimation::updateWorldToOtherTransform(tf::StampedTransform& world_to_
 
   double y,p,r;
   world_to_other_transform.getBasis().getEulerYPR(y,p,r);
-  if (!(getSystemStatus() & STATE_ROLLPITCH))   { r = p = 0.0; }
-  if (!(getSystemStatus() & STATE_YAW))         { y = 0.0; }
-  if (!(getSystemStatus() & STATE_POSITION_XY)) { world_to_other_transform.getOrigin().setX(0.0); world_to_other_transform.getOrigin().setY(0.0); }
-  if (!(getSystemStatus() & STATE_POSITION_Z))  { world_to_other_transform.getOrigin().setZ(0.0); }
+  if (!(getSystemStatus() & (STATE_ROLLPITCH | STATE_PSEUDO_ROLLPITCH)))     { r = p = 0.0; }
+  if (!(getSystemStatus() & (STATE_YAW | STATE_PSEUDO_YAW)))                 { y = 0.0; }
+  if (!(getSystemStatus() & (STATE_POSITION_XY | STATE_PSEUDO_POSITION_XY))) { world_to_other_transform.getOrigin().setX(0.0); world_to_other_transform.getOrigin().setY(0.0); }
+  if (!(getSystemStatus() & (STATE_POSITION_Z | STATE_PSEUDO_POSITION_Z)))   { world_to_other_transform.getOrigin().setZ(0.0); }
   world_to_other_transform.getBasis().setEulerYPR(y, p, r);
 }
 

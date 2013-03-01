@@ -47,36 +47,66 @@ namespace hector_pose_estimation {
   typedef boost::shared_ptr<const Parameter> ParameterConstPtr;
   typedef boost::function<bool(ParameterPtr, std::string)> ParameterUpdateFunc;
 
+  namespace {
+    struct null_deleter {
+      void operator()(void const *) const {}
+    };
+  }
+
   class Parameter {
   public:
     std::string key;
-    Parameter(const std::string& key) : key(key) {}
+    Parameter(const std::string& key) : key(key), parameter(this, null_deleter()) {}
     virtual ~Parameter() {}
 
     virtual ParameterPtr clone() = 0;
     virtual const char *type() const = 0;
 
+    virtual bool empty() const { return !parameter; }
+    virtual bool isAlias() const { return false; }
+
     template <typename T> bool hasType() const {
-      return dynamic_cast<const TypedParameter<T> *>(this) != 0;
+      return dynamic_cast<const TypedParameter<T> *>(parameter.get()) != 0;
     }
 
     template <typename T> T& as() const {
-      const TypedParameter<T>& p = dynamic_cast<const TypedParameter<T> &>(*this);
+      const TypedParameter<T>& p = dynamic_cast<const TypedParameter<T> &>(*parameter);
       return p.value;
     }
 
-    operator std::string() const { return as<std::string>(); }
-    operator double() const { return as<double>(); }
-    operator int() const { return as<int>(); }
-    operator void *() const { return reinterpret_cast<void *>(true); }
+    operator std::string&() const { return as<std::string>(); }
+    operator double&() const { return as<double>(); }
+    operator int&() const { return as<int>(); }
+    operator void*() const { return reinterpret_cast<void *>(!empty()); }
 
-    template <typename T> T& operator =(const T& value) {
-      const TypedParameter<T>& p = dynamic_cast<const TypedParameter<T> &>(*this);
+    template <typename T> Parameter& operator =(const T& value) {
+      const TypedParameter<T>& p = dynamic_cast<const TypedParameter<T> &>(*parameter);
       p.value = value;
-      return p.value;
+      return *this;
     }
 
+  protected:
+    ParameterPtr parameter;
+  };
 
+  class Alias : public Parameter {
+  public:
+    Alias() : Parameter(std::string()) { parameter.reset(); }
+    Alias(const ParameterPtr& other) : Parameter(other->key) { *this = parameter; }
+    Alias(const ParameterPtr& other, const std::string& key) : Parameter(key) { *this = parameter; }
+    virtual ~Alias() {}
+
+    virtual ParameterPtr clone() { return parameter->clone(); }
+    virtual const char *type() const { return parameter->type(); }
+
+    virtual bool isAlias() const { return true; }
+
+    using Parameter::operator =;
+    Alias& operator =(const ParameterPtr& other) {
+      parameter = other;
+      if (key.empty()) key = other->key;
+      return *this;
+    }
   };
 
   template <typename T>
@@ -88,7 +118,7 @@ namespace hector_pose_estimation {
 
     param_type& value;
     TypedParameter(const std::string& key, param_type &value) : Parameter(key), value(value) {}
-    TypedParameter(const Parameter& other) : Parameter(other), value(dynamic_cast<const TypedParameter<T> &>(other).value) {}
+    TypedParameter(const Parameter& other) : Parameter(other), value(other.as<T>()) {}
 
     ParameterPtr clone() { return ParameterPtr(new TypedParameter<T>(*this)); }
     const char *type() const { return typeid(param_type).name(); }
@@ -116,6 +146,7 @@ namespace hector_pose_estimation {
 
     ParameterList& add(ParameterPtr const& parameter);
     ParameterList& add(ParameterList const& other);
+    ParameterList& add(Alias& alias, const std::string& key = std::string());
 
     ParameterList& copy(const std::string& prefix, ParameterList const& parameters);
     ParameterList& copy(ParameterList const& parameters);
@@ -141,6 +172,10 @@ namespace hector_pose_estimation {
 
     bool update(const ParameterPtr& parameter);
   };
+
+  template<> inline ParameterList& ParameterList::add(const std::string& key, Alias& alias) {
+    return add(alias, key);
+  }
 
   static inline ParameterList operator+(ParameterList const& list1, ParameterList const& list2)
   {

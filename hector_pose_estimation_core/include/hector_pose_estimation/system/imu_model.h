@@ -60,6 +60,7 @@ public:
 
 private:
   SubStatePtr drift_;
+  double rate_stddev_;
   double rate_drift_;
 };
 
@@ -89,6 +90,7 @@ public:
 
 private:
   SubStatePtr drift_;
+  double acceleration_stddev_;
   double acceleration_drift_;
 };
 
