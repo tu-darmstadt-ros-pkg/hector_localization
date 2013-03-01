@@ -61,7 +61,10 @@ PoseEstimationNode::~PoseEstimationNode()
 }
 
 bool PoseEstimationNode::init() {
+  // get parameters
   pose_estimation_->parameters().setNodeHandle(getPrivateNodeHandle());
+  getPrivateNodeHandle().param("with_covariances", with_covariances_, false);
+  getPrivateNodeHandle().param("map_frame", other_frame_, std::string());
 
   if (!pose_estimation_->init()) {
     ROS_ERROR("Intitialization of pose estimation failed!");
@@ -94,11 +97,6 @@ bool PoseEstimationNode::init() {
   poseupdate_subscriber_  = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
   twistupdate_subscriber_ = getNodeHandle().subscribe("twistupdate", 10, &PoseEstimationNode::twistupdateCallback, this);
   syscommand_subscriber_  = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
-
-  getPrivateNodeHandle().param("with_covariances", with_covariances_, false);
-
-  getPrivateNodeHandle().param("publish_world_map_transform", publish_world_other_transform_, false);
-  getPrivateNodeHandle().param("map_frame", other_frame_, std::string("map"));
 
   // publish initial state
   publish();
@@ -236,10 +234,9 @@ void PoseEstimationNode::publish() {
   if (getTransformBroadcaster())
   {
     transforms_.clear();
-
     pose_estimation_->getTransforms(transforms_);
 
-    if (publish_world_other_transform_) {
+    if (!other_frame_.empty()) {
       tf::StampedTransform world_to_other_transform;
       std::string nav_frame = pose_estimation_->parameters().getAs<std::string>("nav_frame");
       try {

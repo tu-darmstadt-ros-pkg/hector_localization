@@ -111,7 +111,6 @@ private:
   tf::TransformListener *transform_listener_;
 
   bool with_covariances_;
-  bool publish_world_other_transform_;
   std::string other_frame_;
 };
 
