@@ -30,7 +30,7 @@
 
 namespace hector_pose_estimation {
 
-std::string getSystemStatusString(const SystemStatus& status) {
+std::string getSystemStatusString(const SystemStatus& status, const SystemStatus& asterisk_status) {
   std::string result;
   static const char* const str[] = {
     "ALIGNMENT", "DEGRADED", "READY", 0,
@@ -41,7 +41,10 @@ std::string getSystemStatusString(const SystemStatus& status) {
   };
 
   for(unsigned int i = 0; i < sizeof(str)/sizeof(*str); ++i) {
-    if (status & (1 << i)) result = result + std::string(str[i]) + " ";
+    if (status & (1 << i)) {
+      if (asterisk_status & (1 << i)) result += "*";
+      result += std::string(str[i]) + " ";
+    }
   }
   if (result.size() > 0) result.resize(result.size() - 1);
 

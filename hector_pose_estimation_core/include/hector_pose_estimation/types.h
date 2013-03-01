@@ -65,7 +65,7 @@ namespace hector_pose_estimation {
   };
   typedef unsigned int SystemStatus;
 
-  std::string getSystemStatusString(const SystemStatus& status);
+  std::string getSystemStatusString(const SystemStatus& status, const SystemStatus& asterisk_status = 0);
   static inline std::ostream& operator<<(std::ostream& os, const SystemStatus& status) {
     return os << getSystemStatusString(status);
   }

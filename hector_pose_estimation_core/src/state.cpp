@@ -98,8 +98,8 @@ bool State::setSystemStatus(SystemStatus new_status) {
 
   SystemStatus set = new_status & ~system_status_;
   SystemStatus cleared = system_status_ & ~new_status;
-  if (set)     ROS_INFO_STREAM("Set system state " << getSystemStatusString(set));
-  if (cleared) ROS_INFO_STREAM("Cleared system state " << getSystemStatusString(cleared));
+  if (set)     ROS_INFO_STREAM("Set system status " << getSystemStatusString(new_status, set));
+  if (cleared) ROS_INFO_STREAM("Cleared system status " << getSystemStatusString(cleared, cleared));
 
   system_status_ = new_status;
   return true;
@@ -108,8 +108,8 @@ bool State::setSystemStatus(SystemStatus new_status) {
 bool State::setMeasurementStatus(SystemStatus new_measurement_status) {
   SystemStatus set = new_measurement_status & ~measurement_status_;
   SystemStatus cleared = measurement_status_ & ~new_measurement_status;
-  if (set)     ROS_INFO_STREAM("Set measurement state " << getSystemStatusString(set));
-  if (cleared) ROS_INFO_STREAM("Cleared measurement state " << getSystemStatusString(cleared));
+  if (set)     ROS_INFO_STREAM("Set measurement status " << getSystemStatusString(new_measurement_status, set));
+  if (cleared) ROS_INFO_STREAM("Cleared measurement status " << getSystemStatusString(cleared, cleared));
 
   measurement_status_ = new_measurement_status;
   return true;
