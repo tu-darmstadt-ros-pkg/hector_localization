@@ -61,8 +61,14 @@ void System::reset(State& state)
   if (getModel()) getModel()->reset(state);
 }
 
+bool System::active(const State& state) {
+  bool active = (!getModel() || getModel()->active(state));
+  if (!active) status_flags_ = 0;
+  return active;
+}
+
 bool System::update(double dt) {
-  if (!filter() || !active(filter()->state().getSystemStatus())) return false;
+  if (!filter() || !active(filter()->state())) return false;
 
   if (getModel()) status_flags_ = getModel()->getStatusFlags(filter()->state());
   if (!this->updateImpl(dt)) return false;

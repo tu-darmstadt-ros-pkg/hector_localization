@@ -62,8 +62,8 @@ public:
   virtual void cleanup();
   virtual void reset(State& state);
 
+  virtual bool active(const State& state);
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
-  virtual bool active(const SystemStatus& status) { return (!getModel() || getModel()->applyStatusMask(status)); }
 
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }

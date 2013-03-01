@@ -71,8 +71,8 @@ public:
   void enable() { enabled_ = true; }
   void disable() { enabled_ = false; }
 
+  virtual bool active(const State& state);
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
-  virtual bool active(const SystemStatus& status);
 
   void setTimeout(double timeout) { timeout_ = timeout; }
   double getTimeout() const { return timeout_; }

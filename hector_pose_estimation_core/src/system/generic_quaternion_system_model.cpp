@@ -293,7 +293,9 @@ SystemStatus GenericQuaternionSystemModel::getStatusFlags(const State& state)
   if (flags & STATE_POSITION_Z)  flags |= STATE_VELOCITY_Z;
   if (flags & STATE_VELOCITY_XY) flags |= STATE_ROLLPITCH;
   if (flags & STATE_ROLLPITCH)   flags |= STATE_RATE_XY;
-  if (flags & STATE_YAW)         flags |= STATE_RATE_Z;
+#ifndef USE_RATE_SYSTEM_MODEL
+  flags |= STATE_RATE_XY | STATE_RATE_Z;
+#endif
   return flags;
 }
 

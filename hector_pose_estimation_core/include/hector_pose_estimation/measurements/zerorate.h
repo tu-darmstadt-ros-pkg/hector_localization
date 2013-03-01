@@ -45,8 +45,8 @@ public:
 
   virtual bool init(PoseEstimation &estimator, State &state);
 
-  virtual bool applyStatusMask(const SystemStatus &status) { return !(status & STATE_RATE_Z); }
-  virtual SystemStatus getStatusFlags() { return 0; }
+  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_RATE_Z); }
+  virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_RATE_Z; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);

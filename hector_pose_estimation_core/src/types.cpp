@@ -34,10 +34,10 @@ std::string getSystemStatusString(const SystemStatus& status) {
   std::string result;
   static const char* const str[] = {
     "ALIGNMENT", "DEGRADED", "READY", 0,
-    "ROLLPITCH", "YAW", 0, 0,
-    "RATE_XY", "RATE_Z", 0, 0,
-    "VELOCITY_XY", "VELOCITY_Z", 0, 0,
-    "POSITION_XY", "POSITION_Z", 0, 0
+    "ROLLPITCH", "YAW", "PSEUDO_ROLLPITCH", "PSEUDO_YAW",
+    "RATE_XY", "RATE_Z", "PSEUDO_RATE_XY", "PSEUDO_RATE_Z",
+    "VELOCITY_XY", "VELOCITY_Z", "PSEUDO_VELOCITY_XY", "PSEUDO_VELOCITY_Z",
+    "POSITION_XY", "POSITION_Z", "PSEUDO_POSITION_XY", "PSEUDO_POSITION_Z",
   };
 
   for(unsigned int i = 0; i < sizeof(str)/sizeof(*str); ++i) {

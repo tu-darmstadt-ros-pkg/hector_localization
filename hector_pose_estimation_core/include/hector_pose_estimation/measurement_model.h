@@ -43,7 +43,7 @@ public:
   virtual bool hasSubsystem() const { return false; }
 
   virtual SystemStatus getStatusFlags() { return SystemStatus(0); }
-  virtual bool applyStatusMask(const SystemStatus& status) { return !(status & STATUS_ALIGNMENT); }
+  virtual bool active(const State& state) { return !(state.getSystemStatus() & STATUS_ALIGNMENT); }
 
   virtual bool prepareUpdate(State& state, const MeasurementUpdate& update) { return true; }
   virtual void afterUpdate(State& state) {}

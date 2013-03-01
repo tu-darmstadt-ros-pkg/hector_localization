@@ -47,7 +47,7 @@ public:
   virtual SystemTypeEnum getSystemType() const { return UNKNOWN_SYSTEM_TYPE; }
 
   virtual SystemStatus getStatusFlags(const State& state) { return SystemStatus(0); }
-  virtual bool applyStatusMask(const SystemStatus& status) { return true; }
+  virtual bool active(const State& state) { return true; }
 
   virtual void getPrior(State &state) {}
 

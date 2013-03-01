@@ -49,7 +49,7 @@ PoseEstimation::PoseEstimation(const SystemPtr& system)
   if (!the_instance) the_instance = this;
   if (system) addSystem(system);
 
-  world_frame_ = "world";
+  world_frame_ = "/world";
   nav_frame_ = "nav";
   base_frame_ = "base_link";
   stabilized_frame_ = "base_stabilized";

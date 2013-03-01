@@ -64,6 +64,19 @@ namespace hector_pose_estimation {
       const TypedParameter<T>& p = dynamic_cast<const TypedParameter<T> &>(*this);
       return p.value;
     }
+
+    operator std::string() const { return as<std::string>(); }
+    operator double() const { return as<double>(); }
+    operator int() const { return as<int>(); }
+    operator void *() const { return reinterpret_cast<void *>(true); }
+
+    template <typename T> T& operator =(const T& value) {
+      const TypedParameter<T>& p = dynamic_cast<const TypedParameter<T> &>(*this);
+      p.value = value;
+      return p.value;
+    }
+
+
   };
 
   template <typename T>
