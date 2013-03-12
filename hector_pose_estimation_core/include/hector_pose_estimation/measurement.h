@@ -53,8 +53,8 @@ public:
   virtual MeasurementModel* getModel() const { return 0; }
   virtual int getDimension() const { return 0; }
 
-  virtual Filter *filter() const { return 0; }
-  virtual void setFilter(Filter *filter) {}
+  virtual Filter *filter() const { return filter_; }
+  virtual void setFilter(Filter *filter) { filter_ = filter; }
 
   virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
@@ -101,6 +101,8 @@ protected:
 
   double timeout_;
   double timer_;
+
+  Filter *filter_;
 };
 
 template <class ConcreteModel>

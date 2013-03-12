@@ -70,7 +70,7 @@ void Measurement::reset(State& state)
 }
 
 bool Measurement::active(const State& state) {
-  bool active = enabled() && (!getModel() || getModel()->active(state));
+  bool active = enabled() && (getModel() ? getModel()->active(state) : !(state.getSystemStatus() & STATUS_ALIGNMENT));
   if (!active) status_flags_ = 0;
   if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
   return active;

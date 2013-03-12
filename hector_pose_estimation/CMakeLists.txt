@@ -29,10 +29,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-# enable syntax highlighting in QtCreator
-rosbuild_invoke_rospack(bfl INCLUDE_DIRS bfl cflags-only-I)
-include_directories(${bfl_INCLUDE_DIRS})
-
 option(USE_MAV_MSGS "Use mav_msgs/Height as input topic for height measurement" OFF)
 if(USE_MAV_MSGS)
   add_definitions(-DUSE_MAV_MSGS)

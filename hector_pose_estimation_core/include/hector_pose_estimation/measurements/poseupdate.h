@@ -90,7 +90,7 @@ public:
     geometry_msgs::TwistWithCovarianceStampedConstPtr twist;
   };
 
-  virtual bool update(Filter &filter, State &state, const MeasurementUpdate &update);
+  virtual bool updateImpl(const MeasurementUpdate &update);
 
 private:
   PositionXYModel position_xy_model_;
@@ -125,7 +125,7 @@ private:
   double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy);
 
   template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
-  double updateInternal(const State::Covariance &Px, const State::Vector &x, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, State::Covariance &Pxy, State::Vector &xy, const std::string& text, const double max_error = 0.0);
+  double updateInternal(State &state, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, const std::string& text, const double max_error = 0.0);
 
 protected:
   Queue_<Update> queue_;

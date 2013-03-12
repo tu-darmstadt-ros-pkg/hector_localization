@@ -75,6 +75,7 @@ namespace hector_pose_estimation {
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
   };
+  typedef ColumnVector_<3> ColumnVector3;
 
   template <int Cols>
   class RowVector_ : public Eigen::Matrix<ScalarType,1,Cols> {
@@ -95,6 +96,7 @@ namespace hector_pose_estimation {
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
   };
+  typedef RowVector_<3> RowVector3;
 
   template <int Rows, int Cols>
   class Matrix_ : public Eigen::Matrix<ScalarType,Rows,Cols> {
@@ -117,6 +119,7 @@ namespace hector_pose_estimation {
   protected:
     explicit Matrix_(Index rows, Index cols) : Base(rows, cols) {}
   };
+  typedef Matrix_<3,3> Matrix3;
 
 //  namespace internal {
 //    template <int RowsCols>
@@ -252,7 +255,8 @@ namespace hector_pose_estimation {
     Derived& symmetric() {
 #if defined(BREAK_IF_SYMMETRIC_MATRIX_IS_NOT_SYMMETRIC)
       eigen_assert(this->isApprox(this->transpose()));
-#elif defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
+#endif
+#if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
       this->template triangularView<Eigen::Lower>() = this->transpose();
 #endif
       return *this;
@@ -270,6 +274,7 @@ namespace hector_pose_estimation {
   protected:
     explicit SymmetricMatrix_(Index dim) : Storage(dim, dim) {}
   };
+  typedef SymmetricMatrix_<3> SymmetricMatrix3;
 
   class SymmetricMatrix : public SymmetricMatrix_<Dynamic> {
   public:

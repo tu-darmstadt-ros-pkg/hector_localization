@@ -30,7 +30,6 @@
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
 
 #include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/filter/ekf.h>
 
 namespace hector_pose_estimation {
 

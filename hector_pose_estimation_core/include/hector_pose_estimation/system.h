@@ -55,8 +55,8 @@ public:
   virtual SystemModel *getModel() const { return 0; }
   virtual int getDimension() const = 0;
 
-  virtual Filter *filter() const = 0;
-  virtual void setFilter(Filter *filter) = 0;
+  virtual Filter *filter() const { return filter_; }
+  virtual void setFilter(Filter *filter) { filter_ = filter; }
 
   virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
@@ -84,6 +84,8 @@ protected:
   std::string name_;
   ParameterList parameters_;
   SystemStatus status_flags_;
+
+  Filter *filter_;
 };
 
 template <class ConcreteModel>

@@ -87,7 +87,7 @@ PoseUpdate::~PoseUpdate()
 {
 }
 
-bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_)
+bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
 {
   Update const &update = static_cast<Update const &>(update_);
 
@@ -101,13 +101,13 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
     // zero elements are counted as zero information in any case
     SymmetricMatrix_<6> information(SymmetricMatrix_<6>::ConstMap(update.pose->pose.covariance.data()));
 
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: x = [ " << state.getVector().transpose() << " ], P = [ " << state.getCovariance() << " ]" << std::endl
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: x = [ " << filter()->state().getVector().transpose() << " ], P = [ " << filter()->state().getCovariance() << " ]" << std::endl
                                       << "update: pose = [ " << update_pose.transpose() << " ], euler = [ " << update_euler.transpose() << " ], information = [ " << information << " ]");
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "dt = " << (state.getTimestamp() - update.pose->header.stamp).toSec() << " s");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "dt = " << (filter()->state().getTimestamp() - update.pose->header.stamp).toSec() << " s");
 
     // predict update pose using the estimated velocity and degrade information
     if (!update.pose->header.stamp.isZero()) {
-      double dt = (state.getTimestamp() - update.pose->header.stamp).toSec();
+      double dt = (filter()->state().getTimestamp() - update.pose->header.stamp).toSec();
       if (dt < 0.0) {
         ROS_DEBUG_STREAM_NAMED("poseupdate", "Ignoring pose update as it has a negative time difference: dt = " << dt << "s");
         break;
@@ -123,10 +123,10 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
           information = information / (1.0 - dt/max_time_difference_);
       }
 
-      State::ConstVelocityType state_velocity(state.getVelocity());
+      State::ConstVelocityType state_velocity(filter()->state().getVelocity());
       update_pose = update_pose + dt * state_velocity;
 
-      State::ConstRateType state_rate(state.getRate());
+      State::ConstRateType state_rate(filter()->state().getRate());
       Eigen::AngleAxisd state_angle_offset(state_rate.norm() * dt, state_rate.normalized());
       update_orientation = state_angle_offset * update_orientation;
     }
@@ -136,8 +136,8 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       // fetch observation matrix H and current state x
       PositionXYModel::MeasurementMatrix H;
       PositionXYModel::MeasurementVector x;
-      position_xy_model_.getStateJacobian(H, state, true);
-      position_xy_model_.getExpectedValue(x, state);
+      position_xy_model_.getStateJacobian(H, filter()->state(), true);
+      position_xy_model_.getExpectedValue(x, filter()->state());
 
       PositionXYModel::MeasurementVector y(update_pose.segment<2>(0));
       PositionXYModel::NoiseVariance Iy(information.block<2,2>(0,0));
@@ -152,11 +152,11 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       }
 
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Position Update: ");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, y - x, H, state.P(), state.x(), "position_xy", max_position_xy_error_);
-      position_xy_model_.getExpectedValue(x, state);
-      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x << "], Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
+      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_xy", max_position_xy_error_);
+      position_xy_model_.getExpectedValue(x, filter()->state());
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x << "], Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_POSITION_XY;
     }
@@ -166,8 +166,8 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       // fetch observation matrix H and current state x
       PositionZModel::MeasurementMatrix H;
       PositionZModel::MeasurementVector x;
-      position_z_model_.getStateJacobian(H, state, true);
-      position_z_model_.getExpectedValue(x, state);
+      position_z_model_.getStateJacobian(H, filter()->state(), true);
+      position_z_model_.getExpectedValue(x, filter()->state());
 
       PositionZModel::MeasurementVector y(update_pose.segment<1>(2));
       PositionZModel::NoiseVariance Iy(information.block<1,1>(2,2));
@@ -182,11 +182,11 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       }
 
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Height Update: ");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) << ", H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) << ", H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(0) << ", Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, y - x, H, state.P(), state.x(), "position_z", max_position_z_error_);
-      position_z_model_.getExpectedValue(x, state);
-      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) << ", Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
+      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_z", max_position_z_error_);
+      position_z_model_.getExpectedValue(x, filter()->state());
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) << ", Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_POSITION_Z;
     }
@@ -196,8 +196,8 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       // fetch observation matrix H and current state x
       YawModel::MeasurementMatrix H;
       YawModel::MeasurementVector x;
-      yaw_model_.getStateJacobian(H, state, true);
-      yaw_model_.getExpectedValue(x, state);
+      yaw_model_.getStateJacobian(H, filter()->state(), true);
+      yaw_model_.getExpectedValue(x, filter()->state());
 
       YawModel::MeasurementVector y(update_euler(0));
       YawModel::NoiseVariance Iy(information.block<1,1>(5,5));
@@ -212,15 +212,15 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
       }
 
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Yaw Update: ");
-      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) * 180.0/M_PI << "°, H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
+      ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) * 180.0/M_PI << "°, H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(0) * 180.0/M_PI << "°, Iy = [ " << Iy << " ]");
 
-      ColumnVector error(y - x);
+      YawModel::MeasurementVector error(y - x);
       error(0) = error(0) - 2.0*M_PI * round(error(0) / (2.0*M_PI));
 
-      double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, error, H, state.P(), state.x(), "yaw", max_yaw_error_);
-      yaw_model_.getExpectedValue(x, state);
-      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) * 180.0/M_PI << "°, Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
+      double innovation = updateInternal(filter()->state(), Iy, error, H, "yaw", max_yaw_error_);
+      yaw_model_.getExpectedValue(x, filter()->state());
+      ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) * 180.0/M_PI << "°, Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_YAW;
     }
@@ -237,13 +237,13 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
     // zero elements are counted as zero information in any case
     SymmetricMatrix_<6> information(SymmetricMatrix_<6>::ConstMap(update.twist->twist.covariance.data()));
 
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "TwistUpdate:  state = [ " << state.getVector().transpose() << " ], P = [ " << state.getCovariance() << " ]" << std::endl
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "TwistUpdate:  state = [ " << filter()->state().getVector().transpose() << " ], P = [ " << filter()->state().getCovariance() << " ]" << std::endl
                                       << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]");
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "                 dt = " << (state.getTimestamp() - update.twist->header.stamp).toSec() << " s");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "                 dt = " << (filter()->state().getTimestamp() - update.twist->header.stamp).toSec() << " s");
 
     // degrade information if the time difference is too large
     if (!update.twist->header.stamp.isZero()) {
-      double dt = (state.getTimestamp() - update.twist->header.stamp).toSec();
+      double dt = (filter()->state().getTimestamp() - update.twist->header.stamp).toSec();
       if (dt < 0.0) {
         ROS_DEBUG_STREAM_NAMED("poseupdate", "Ignoring twist update as it has a negative time difference: dt = " << dt << "s");
         break;
@@ -263,8 +263,8 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
     // fetch observation matrix H and current state x
     TwistModel::MeasurementMatrix H;
     TwistModel::MeasurementVector x;
-    twist_model_.getStateJacobian(H, state, true);
-    twist_model_.getExpectedValue(x, state);
+    twist_model_.getStateJacobian(H, filter()->state(), true);
+    twist_model_.getExpectedValue(x, filter()->state());
 
     TwistModel::MeasurementVector y;
     TwistModel::NoiseVariance Iy(information);
@@ -322,16 +322,16 @@ bool PoseUpdate::update(Filter &, State &state, const MeasurementUpdate &update_
     }
 
     ROS_DEBUG_STREAM_NAMED("poseupdate", "Twist Update: ");
-    ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * state.getCovariance() * H.transpose()) << "], Ix = [ " << (H * state.getCovariance() * H.transpose()).inverse() << "]");
+    ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
     ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-    double innovation = updateInternal(state.getCovariance(), state.getVector(), Iy, y - x, H, state.P(), state.x(), "twist", 0.0);
-    twist_model_.getExpectedValue(x, state);
-    ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x.transpose() << "], Pxy = [ " << (H * state.getCovariance() * H.transpose()) << " ], innovation = " << innovation);
+    double innovation = updateInternal(filter()->state(), Iy, y - x, H, "twist", 0.0);
+    twist_model_.getExpectedValue(x, filter()->state());
+    ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x.transpose() << "], Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
     break;
   }
 
-  state.updated();
+  filter()->state().updated();
   return true;
 }
 
@@ -342,8 +342,8 @@ double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatr
 }
 
 template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
-double PoseUpdate::updateInternal(const State::Covariance &Px, const State::Vector &x, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, State::Covariance &Pxy, State::Vector &xy, const std::string& text, const double max_error) {
-  NoiseVariance H_Px_HT(H * Px * H.transpose());
+double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, const std::string& text, const double max_error) {
+  NoiseVariance H_Px_HT(H * state.P0() * H.transpose());
 
   if (H_Px_HT.determinant() <= 0) {
     ROS_WARN_STREAM("Ignoring poseupdate for " << text << " as the a-priori state covariance is zero!");
@@ -370,7 +370,8 @@ double PoseUpdate::updateInternal(const State::Covariance &Px, const State::Vect
   if (max_error > 0.0) {
     double error2 = error.transpose() * Ix * (Ix + Iy).inverse() * Iy * error;
     if (error2 > max_error * max_error) {
-      if (!jump_on_max_error_) {
+      if (true) {
+      // if (!jump_on_max_error_) {
         ROS_WARN_STREAM_NAMED("poseupdate", "Ignoring poseupdate for " << text << " as the error [ " << error.transpose() << " ], |error| = " << sqrt(error2) << " sigma exceeds max_error!");
         return 0.0;
       } else {
@@ -387,13 +388,15 @@ double PoseUpdate::updateInternal(const State::Covariance &Px, const State::Vect
 
   // S_1 is equivalent to S^(-1) = (H*P*H^T + R)^(-1) in the standard Kalman gain
   NoiseVariance S_1(Ix - Ix * (Ix * alpha + Iy * beta).inverse() * Ix);
+  Matrix_<State::Covariance::ColsAtCompileTime, MeasurementMatrix::RowsAtCompileTime> P_HT((H * state.P().template topRows<State::Dimension>()).transpose());
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "P*HT = [" << (P_HT) << "]");
+
   double innovation = S_1.determinant();
+  state.P() = state.P() - P_HT * S_1 * P_HT.transpose(); // may invalidate Px if &Pxy == &Px
+  state.x() = state.x() + P_HT * Iy * beta * error;
 
-  Pxy = Px - Px  * H.transpose() * S_1 * H * Px; // may invalidate Px if &Pxy == &Px
-   xy =  x + Pxy * H.transpose() * Iy * beta * error;
-
-  ROS_DEBUG_STREAM_NAMED("poseupdate", "K = [" << (Pxy * H.transpose() * Iy * beta) << "]");
-  ROS_DEBUG_STREAM_NAMED("poseupdate", "dx = [" << ( Pxy * H.transpose() * Iy * beta * error).transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "K = [" << (P_HT * Iy * beta) << "]");
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "dx = [" << (P_HT * Iy * beta * error).transpose() << "]");
 
   return innovation;
 }

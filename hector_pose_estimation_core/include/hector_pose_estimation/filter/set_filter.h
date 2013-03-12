@@ -40,6 +40,7 @@ namespace hector_pose_estimation {
 
 template <class ConcreteModel>
 void System_<ConcreteModel>::setFilter(Filter *filter) {
+  System::setFilter(filter);
   if (filter->derived<filter::EKF>()) {
     predictor_ = Filter::factory(filter->derived<filter::EKF>()).addPredictor<ConcreteModel>(this->getModel());
   } else {
@@ -49,6 +50,7 @@ void System_<ConcreteModel>::setFilter(Filter *filter) {
 
 template <class ConcreteModel>
 void Measurement_<ConcreteModel>::setFilter(Filter *filter) {
+  Measurement::setFilter(filter);
   if (filter->derived<filter::EKF>()) {
     corrector_ = Filter::factory(filter->derived<filter::EKF>()).addCorrector<ConcreteModel>(this->getModel());
   } else {
