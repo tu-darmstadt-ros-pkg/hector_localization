@@ -140,6 +140,8 @@ public:
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
   virtual MeasurementVector const& getVector(const Update &update, const State &state) {
+    const MeasurementVector *fixed = getModel()->getFixedMeasurementVector();
+    if (fixed) return *fixed;
     return traits::UpdateInspector<ConcreteModel>(update).getVector(state);
   }
 

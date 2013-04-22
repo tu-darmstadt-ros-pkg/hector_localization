@@ -47,6 +47,9 @@
 // Use system model with angular rates.
 // #define USE_RATE_SYSTEM_MODEL
 
+// #define VELOCITY_IN_BODY_FRAME
+#define VELOCITY_IN_WORLD_FRAME
+
 namespace hector_pose_estimation {
 
 class State {
@@ -71,9 +74,9 @@ public:
     POSITION_X,
     POSITION_Y,
     POSITION_Z,
-    VELOCITY_X, // world frame
-    VELOCITY_Y, // world frame
-    VELOCITY_Z, // world frame
+    VELOCITY_X, // body frame
+    VELOCITY_Y, // body frame
+    VELOCITY_Z, // body frame
     Dimension,
 
 #ifndef USE_RATE_SYSTEM_MODEL
@@ -105,6 +108,8 @@ public:
   typedef VectorBlock<const Vector,3> ConstAccelerationType;
 
   typedef std::vector<SubStatePtr> SubStates;
+
+  typedef Matrix_<3,3> RotationMatrix;
 
 public:
   State();
@@ -154,6 +159,9 @@ public:
   virtual ConstVelocityType getVelocity() const         { return (getVelocityIndex() >= 0) ? vector_.segment<3>(getVelocityIndex()) : fake_velocity_.segment<3>(0); }
   virtual AccelerationType acceleration()               { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
   virtual ConstAccelerationType getAcceleration() const { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
+
+  RotationMatrix getRotationMatrix() const;
+  void getRotationMatrix(RotationMatrix &R) const;
 
   template <typename Derived> void setOrientation(const Eigen::MatrixBase<Derived>& orientation);
   template <typename Derived> void setRate(const Eigen::MatrixBase<Derived>& rate);

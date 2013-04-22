@@ -41,6 +41,8 @@ public:
 
   virtual SystemStatus getStatusFlags() { return STATE_POSITION_XY | STATE_VELOCITY_XY; }
 
+  virtual bool prepareUpdate(State &state, const MeasurementUpdate &update);
+
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
   virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
@@ -48,6 +50,7 @@ public:
 protected:
   double position_stddev_;
   double velocity_stddev_;
+  State::RotationMatrix R;
 };
 
 struct GPSUpdate : public MeasurementUpdate {

@@ -63,6 +63,8 @@ void GyroModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const
   if (state.getRateIndex() >= 0) return;
 
   State::ConstOrientationType q(state.getOrientation());
+  State::ConstVelocityType v(state.getVelocity());
+
   if (state.getOrientationIndex() >= 0) {
     A01(State::QUATERNION_W, BIAS_GYRO_X)  = -0.5*q.x();
     A01(State::QUATERNION_W, BIAS_GYRO_Y)  = -0.5*q.y();
@@ -80,6 +82,25 @@ void GyroModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const
     A01(State::QUATERNION_Z, BIAS_GYRO_Y)  = 0.5*q.x();
     A01(State::QUATERNION_Z, BIAS_GYRO_Z)  = 0.5*q.w();
   }
+
+#ifdef VELOCITY_IN_BODY_FRAME
+  if (state.getVelocityIndex() >= 0 && state.getSystemStatus() & STATE_VELOCITY_XY) {
+    A01(State::VELOCITY_X, BIAS_GYRO_X) =  0.0;
+    A01(State::VELOCITY_X, BIAS_GYRO_Y) = -v.z();
+    A01(State::VELOCITY_X, BIAS_GYRO_Z) =  v.y();
+
+    A01(State::VELOCITY_Y, BIAS_GYRO_X) =  v.z();
+    A01(State::VELOCITY_Y, BIAS_GYRO_Y) =  0.0;
+    A01(State::VELOCITY_Y, BIAS_GYRO_Z) = -v.x();
+  }
+
+  if (state.getVelocityIndex() >= 0 && state.getSystemStatus() & STATE_VELOCITY_Z) {
+    A01(State::VELOCITY_Z, BIAS_GYRO_X) = -v.y();
+    A01(State::VELOCITY_Z, BIAS_GYRO_Y) =  v.x();
+    A01(State::VELOCITY_Z, BIAS_GYRO_Z) =  0.0;
+  }
+
+#endif
 }
 
 AccelerometerModel::AccelerometerModel()
@@ -111,6 +132,20 @@ void AccelerometerModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A
 {
   if (state.getAccelerationIndex() >= 0) return;
 
+  A01 = 0;
+
+#ifdef VELOCITY_IN_BODY_FRAME
+  if (state.getVelocityIndex() >= 0) {
+    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
+      A01.block(State::VELOCITY_X, BIAS_ACCEL_X, 2, 2).setIdentity();
+    }
+
+    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
+      A01.block(State::VELOCITY_Z, BIAS_ACCEL_Z, 1, 1).setIdentity();
+    }
+  }
+
+#else
   State::ConstOrientationType q(state.getOrientation());
   if (state.getVelocityIndex() >= 0) {
     if (state.getSystemStatus() & STATE_VELOCITY_XY) {
@@ -121,28 +156,16 @@ void AccelerometerModel::getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A
       A01(State::VELOCITY_Y, BIAS_ACCEL_X) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
       A01(State::VELOCITY_Y, BIAS_ACCEL_Y) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
       A01(State::VELOCITY_Y, BIAS_ACCEL_Z) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
-
-    } else {
-      A01(State::VELOCITY_X, BIAS_ACCEL_X) = 0.0;
-      A01(State::VELOCITY_X, BIAS_ACCEL_Y) = 0.0;
-      A01(State::VELOCITY_X, BIAS_ACCEL_Z) = 0.0;
-
-      A01(State::VELOCITY_Y, BIAS_ACCEL_X) = 0.0;
-      A01(State::VELOCITY_Y, BIAS_ACCEL_Y) = 0.0;
-      A01(State::VELOCITY_Y, BIAS_ACCEL_Z) = 0.0;
     }
 
     if (state.getSystemStatus() & STATE_VELOCITY_Z) {
       A01(State::VELOCITY_Z, BIAS_ACCEL_X) = ( 2.0*q.x()*q.z()-2.0*q.w()*q.y());
       A01(State::VELOCITY_Z, BIAS_ACCEL_Y) = ( 2.0*q.y()*q.z()+2.0*q.w()*q.x());
       A01(State::VELOCITY_Z, BIAS_ACCEL_Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
-
-    } else {
-      A01(State::VELOCITY_Z, BIAS_ACCEL_X) = 0.0;
-      A01(State::VELOCITY_Z, BIAS_ACCEL_Y) = 0.0;
-      A01(State::VELOCITY_Z, BIAS_ACCEL_Z) = 0.0;
     }
   }
+#endif
+
 }
 
 } // namespace hector_pose_estimation

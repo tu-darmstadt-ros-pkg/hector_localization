@@ -63,7 +63,7 @@ PoseEstimationNode::~PoseEstimationNode()
 bool PoseEstimationNode::init() {
   // get parameters
   pose_estimation_->parameters().setNodeHandle(getPrivateNodeHandle());
-  getPrivateNodeHandle().param("with_covariances", with_covariances_, false);
+  getPrivateNodeHandle().param("publish_covariances", publish_covariances_, false);
   getPrivateNodeHandle().param("map_frame", other_frame_, std::string());
 
   if (!pose_estimation_->init()) {
@@ -194,7 +194,7 @@ void PoseEstimationNode::syscommandCallback(const std_msgs::StringConstPtr& sysc
 void PoseEstimationNode::publish() {
   if (state_publisher_) {
     nav_msgs::Odometry state;
-    pose_estimation_->getState(state, with_covariances_);
+    pose_estimation_->getState(state, publish_covariances_);
     state_publisher_.publish(state);
   }
 

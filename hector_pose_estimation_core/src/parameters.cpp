@@ -35,6 +35,12 @@ namespace hector_pose_estimation {
 
 const std::string ParameterList::s_separator = "/";
 
+namespace {
+  struct null_deleter {
+    void operator()(void const *) const {}
+  };
+}
+
 ParameterList& ParameterList::add(ParameterPtr const& parameter) {
   erase(parameter->key);
   push_back(parameter);
@@ -47,7 +53,7 @@ ParameterList& ParameterList::add(ParameterList const& other) {
   return *this;
 }
 
-ParameterList& ParameterList::add(Alias& alias, const std::string& key) {
+ParameterList& ParameterList::add(Parameter& alias, const std::string& key) {
   if (!key.empty()) alias.key = key;
   return add(ParameterPtr(&alias, null_deleter()));
 }
@@ -87,13 +93,13 @@ namespace internal {
   template <typename T>
   static bool registerParamRosTyped(ParameterPtr& parameter, std::string key, const ros::NodeHandle &nh, bool set_all = false) {
     try {
-      TypedParameter<T> p(*parameter);
+      ParameterT<T> p(*parameter);
       boost::algorithm::to_lower(key);
-      if (!nh.getParam(key, p.value)) {
-        if (set_all) nh.setParam(key, p.value);
-        ROS_DEBUG_STREAM("Registered parameter " << key << " with new value " << p.value);
+      if (!nh.getParam(key, p.value())) {
+        if (set_all) nh.setParam(key, p.value());
+        ROS_DEBUG_STREAM("Registered parameter " << key << " with new value " << p.value());
       } else {
-        ROS_DEBUG_STREAM("Found parameter " << key << " with value " << p.value);
+        ROS_DEBUG_STREAM("Found parameter " << key << " with value " << p.value());
       }
       return true;
 

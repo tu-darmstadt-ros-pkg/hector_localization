@@ -110,7 +110,7 @@ private:
   tf::TransformBroadcaster transform_broadcaster_;
   tf::TransformListener *transform_listener_;
 
-  bool with_covariances_;
+  bool publish_covariances_;
   std::string other_frame_;
 };
 

@@ -85,6 +85,20 @@ void State::updated()
   P().symmetric();
 }
 
+State::RotationMatrix State::getRotationMatrix() const {
+  RotationMatrix R;
+  getRotationMatrix(R);
+  return R;
+}
+
+void State::getRotationMatrix(RotationMatrix &R) const
+{
+  ConstOrientationType q(getOrientation());
+  R << (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()), (2.0*q.x()*q.y()-2.0*q.w()*q.z()),                 (2.0*q.x()*q.z()+2.0*q.w()*q.y()),
+       (2.0*q.x()*q.y()+2.0*q.w()*q.z()),                 (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()), (2.0*q.y()*q.z()-2.0*q.w()*q.x()),
+       (2.0*q.x()*q.z()-2.0*q.w()*q.y()),                 (2.0*q.y()*q.z()+2.0*q.w()*q.x()),                 (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
+}
+
 bool State::inSystemStatus(SystemStatus test_status) const {
   return (getSystemStatus() & test_status) == test_status;
 }

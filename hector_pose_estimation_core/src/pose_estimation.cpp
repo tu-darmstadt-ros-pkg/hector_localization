@@ -518,7 +518,11 @@ void PoseEstimation::getVelocity(tf::Vector3& vector) {
 void PoseEstimation::getVelocity(tf::Stamped<tf::Vector3>& vector) {
   getVelocity(static_cast<tf::Vector3 &>(vector));
   vector.stamp_ = getTimestamp();
+#ifdef VELOCITY_IN_BODY_FRAME
+  vector.frame_id_ = base_frame_;
+#else
   vector.frame_id_ = nav_frame_;
+#endif
 }
 
 void PoseEstimation::getVelocity(geometry_msgs::Vector3& vector) {
@@ -530,6 +534,9 @@ void PoseEstimation::getVelocity(geometry_msgs::Vector3& vector) {
 
 void PoseEstimation::getVelocity(geometry_msgs::Vector3Stamped& vector) {
   getHeader(vector.header);
+#ifdef VELOCITY_IN_BODY_FRAME
+  vector.header.frame_id = base_frame_;
+#endif
   getVelocity(vector.vector);
 }
 
@@ -542,7 +549,11 @@ void PoseEstimation::getRate(tf::Vector3& vector) {
 void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
   getRate(static_cast<tf::Vector3 &>(vector));
   vector.stamp_ = getTimestamp();
+#ifdef VELOCITY_IN_BODY_FRAME
+  vector.frame_id_ = base_frame_;
+#else
   vector.frame_id_ = nav_frame_;
+#endif
 }
 
 void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
@@ -577,6 +588,16 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
 void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
   getHeader(vector.header);
   getRate(vector.vector);
+
+  if (state().getRateIndex() >= 0) {
+#ifdef VELOCITY_IN_BODY_FRAME
+    vector.header.frame_id = base_frame_;
+#else
+    vector.header.frame_id = nav_frame_;
+#endif
+  } else {
+    vector.header.frame_id = base_frame_;
+  }
 }
 
 void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration) {

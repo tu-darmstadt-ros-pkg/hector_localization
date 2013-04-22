@@ -59,9 +59,9 @@ void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& stat
   State::ConstOrientationType q(state.getOrientation());
 
   // y = q * [0 0 1] * q';
-  y_pred(0) = -gravity_ * (2*q.x()*q.z() - 2*q.w()*q.y());
-  y_pred(1) = -gravity_ * (2*q.w()*q.x() + 2*q.y()*q.z());
-  y_pred(2) = -gravity_ * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
+  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
+  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
+  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
 }
 
 void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
@@ -69,18 +69,18 @@ void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bo
   State::ConstOrientationType q(state.getOrientation());
 
   if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_*2*q.z();
+    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
+    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
+    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
+    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
+    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
+    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
+    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
+    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
+    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
+    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
+    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
+    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
   }
 }
 

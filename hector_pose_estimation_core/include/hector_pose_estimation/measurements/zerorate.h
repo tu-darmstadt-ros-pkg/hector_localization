@@ -52,6 +52,8 @@ public:
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
   virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init);
 
+  virtual const MeasurementVector* getFixedMeasurementVector();
+
 protected:
   double stddev_;
   SubStatePtr gyro_drift_;

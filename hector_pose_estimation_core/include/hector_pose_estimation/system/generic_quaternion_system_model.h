@@ -72,9 +72,9 @@ public:
   double getGravity() const { return gravity_; }
 
 protected:
-  Alias gravity_;
-  Alias rate_stddev_;
-  Alias acceleration_stddev_;
+  AliasT<double> gravity_;
+  AliasT<double> rate_stddev_;
+  AliasT<double> acceleration_stddev_;
   double angular_acceleration_stddev_;
   double velocity_stddev_;
 
@@ -84,6 +84,7 @@ protected:
 
   ColumnVector_<3> rate;
   ColumnVector_<3> acceleration;
+  State::RotationMatrix R;
 };
 
 extern template class System_<GenericQuaternionSystemModel>;

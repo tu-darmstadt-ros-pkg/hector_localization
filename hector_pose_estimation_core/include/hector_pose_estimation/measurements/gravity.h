@@ -43,8 +43,8 @@ public:
 
   virtual bool init(PoseEstimation &estimator, State &state);
 
-  virtual void setGravity(double gravity) { gravity_ = gravity; }
-  virtual double getGravity() const { return gravity_; }
+  virtual void setGravity(double gravity) { gravity_.z() = gravity; }
+  virtual double getGravity() const { return gravity_.z(); }
 
   virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_ROLLPITCH); }
   virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_ROLLPITCH; }
@@ -55,7 +55,7 @@ public:
 
 protected:
   double stddev_;
-  double gravity_;
+  MeasurementVector gravity_;
 };
 
 typedef Measurement_<GravityModel> Gravity;

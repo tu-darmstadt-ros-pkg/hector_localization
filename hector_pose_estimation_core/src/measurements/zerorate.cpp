@@ -78,4 +78,10 @@ void ZeroRateModel::getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix
   }
 }
 
+const ZeroRateModel::MeasurementVector* ZeroRateModel::getFixedMeasurementVector()
+{
+  static MeasurementVector zero = 0.0;
+  return &zero;
+}
+
 } // namespace hector_pose_estimation
