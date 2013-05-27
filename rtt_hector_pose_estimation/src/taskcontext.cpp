@@ -26,7 +26,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/hector_pose_estimation_rtt.h>
+#include <hector_pose_estimation/rtt/taskcontext.h>
 #include "services.h"
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
