@@ -148,8 +148,10 @@ Magnetic::Magnetic(const std::string &name)
   : Measurement_<MagneticModel>(name)
   , auto_heading_(true)
   , reference_(0)
+  , deviation_(3, 0.0)
 {
   parameters().add("auto_heading", auto_heading_);
+  parameters().add("deviation", deviation_);
 }
 
 void Magnetic::onReset() {
@@ -157,9 +159,9 @@ void Magnetic::onReset() {
 }
 
 const MagneticModel::MeasurementVector& Magnetic::getVector(const Magnetic::Update& update) {
-  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getVector(update);
+  y_ = Measurement_<MagneticModel>::getVector(update) + deviation_;
+  if (getModel()->hasMagnitude()) return y_;
 
-  y_ = Measurement_<MagneticModel>::getVector(update);
   double c = 1.0 / y_.norm();
   if (isinf(c)) {
     y_ = MeasurementVector(0.0);
@@ -173,12 +175,16 @@ const MagneticModel::NoiseCovariance& Magnetic::getCovariance(const Magnetic::Up
   if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getCovariance(update);
 
   R_ = Measurement_<MagneticModel>::getCovariance(update);
-  double c = 1.0 / Measurement_<MagneticModel>::getVector(update).norm();
-  if (isinf(c)) {
-    R_ = NoiseCovariance(1.0);
-  } else {
-    R_ =  R_ * (c*c);
+  if (update.hasCovariance()) {
+    double c = 1.0 / Measurement_<MagneticModel>::getVector(update).norm();
+    if (isinf(c)) {
+      R_ = 0.0;
+      R_(1,1) = R_(2,2) = R_(3,3) = 1.0;
+    } else {
+      R_ =  R_ * (c*c);
+    }
   }
+
   return R_;
 }
 

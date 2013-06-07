@@ -82,6 +82,7 @@ public:
 private:
   bool auto_heading_;
   GlobalReference *reference_;
+  ColumnVector deviation_;
 
   MeasurementVector y_;
   NoiseCovariance R_;

@@ -31,6 +31,8 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <hector_pose_estimation/matrix.h>
+
 namespace hector_pose_estimation {
 
 template <typename T>
@@ -53,11 +55,39 @@ public:
   }
 };
 
+template <>
+class RegisterParameterImpl<ColumnVector> {
+public:
+  static bool registerParam(ParameterPtr& parameter, ros::NodeHandle nh) {
+    try {
+      TypedParameter<ColumnVector> p(*parameter);
+      std::string param_key(boost::algorithm::to_lower_copy(parameter->key));
+      XmlRpc::XmlRpcValue vector;
+      if (!nh.getParam(param_key, vector)) {
+        /// nh.setParam(param_key, p.value);
+        ROS_DEBUG_STREAM("Not registered vector parameter " << param_key << ". Using defaults.");
+      } else {
+        if (vector.getType() != XmlRpc::XmlRpcValue::TypeArray) {
+          ROS_WARN_STREAM("Found parameter " << param_key << ", but it's not an array");
+          return false;
+        }
+        p.value.resize(vector.size());
+        for(int i = 0; i < vector.size(); ++i) p.value[i] = vector[i];
+        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value);
+      }
+      return true;
+    } catch(std::bad_cast&) {
+      return false;
+    }
+  }
+};
+
 static void registerParamRos(ParameterPtr& parameter, ros::NodeHandle nh) {
   if (RegisterParameterImpl<std::string>::registerParam(parameter, nh)) return;
   if (RegisterParameterImpl<double>::registerParam(parameter, nh)) return;
   if (RegisterParameterImpl<int>::registerParam(parameter, nh)) return;
   if (RegisterParameterImpl<bool>::registerParam(parameter, nh)) return;
+  if (RegisterParameterImpl<ColumnVector>::registerParam(parameter, nh)) return;
   ROS_ERROR("Could not register parameter %s due to unknown type %s!", parameter->key.c_str(), parameter->type());
 }
 
