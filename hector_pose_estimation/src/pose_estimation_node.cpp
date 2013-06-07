@@ -86,6 +86,7 @@ bool PoseEstimationNode::init() {
   velocity_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("velocity", 10, false);
   imu_publisher_         = getNodeHandle().advertise<sensor_msgs::Imu>("imu", 10, false);
   global_publisher_      = getNodeHandle().advertise<sensor_msgs::NavSatFix>("global", 10, false);
+  euler_publisher_       = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("euler", 10, false);
 
   angular_velocity_bias_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("angular_velocity_bias", 10, false);
   linear_acceleration_bias_publisher_ = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("linear_acceleration_bias", 10, false);
@@ -123,14 +124,7 @@ void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
   publish();
 }
 
-#if defined(USE_MAV_MSGS)
-void PoseEstimationNode::heightCallback(const mav_msgs::HeightConstPtr& height) {
-  Height::MeasurementVector update(1);
-  update = height->height;
-  pose_estimation_->getMeasurement("height")->add(Height::Update(update));
-}
-
-#elif defined(USE_HECTOR_UAV_MSGS)
+#if defined(USE_HECTOR_UAV_MSGS)
 void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& altimeter) {
   pose_estimation_->getMeasurement("baro")->add(Baro::Update(altimeter->pressure, altimeter->qnh));
 }
@@ -223,6 +217,13 @@ void PoseEstimationNode::publish() {
     sensor_msgs::NavSatFix global_msg;
     pose_estimation_->getGlobalPosition(global_msg);
     global_publisher_.publish(global_msg);
+  }
+
+  if (euler_publisher_) {
+    geometry_msgs::Vector3Stamped euler_msg;
+    pose_estimation_->getHeader(euler_msg.header);
+    pose_estimation_->getOrientation(euler_msg.vector.x, euler_msg.vector.y, euler_msg.vector.z);
+    euler_publisher_.publish(euler_msg);
   }
 
   if (angular_velocity_bias_publisher_ || linear_acceleration_bias_publisher_) {

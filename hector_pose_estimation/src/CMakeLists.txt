@@ -1,8 +1,3 @@
-option(USE_HECTOR_UAV_MSGS "Use hector_uav_msgs message types" OFF)
-if(USE_HECTOR_UAV_MSGS)
-  add_definitions(-DUSE_HECTOR_UAV_MSGS)
-endif(USE_HECTOR_UAV_MSGS)
-
 rosbuild_add_library(hector_pose_estimation_nodelet pose_estimation_nodelet.cpp)
 target_link_libraries(hector_pose_estimation_nodelet hector_pose_estimation)
 
