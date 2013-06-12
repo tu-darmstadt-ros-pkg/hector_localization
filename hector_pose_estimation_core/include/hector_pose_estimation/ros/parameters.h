@@ -26,85 +26,23 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/height.h>
-#include <hector_pose_estimation/pose_estimation.h>
-#include <ros/console.h>
+#ifndef HECTOR_POSE_ESTIMATION_ROS_PARAMETERS_H
+#define HECTOR_POSE_ESTIMATION_ROS_PARAMETERS_H
 
-#include <boost/bind.hpp>
+#include <hector_pose_estimation/parameters.h>
+#include <ros/node_handle.h>
 
 namespace hector_pose_estimation {
 
-HeightModel::HeightModel()
-  : MeasurementModel(MeasurementDimension)
-{
-  stddev_ = 10.0;
-  elevation_ = 0.0;
-  parameters().add("stddev", stddev_);
-}
+  struct ParameterRegistryROS : public ParameterRegistry {
+    ParameterRegistryROS(ros::NodeHandle nh);
+    virtual void operator()(ParameterPtr);
 
-bool HeightModel::init()
-{
-  NoiseCovariance noise = 0.0;
-  noise(1,1) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-  return true;
-}
-
-HeightModel::~HeightModel() {}
-
-SystemStatus HeightModel::getStatusFlags() const {
-  return STATE_Z_POSITION;
-}
-
-ColumnVector HeightModel::ExpectedValueGet() const {
-  this->y_(1) = x_(POSITION_Z) + getElevation();
-  return y_;
-}
-
-Matrix HeightModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
-  C_(1,POSITION_Z) = 1.0;
-  return C_;
-}
-
-HeightBaroCommon::HeightBaroCommon(Measurement* parent)
-{
-  auto_elevation_ = true;
-  elevation_initialized_ = false;
-  parent->parameters().add("auto_elevation", auto_elevation_);
-}
-
-HeightBaroCommon::~HeightBaroCommon() {}
-
-void HeightBaroCommon::onReset() {
-  elevation_initialized_ = false;
-}
-
-double HeightBaroCommon::resetElevation(PoseEstimation &estimator, boost::function<double()> altitude_func) {
-  if (!elevation_initialized_) {
-    estimator.globalReference()->setCurrentAltitude(estimator, altitude_func());
-    elevation_initialized_ = true;
-  }
-
-  return estimator.globalReference()->position().altitude;
-}
-
-void Height::onReset() {
-  HeightBaroCommon::onReset();
-}
-
-template <typename T> struct functor_wrapper
-{
-  functor_wrapper(const T& value) : value(value) {}
-  T& operator()() { return value; }
-  const T& operator()() const { return value; }
-private:
-  T value;
-};
-
-bool Height::beforeUpdate(PoseEstimation &estimator, const Height::Update &update) {
-  setElevation(resetElevation(estimator, functor_wrapper<double>(update.getVector()(1))));
-  return true;
-}
+  private:
+    template <typename T> struct Handler;
+    ros::NodeHandle nh_;
+  };
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_ROS_PARAMETERS_H

@@ -39,6 +39,8 @@
 
 namespace hector_pose_estimation {
 
+class BaroUpdate;
+
 class BaroModel : public HeightModel
 {
 public:
@@ -51,7 +53,7 @@ public:
   void setQnh(double qnh) { qnh_ = qnh; }
   double getQnh() const { return qnh_; }
 
-  double getAltitude(const Update_<BaroModel>& update);
+  double getAltitude(const BaroUpdate& update);
 
 protected:
   double qnh_;

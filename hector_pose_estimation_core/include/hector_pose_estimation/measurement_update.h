@@ -86,14 +86,18 @@ protected:
 };
 
 namespace internal {
-  template <class ConcreteModel, class ConcreteUpdate = Update_<ConcreteModel>, class Enable = void>
+  template <class ConcreteModel, class ConcreteUpdate = typename Update_<ConcreteModel>::Type, class Enable = void>
   struct UpdateInspector {
-    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const ConcreteModel*) { return *static_cast<typename ConcreteModel::MeasurementVector *>(0); }
-    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update, const ConcreteModel*) { return *static_cast<typename ConcreteModel::NoiseCovariance *>(0); }
+    static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &, const ConcreteModel*) {
+      throw std::runtime_error("You have to implement the UpdateInspector template class for your update type if you do not inherit from the Update_<MeasurementModel> class.");
+    }
+    static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &, const ConcreteModel*) {
+      throw std::runtime_error("You have to implement the UpdateInspector template class for your update type if you do not inherit from the Update_<MeasurementModel> class.");
+    }
   };
 
   template <class ConcreteModel, class ConcreteUpdate>
-  struct UpdateInspector<ConcreteModel, ConcreteUpdate, typename boost::enable_if<boost::is_base_of<Update_<ConcreteModel>,ConcreteUpdate> >::type >
+  struct UpdateInspector<ConcreteModel, ConcreteUpdate, typename boost::enable_if<boost::is_base_of<typename Update_<ConcreteModel>::Type,ConcreteUpdate> >::type >
   {
     static typename ConcreteModel::MeasurementVector const& getVector(const ConcreteUpdate &update, const ConcreteModel*) { return update.getVector(); }
     static typename ConcreteModel::NoiseCovariance const& getCovariance(const ConcreteUpdate &update, const ConcreteModel*) { return update.getCovariance(); }

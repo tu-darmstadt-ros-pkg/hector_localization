@@ -527,6 +527,12 @@ void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
   getHeader(global.header);
   global.header.frame_id = world_frame_;
 
+  if ((getSystemStatus() & STATE_XY_POSITION) && globalReference()->hasPosition()) {
+    global.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
+  } else {
+    global.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
+  }
+
   getGlobalPosition(global.latitude, global.longitude, global.altitude);
   global.latitude  *= 180.0/M_PI;
   global.longitude *= 180.0/M_PI;

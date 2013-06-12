@@ -34,14 +34,14 @@ namespace hector_pose_estimation {
 MagneticModel::MagneticModel()
   : MeasurementModel(MeasurementDimension)
   , declination_(0.0), inclination_(60.0 * M_PI/180.0), magnitude_(0.0)
-  , C_full_(3,StateDimension)
+//  , C_full_(3,StateDimension)
 {
   parameters().add("stddev", stddev_, 1.0);
   parameters().add("declination", declination_);
   parameters().add("inclination", inclination_);
   parameters().add("magnitude", magnitude_);
 
-  C_full_= 0.0;
+//  C_full_= 0.0;
 }
 
 MagneticModel::~MagneticModel() {}
@@ -82,49 +82,78 @@ ColumnVector MagneticModel::ExpectedValueGet() const {
 Matrix MagneticModel::dfGet(unsigned int i) const {
   if (i != 0) return Matrix();
 
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
+  const double& qw = x_(QUATERNION_W);
+  const double& qx = x_(QUATERNION_X);
+  const double& qy = x_(QUATERNION_Y);
+  const double& qz = x_(QUATERNION_Z);
+  const double& m1 = magnetic_field_reference_(1);
+  const double& m2 = magnetic_field_reference_(2);
+//  const double& m3 = magnetic_field_reference_(3);
 
-  C_full_(1,QUATERNION_W) =  2.0*qw * magnetic_field_reference_(1) + 2.0*qz * magnetic_field_reference_(2) - 2.0*qy * magnetic_field_reference_(3);
-  C_full_(1,QUATERNION_X) =  2.0*qx * magnetic_field_reference_(1) + 2.0*qy * magnetic_field_reference_(2) + 2.0*qz * magnetic_field_reference_(3);
-  C_full_(1,QUATERNION_Y) = -2.0*qy * magnetic_field_reference_(1) + 2.0*qx * magnetic_field_reference_(2) - 2.0*qw * magnetic_field_reference_(3);
-  C_full_(1,QUATERNION_Z) = -2.0*qz * magnetic_field_reference_(1) + 2.0*qw * magnetic_field_reference_(2) + 2.0*qx * magnetic_field_reference_(3);
-  C_full_(2,QUATERNION_W) = -2.0*qz * magnetic_field_reference_(1) + 2.0*qw * magnetic_field_reference_(2) + 2.0*qx * magnetic_field_reference_(3);
-  C_full_(2,QUATERNION_X) =  2.0*qy * magnetic_field_reference_(1) - 2.0*qx * magnetic_field_reference_(2) + 2.0*qw * magnetic_field_reference_(3);
-  C_full_(2,QUATERNION_Y) =  2.0*qx * magnetic_field_reference_(1) + 2.0*qy * magnetic_field_reference_(2) + 2.0*qz * magnetic_field_reference_(3);
-  C_full_(2,QUATERNION_Z) = -2.0*qw * magnetic_field_reference_(1) - 2.0*qz * magnetic_field_reference_(2) + 2.0*qy * magnetic_field_reference_(3);
-  C_full_(3,QUATERNION_W) =  2.0*qy * magnetic_field_reference_(1) - 2.0*qx * magnetic_field_reference_(2) + 2.0*qw * magnetic_field_reference_(3);
-  C_full_(3,QUATERNION_X) =  2.0*qz * magnetic_field_reference_(1) - 2.0*qw * magnetic_field_reference_(2) - 2.0*qx * magnetic_field_reference_(3);
-  C_full_(3,QUATERNION_Y) =  2.0*qw * magnetic_field_reference_(1) + 2.0*qz * magnetic_field_reference_(2) - 2.0*qy * magnetic_field_reference_(3);
-  C_full_(3,QUATERNION_Z) =  2.0*qx * magnetic_field_reference_(1) + 2.0*qy * magnetic_field_reference_(2) + 2.0*qz * magnetic_field_reference_(3);
-
+//  C_full_(1,QUATERNION_W) =  2.0*qw * m1 + 2.0*qz * m2 - 2.0*qy * m3;
+//  C_full_(1,QUATERNION_X) =  2.0*qx * m1 + 2.0*qy * m2 + 2.0*qz * m3;
+//  C_full_(1,QUATERNION_Y) = -2.0*qy * m1 + 2.0*qx * m2 - 2.0*qw * m3;
+//  C_full_(1,QUATERNION_Z) = -2.0*qz * m1 + 2.0*qw * m2 + 2.0*qx * m3;
+//  C_full_(2,QUATERNION_W) = -2.0*qz * m1 + 2.0*qw * m2 + 2.0*qx * m3;
+//  C_full_(2,QUATERNION_X) =  2.0*qy * m1 - 2.0*qx * m2 + 2.0*qw * m3;
+//  C_full_(2,QUATERNION_Y) =  2.0*qx * m1 + 2.0*qy * m2 + 2.0*qz * m3;
+//  C_full_(2,QUATERNION_Z) = -2.0*qw * m1 - 2.0*qz * m2 + 2.0*qy * m3;
+//  C_full_(3,QUATERNION_W) =  2.0*qy * m1 - 2.0*qx * m2 + 2.0*qw * m3;
+//  C_full_(3,QUATERNION_X) =  2.0*qz * m1 - 2.0*qw * m2 - 2.0*qx * m3;
+//  C_full_(3,QUATERNION_Y) =  2.0*qw * m1 + 2.0*qz * m2 - 2.0*qy * m3;
+//  C_full_(3,QUATERNION_Z) =  2.0*qx * m1 + 2.0*qy * m2 + 2.0*qz * m3;
   // return C_full_;
 
+  //
+  // Magnetic field sensor should only measure the heading, not roll/pitch:
+  //
   // q = [qw qx qy qz]';
-  // dq/dyaw * dyaw*dq = 1/2 * [-qz -qy qx qw]' * 2 * [-qz; -qy; qx; qw] =
+  // dq/dyaw * dyaw/dq = 1/2 * [-qz -qy qx qw]' * 2 * [-qz -qy qx qw] =
   //  [ qz*qz  qz*qy -qz*qx -qz*qw ;
   //    qy*qz  qy*qy -qy*qx -qy*qw ;
   //   -qx*qz -qx*qy  qx*qx  qx*qw ;
   //   -qw*qz -qw*qy  qw*qx  qw*qw ]
+  //
+  // C = C_full * (dq/dyaw * dyaw/dq)
 
-  for(int i = 1; i <= 3; ++i) {
-    C_(i,QUATERNION_W) =  C_full_(i,QUATERNION_W) * qz*qz + C_full_(i,QUATERNION_X) * qy*qz - C_full_(i,QUATERNION_Y) * qx*qz - C_full_(i,QUATERNION_Z) * qw*qz;
-    C_(i,QUATERNION_X) =  C_full_(i,QUATERNION_W) * qz*qy + C_full_(i,QUATERNION_X) * qy*qy - C_full_(i,QUATERNION_Y) * qx*qy - C_full_(i,QUATERNION_Z) * qw*qy;
-    C_(i,QUATERNION_Y) = -C_full_(i,QUATERNION_W) * qz*qx - C_full_(i,QUATERNION_X) * qy*qx + C_full_(i,QUATERNION_Y) * qx*qx + C_full_(i,QUATERNION_Z) * qw*qx;
-    C_(i,QUATERNION_Z) = -C_full_(i,QUATERNION_W) * qz*qw - C_full_(i,QUATERNION_X) * qy*qw + C_full_(i,QUATERNION_Y) * qx*qw + C_full_(i,QUATERNION_Z) * qw*qw;
-  }
+//  for(int i = 1; i <= 3; ++i) {
+//    C_(i,QUATERNION_W) =  C_full_(i,QUATERNION_W) * qz*qz + C_full_(i,QUATERNION_X) * qy*qz - C_full_(i,QUATERNION_Y) * qx*qz - C_full_(i,QUATERNION_Z) * qw*qz;
+//    C_(i,QUATERNION_X) =  C_full_(i,QUATERNION_W) * qz*qy + C_full_(i,QUATERNION_X) * qy*qy - C_full_(i,QUATERNION_Y) * qx*qy - C_full_(i,QUATERNION_Z) * qw*qy;
+//    C_(i,QUATERNION_Y) = -C_full_(i,QUATERNION_W) * qz*qx - C_full_(i,QUATERNION_X) * qy*qx + C_full_(i,QUATERNION_Y) * qx*qx + C_full_(i,QUATERNION_Z) * qw*qx;
+//    C_(i,QUATERNION_Z) = -C_full_(i,QUATERNION_W) * qz*qw - C_full_(i,QUATERNION_X) * qy*qw + C_full_(i,QUATERNION_Y) * qx*qw + C_full_(i,QUATERNION_Z) * qw*qw;
+//  }
+
+  double temp1 = -m2*qw*qw + 2*m1*qw*qz - m2*qx*qx + 2*m1*qx*qy + m2*qy*qy + m2*qz*qz;
+  double temp2 =  m1*qw*qw + 2*m2*qw*qz - m1*qx*qx - 2*m2*qx*qy + m1*qy*qy - m1*qz*qz;
+  double temp3 =  m1*qw*qx +   m2*qw*qy + m2*qx*qz -   m1*qy*qz;
+  C_(1,QUATERNION_W) =  2*qz*temp1;
+  C_(1,QUATERNION_X) =  2*qy*temp1;
+  C_(1,QUATERNION_Y) = -2*qx*temp1;
+  C_(1,QUATERNION_Z) = -2*qw*temp1;
+  C_(2,QUATERNION_W) =  2*qz*temp2;
+  C_(2,QUATERNION_X) =  2*qy*temp2;
+  C_(2,QUATERNION_Y) = -2*qx*temp2;
+  C_(2,QUATERNION_Z) = -2*qw*temp2;
+  C_(3,QUATERNION_W) = -4*qz*temp3;
+  C_(3,QUATERNION_X) = -4*qy*temp3;
+  C_(3,QUATERNION_Y) =  4*qx*temp3;
+  C_(3,QUATERNION_Z) =  4*qw*temp3;
 
   return C_;
 }
 
-double MagneticModel::getMagneticHeading(const MeasurementVector &y) const {
-  return -(-atan2(y(2), y(1)));
+double MagneticModel::getMagneticHeading(const StateVector& state, const MeasurementVector &y) const {
+  MeasurementVector y_nav;
+  const double& qw = state(QUATERNION_W), qx = state(QUATERNION_X), qy = state(QUATERNION_Y), qz = state(QUATERNION_Z);
+  y_nav(1) = y(1) * (qw*qw + qx*qx - qy*qy - qz*qz) + y(2) * (2*qx*qy - 2*qw*qz)             + y(3) * (2*qw*qy + 2*qx*qz);
+  y_nav(2) = y(1) * (2*qw*qz + 2*qx*qy)             + y(2) * (qw*qw - qx*qx + qy*qy - qz*qz) + y(3) * (2*qy*qz - 2*qw*qx);
+  double heading_nav = -atan2(2*qx*qy + 2*qw*qz, qw*qw + qx*qx - qy*qy - qz*qz);
+
+  return heading_nav - (-atan2(y_nav(2), y_nav(1)));
 }
 
-double MagneticModel::getTrueHeading(const MeasurementVector &y) const {
-  return getMagneticHeading(y) + declination_;
+double MagneticModel::getTrueHeading(const StateVector& state, const MeasurementVector &y) const {
+  return getMagneticHeading(state, y) + declination_;
 }
 
 void MagneticModel::updateMagneticField()
@@ -194,13 +223,7 @@ bool Magnetic::beforeUpdate(PoseEstimation &estimator, const Magnetic::Update &u
 
   if (reference_ != estimator.globalReference()) {
     reference_ = estimator.globalReference();
-
-    if (auto_heading_) {
-      double yaw, pitch, roll;
-      estimator.getOrientation(yaw, pitch, roll);
-      reference_->setHeading(getModel()->getTrueHeading(update.getVector()) - (-yaw));
-      ROS_INFO("Set new reference heading to %.1f degress", reference_->heading() * 180.0 / M_PI);
-    }
+    if (auto_heading_) reference_->setCurrentHeading(estimator, getModel()->getTrueHeading(estimator.getState(), getVector(update)));
   }
 
   getModel()->setReference(reference_->heading());

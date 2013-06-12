@@ -50,8 +50,8 @@ public:
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
 
-  double getMagneticHeading(const MeasurementVector& y) const;
-  double getTrueHeading(const MeasurementVector& y) const;
+  double getMagneticHeading(const StateVector& state, const MeasurementVector& y) const;
+  double getTrueHeading(const StateVector& state, const MeasurementVector& y) const;
 
   void setReference(const GlobalReference::Heading &reference_heading);
   bool hasMagnitude() const { return magnitude_ != 0.0; }
@@ -63,7 +63,7 @@ protected:
 
   MeasurementVector magnetic_field_north_;
   MeasurementVector magnetic_field_reference_;
-  mutable Matrix C_full_;
+//  mutable Matrix C_full_;
 };
 
 class Magnetic : public Measurement_<MagneticModel>
