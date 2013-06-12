@@ -35,6 +35,8 @@
 #include <hector_pose_estimation/measurements/magnetic.h>
 #include <hector_pose_estimation/measurements/gps.h>
 
+#include <hector_pose_estimation/ros/parameters.h>
+
 #include <rtt/Component.hpp>
 
 namespace hector_pose_estimation {
@@ -77,8 +79,8 @@ PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, co
     this->provides()->addService(RTT::Service::shared_ptr(new MeasurementService(this, *it)));
   }
 
-  PoseEstimation::getParameters().registerParamsRos(ros::NodeHandle(param_namespace_));
-  PoseEstimation::parameters().registerParams(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  PoseEstimation::getParameters().initialize(ParameterRegistryROS(ros::NodeHandle(param_namespace_)));
+  PoseEstimation::parameters().initialize(boost::bind(&registerParamAsProperty, _1, this->properties()));
 }
 
 PoseEstimationTaskContext::~PoseEstimationTaskContext()

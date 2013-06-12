@@ -35,10 +35,6 @@
 #include <boost/function.hpp>
 #include <boost/type_traits.hpp>
 
-namespace ros {
-  class NodeHandle;
-}
-
 namespace hector_pose_estimation {
 
   class Parameter;
@@ -143,8 +139,7 @@ namespace hector_pose_estimation {
       return it;
     }
 
-    void registerParamsRos(ros::NodeHandle nh) const;
-    void registerParams(const ParameterRegisterFunc& func) const;
+    void initialize(ParameterRegisterFunc func) const;
   };
 
   static inline ParameterList operator+(ParameterList const& list1, ParameterList const& list2)
@@ -152,6 +147,10 @@ namespace hector_pose_estimation {
     ParameterList result;
     return result.add(list1).add(list2);
   }
+
+  struct ParameterRegistry {
+    virtual void operator()(ParameterPtr) {}
+  };
 
 } // namespace hector_pose_estimation
 

@@ -33,7 +33,7 @@ namespace hector_pose_estimation {
 SystemService::SystemService(RTT::TaskContext *owner, const SystemPtr& system, const std::string& name)
   : RTT::Service(name.empty() ? system->getName() : name, owner)
 {
-  system->parameters().registerParams(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  system->parameters().initialize(boost::bind(&registerParamAsProperty, _1, this->properties()));
 }
 
 SystemService::~SystemService()
@@ -42,7 +42,7 @@ SystemService::~SystemService()
 MeasurementService::MeasurementService(RTT::TaskContext *owner, const MeasurementPtr& measurement, const std::string& name)
   : RTT::Service(name.empty() ? measurement->getName() : name, owner)
 {
-  measurement->parameters().registerParams(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  measurement->parameters().initialize(boost::bind(&registerParamAsProperty, _1, this->properties()));
 }
 
 MeasurementService::~MeasurementService()

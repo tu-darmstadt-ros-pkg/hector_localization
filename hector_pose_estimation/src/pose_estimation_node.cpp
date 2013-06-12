@@ -27,6 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/pose_estimation_node.h>
+#include <hector_pose_estimation/ros/parameters.h>
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
@@ -61,7 +62,7 @@ PoseEstimationNode::~PoseEstimationNode()
 }
 
 bool PoseEstimationNode::init() {
-  pose_estimation_->getParameters().registerParamsRos(getPrivateNodeHandle());
+  pose_estimation_->getParameters().initialize(ParameterRegistryROS(getPrivateNodeHandle()));
 
   if (!pose_estimation_->init()) {
     ROS_ERROR("Intitialization of pose estimation failed!");
