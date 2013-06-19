@@ -31,6 +31,8 @@
 #include <hector_pose_estimation/bfl_conversions.h>
 #include <Eigen/Geometry>
 
+#include <boost/bind.hpp>
+
 namespace hector_pose_estimation {
 
 PoseUpdate::PoseUpdate(const std::string& name)
@@ -163,7 +165,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Position Update: ");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_xy", max_position_xy_error_);
+      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_xy", max_position_xy_error_, boost::bind(&PositionXYModel::updateState, position_xy_model_, _1, _2, _3, _4, _5));
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << position_xy_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_XY_POSITION;
@@ -189,7 +191,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Height Update: ");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(1) << ", H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(1) << ", Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_z", max_position_z_error_);
+      double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "position_z", max_position_z_error_, boost::bind(&PositionZModel::updateState, position_z_model_, _1, _2, _3, _4, _5));
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << position_z_model_.PredictionGet(ColumnVector(), state) << ", Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_Z_POSITION;
@@ -219,7 +221,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
       ColumnVector error(y - x);
       error(1) = error(1) - 2.0*M_PI * round(error(1) / (2.0*M_PI));
 
-      double innovation = updateInternal(covariance, state, Iy, error, H, covariance, state, "yaw", max_yaw_error_);
+      double innovation = updateInternal(covariance, state, Iy, error, H, covariance, state, "yaw", max_yaw_error_, boost::bind(&YawModel::updateState, yaw_model_, _1, _2, _3, _4, _5));
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << yaw_model_.PredictionGet(ColumnVector(), state) * 180.0/M_PI << "°, Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
       status_flags_ |= STATE_YAW;
@@ -325,7 +327,7 @@ bool PoseUpdate::update(PoseEstimation &estimator, const MeasurementUpdate &upda
     ROS_DEBUG_STREAM_NAMED("poseupdate", "Twist Update: ");
     ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H*covariance*H.transpose()) << "], Ix = [ " << (H*covariance*H.transpose()).inverse() << "]");
     ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-    double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "twist", 0.0);
+    double innovation = updateInternal(covariance, state, Iy, y - x, H, covariance, state, "twist");
     ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << twist_model_.PredictionGet(ColumnVector(), state).transpose() << "], Pxy = [ " << (H*covariance*H.transpose()) << " ], innovation = " << innovation);
 
     break;
@@ -345,7 +347,7 @@ double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatr
   return tr_y / (tr_x + tr_y);
 }
 
-double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error) {
+double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error, JumpFunction jump_function) {
   Matrix HT(H.transpose());
   SymmetricMatrix H_Px_HT(H*Px*HT);
 
@@ -374,13 +376,13 @@ double PoseUpdate::updateInternal(const SymmetricMatrix &Px, const ColumnVector 
   if (max_error > 0.0) {
     double error2 = error.transpose() * Ix * (Ix + Iy).inverse() * Iy * error;
     if (error2 > max_error * max_error) {
-      if (!jump_on_max_error_) {
+      if (!jump_on_max_error_ || !jump_function) {
         ROS_WARN_STREAM_NAMED("poseupdate", "Ignoring poseupdate for " << text << " as the error [ " << error.transpose() << " ], |error| = " << sqrt(error2) << " sigma exceeds max_error!");
         return 0.0;
       } else {
         ROS_WARN_STREAM_NAMED("poseupdate", "Update for " << text << " with error [ " << error.transpose() << " ], |error| = " << sqrt(error2) << " sigma exceeds max_error!");
-        alpha = 0.0;
-        beta = 1.0;
+        jump_function(Px, x, error, Pxy, xy);
+        return 0.0;
       }
     }
   }
@@ -415,6 +417,11 @@ Matrix PositionXYModel::dfGet(unsigned int i) const {
   return C_;
 }
 
+void PositionXYModel::updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const {
+  xy = x;
+  xy.sub(POSITION_X, POSITION_Y) = x.sub(POSITION_X, POSITION_Y) + diff;
+}
+
 ColumnVector PositionZModel::ExpectedValueGet() const {
   y_(1) = x_(POSITION_Z);
   return y_;
@@ -424,6 +431,11 @@ Matrix PositionZModel::dfGet(unsigned int i) const {
   if (i != 0) return Matrix();
   C_(1,POSITION_Z)   = 1.0;
   return C_;
+}
+
+void PositionZModel::updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const {
+  xy = x;
+  xy.sub(POSITION_Z, POSITION_Z) = x.sub(POSITION_Z, POSITION_Z) + diff;
 }
 
 ColumnVector YawModel::ExpectedValueGet() const {
@@ -454,6 +466,27 @@ Matrix YawModel::dfGet(unsigned int i) const {
   C_(1,QUATERNION_Z) = 2.0 * t3 * (qw * t1 + qz * t2);
 
   return C_;
+}
+
+void YawModel::updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const {
+  Eigen::Quaterniond rotation(Eigen::AngleAxisd(diff(1), Eigen::Vector3d::UnitZ()));
+
+  Eigen::MatrixXd S(StateDimension, StateDimension); S.setIdentity();
+  S.block(QUATERNION_W - 1, QUATERNION_W - 1, 4, 4) <<
+    rotation.w(), -rotation.x(), -rotation.y(), -rotation.z(),
+    rotation.x(),  rotation.w(), -rotation.z(),  rotation.y(),
+    rotation.y(),  rotation.z(),  rotation.w(), -rotation.x(),
+    rotation.z(), -rotation.y(),  rotation.x(),  rotation.w();
+
+  S.block(VELOCITY_X - 1, VELOCITY_X - 1, 3, 3) = rotation.toRotationMatrix().transpose();
+#ifdef USE_RATE_SYSTEM_MODEL
+  S.block(RATE_X - 1, RATE_X - 1, 3, 3) = S.block(VELOCITY_X - 1, VELOCITY_X - 1, 3, 3);
+#endif // USE_RATE_SYSTEM_MODEL
+
+  // ROS_DEBUG_STREAM_NAMED("poseupdate", "Jump yaw by " << (diff(1) * 180.0/M_PI) << " degrees. rotation = [" << rotation.coeffs().transpose() << "], S = [" << S << "].");
+
+  xy  = S * x;
+  Pxy = S * Px * S.transpose();
 }
 
 ColumnVector TwistModel::ExpectedValueGet() const {

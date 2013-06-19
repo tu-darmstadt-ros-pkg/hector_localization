@@ -33,6 +33,8 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 
+#include <boost/function.hpp>
+
 namespace hector_pose_estimation {
 
 class PositionXYModel : public MeasurementModel {
@@ -46,6 +48,8 @@ public:
 
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
+
+  void updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const;
 };
 
 class PositionZModel : public MeasurementModel {
@@ -59,6 +63,8 @@ public:
 
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
+
+  void updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const;
 };
 
 class YawModel : public MeasurementModel {
@@ -72,6 +78,8 @@ public:
 
   virtual ColumnVector ExpectedValueGet() const;
   virtual Matrix dfGet(unsigned int i) const;
+
+  void updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const;
 };
 
 class TwistModel : public MeasurementModel {
@@ -138,8 +146,9 @@ private:
 
   bool jump_on_max_error_;
 
+  typedef boost::function<void(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy)> JumpFunction;
   double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const;
-  double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error = 0.0);
+  double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error = 0.0, JumpFunction jump_function = JumpFunction());
 
 protected:
   Queue_<Update> queue_;
