@@ -6,9 +6,12 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
+#include <topic_tools/shape_shifter.h>
+
 std::string g_odometry_topic;
 std::string g_pose_topic;
 std::string g_imu_topic;
+std::string g_topic;
 std::string g_frame_id;
 std::string g_footprint_frame_id;
 std::string g_position_frame_id;
@@ -147,6 +150,28 @@ void imuCallback(sensor_msgs::Imu const &imu) {
   }
 }
 
+void multiCallback(topic_tools::ShapeShifter const &input) {
+  if (input.getDataType() == "nav_msgs/Odometry") {
+    nav_msgs::Odometry::ConstPtr odom = input.instantiate<nav_msgs::Odometry>();
+    odomCallback(*odom);
+    return;
+  }
+
+  if (input.getDataType() == "geometry_msgs/PoseStamped") {
+    geometry_msgs::PoseStamped::ConstPtr pose = input.instantiate<geometry_msgs::PoseStamped>();
+    poseCallback(*pose);
+    return;
+  }
+
+  if (input.getDataType() == "sensor_msgs/Imu") {
+    sensor_msgs::Imu::ConstPtr imu = input.instantiate<sensor_msgs::Imu>();
+    imuCallback(*imu);
+    return;
+  }
+
+  ROS_ERROR_THROTTLE(1.0, "message_to_tf received a %s message. Supported message types: nav_msgs/Odometry geometry_msgs/PoseStamped sensor_msgs/Imu", input.getDataType().c_str());
+}
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "message_to_tf");
 
@@ -158,6 +183,7 @@ int main(int argc, char** argv) {
   priv_nh.getParam("odometry_topic", g_odometry_topic);
   priv_nh.getParam("pose_topic", g_pose_topic);
   priv_nh.getParam("imu_topic", g_imu_topic);
+  priv_nh.getParam("topic", g_topic);
   priv_nh.getParam("frame_id", g_frame_id);
   priv_nh.getParam("footprint_frame_id", g_footprint_frame_id);
   priv_nh.getParam("position_frame_id", g_position_frame_id);
@@ -167,13 +193,14 @@ int main(int argc, char** argv) {
   g_transform_broadcaster = new tf::TransformBroadcaster;
 
   ros::NodeHandle node;
-  ros::Subscriber sub1, sub2, sub3;
+  ros::Subscriber sub1, sub2, sub3, sub4;
   if (!g_odometry_topic.empty()) sub1 = node.subscribe(g_odometry_topic, 10, &odomCallback);
   if (!g_pose_topic.empty())     sub2 = node.subscribe(g_pose_topic, 10, &poseCallback);
   if (!g_imu_topic.empty())      sub3 = node.subscribe(g_imu_topic, 10, &imuCallback);
+  if (!g_topic.empty())          sub4 = node.subscribe(g_topic, 10, &multiCallback);
 
-  if (!sub1 && !sub2 && !sub3) {
-    ROS_FATAL("Params odometry_topic, pose_topic and imu_topic are empty... nothing to do for me!");
+  if (!sub1 && !sub2 && !sub3 && !sub4) {
+    ROS_FATAL("Params odometry_topic, pose_topic, imu_topic and topic are empty... nothing to do for me!");
     return 1;
   }
 
