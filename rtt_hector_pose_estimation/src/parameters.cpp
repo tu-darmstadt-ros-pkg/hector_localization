@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2012, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,35 +26,39 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include "services.h"
+#include "parameters.h"
+#include <hector_pose_estimation/matrix.h>
+
+#include <rtt/Logger.hpp>
+#include <rtt/PropertyBag.hpp>
+#include <rtt/Property.hpp>
 
 namespace hector_pose_estimation {
 
-SystemService::SystemService(RTT::TaskContext *owner, const SystemPtr& system, const std::string& name)
-  : RTT::Service(name.empty() ? system->getName() : name, owner)
+ParameterRegistryProperties::ParameterRegistryProperties(RTT::PropertyBag *properties, bool set_all)
+  : properties_(properties)
+  , set_all_(set_all)
 {
-  system->parameters().setRegistry(boost::bind(&registerParamAsProperty, _1, _2, this->properties()), false);
 }
 
-SystemService::~SystemService()
-{}
+void ParameterRegistryProperties::operator ()(ParameterPtr parameter) {
+  properties_->removeProperty(properties_->getProperty(parameter->key));
+  if (parameter->hasType<std::string>()) { properties_->addProperty(parameter->key, parameter->as<std::string>()); return; }
+  if (parameter->hasType<double>())      { properties_->addProperty(parameter->key, parameter->as<double>()); return; }
+  if (parameter->hasType<int>())         { properties_->addProperty(parameter->key, parameter->as<int>()); return; }
+  if (parameter->hasType<bool>())        { properties_->addProperty(parameter->key, parameter->as<bool>()); return; }
 
-MeasurementService::MeasurementService(RTT::TaskContext *owner, const MeasurementPtr& measurement, const std::string& name)
-  : RTT::Service(name.empty() ? measurement->getName() : name, owner)
-{
-  measurement->parameters().setRegistry(boost::bind(&registerParamAsProperty, _1, _2, this->properties()), false);
-}
+  if (parameter->hasType< std::vector<double> >()) {
+    // TODO
+    // return;
+  }
 
-MeasurementService::~MeasurementService()
-{}
+  if (parameter->hasType< std::vector<ColumnVector> >()) {
+    // TODO
+    // return;
+  }
 
-bool registerParamAsProperty(const ParameterPtr &parameter, std::string key, RTT::PropertyBag *bag) {
-  bag->removeProperty(bag->getProperty(key));
-  if (parameter->hasType<std::string>()) { bag->addProperty(key, parameter->as<std::string>()); return true; }
-  if (parameter->hasType<double>())      { bag->addProperty(key, parameter->as<double>()); return true; }
-  if (parameter->hasType<int>())         { bag->addProperty(key, parameter->as<int>()); return true; }
-  if (parameter->hasType<bool>())        { bag->addProperty(key, parameter->as<bool>()); return true; }
-  return false;
+  RTT::log(RTT::Error) << "Could not register parameter " << parameter->key << " due to unknown type " << parameter->type() << "!" << RTT::endlog();
 }
 
 } // namespace hector_pose_estimation

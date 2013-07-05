@@ -34,6 +34,8 @@
 
 namespace hector_pose_estimation {
 
+  class PoseEstimation;
+
   class GlobalReference {
   public:
     struct Position {
@@ -61,9 +63,13 @@ namespace hector_pose_estimation {
     const Heading& heading() const { return heading_; }
     const Radius& radius() const { return radius_; }
 
-    GlobalReference& setPosition(double latitude, double longitude);
-    GlobalReference& setHeading(double heading);
-    GlobalReference& setAltitude(double altitude);
+    GlobalReference& setPosition(double latitude, double longitude, bool quiet = false);
+    GlobalReference& setHeading(double heading, bool quiet = false);
+    GlobalReference& setAltitude(double altitude, bool quiet = false);
+
+    GlobalReference& setCurrentPosition(const State& state, double latitude, double longitude);
+    GlobalReference& setCurrentHeading(const State& state, double heading);
+    GlobalReference& setCurrentAltitude(const State& state, double altitude);
 
     bool hasPosition() const { return has_position_; }
     bool hasHeading() const  { return has_heading_; }

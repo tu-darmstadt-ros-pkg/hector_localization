@@ -101,7 +101,7 @@ private:
   message_filters::Subscriber<sensor_msgs::NavSatFix> gps_subscriber_;
   message_filters::Subscriber<geometry_msgs::Vector3Stamped> gps_velocity_subscriber_;
   message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped> *gps_synchronizer_;
-  ros::Publisher state_publisher_, pose_publisher_, velocity_publisher_, imu_publisher_, global_publisher_;
+  ros::Publisher state_publisher_, pose_publisher_, velocity_publisher_, imu_publisher_, global_publisher_, euler_publisher_;
   ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_, gps_pose_publisher_;
   ros::Subscriber poseupdate_subscriber_, twistupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
@@ -111,6 +111,7 @@ private:
   tf::TransformListener *transform_listener_;
 
   bool publish_covariances_;
+  bool publish_world_other_transform_;
   std::string other_frame_;
 };
 

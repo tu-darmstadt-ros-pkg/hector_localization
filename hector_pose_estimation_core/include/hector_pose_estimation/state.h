@@ -163,6 +163,8 @@ public:
   RotationMatrix getRotationMatrix() const;
   void getRotationMatrix(RotationMatrix &R) const;
 
+  double getYaw() const;
+
   template <typename Derived> void setOrientation(const Eigen::MatrixBase<Derived>& orientation);
   template <typename Derived> void setRate(const Eigen::MatrixBase<Derived>& rate);
   template <typename Derived> void setPosition(const Eigen::MatrixBase<Derived>& position);

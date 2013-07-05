@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2012, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,74 +26,27 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_BARO_H
-#define HECTOR_POSE_ESTIMATION_BARO_H
-
-#include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/measurements/height.h>
-
-#ifdef USE_HECTOR_UAV_MSGS
-  #include <hector_uav_msgs/Altimeter.h>
-#endif
+#include "services.h"
+#include "parameters.h"
 
 namespace hector_pose_estimation {
 
-class BaroUpdate;
-
-class BaroModel : public HeightModel
+SystemService::SystemService(RTT::TaskContext *owner, const SystemPtr& system, const std::string& name)
+  : RTT::Service(name.empty() ? system->getName() : name, owner)
 {
-public:
-  BaroModel();
-  virtual ~BaroModel();
-
-  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
-
-  void setQnh(double qnh) { qnh_ = qnh; }
-  double getQnh() const { return qnh_; }
-
-  double getAltitude(const BaroUpdate& update);
-
-protected:
-  double qnh_;
-};
-
-class BaroUpdate : public Update_<BaroModel> {
-public:
-  BaroUpdate();
-  BaroUpdate(double pressure);
-  BaroUpdate(double pressure, double qnh);
-  double qnh() const { return qnh_; }
-  BaroUpdate& qnh(double qnh) { qnh_ = qnh; return *this; }
-
-  using Update_<BaroModel>::operator =;
-
-private:
-  double qnh_;
-};
-
-namespace traits {
-  template <> struct Update<BaroModel> { typedef BaroUpdate type; };
+  system->parameters().initialize(ParameterRegistryProperties(this->properties()));
 }
 
-extern template class Measurement_<BaroModel>;
+SystemService::~SystemService()
+{}
 
-class Baro : public Measurement_<BaroModel>, HeightBaroCommon
+MeasurementService::MeasurementService(RTT::TaskContext *owner, const MeasurementPtr& measurement, const std::string& name)
+  : RTT::Service(name.empty() ? measurement->getName() : name, owner)
 {
-public:
-  Baro(const std::string& name = "baro") : Measurement_<BaroModel>(name), HeightBaroCommon(this) {}
-  virtual ~Baro() {}
+  measurement->parameters().initialize(ParameterRegistryProperties(this->properties()));
+}
 
-  void setElevation(double elevation) { getModel()->setElevation(elevation); }
-  double getElevation() const { return getModel()->getElevation(); }
-
-  void setQnh(double qnh) { getModel()->setQnh(qnh); }
-  double getQnh() const { return getModel()->getQnh(); }
-
-  virtual void onReset();
-  virtual bool prepareUpdate(State &state, const Update &update);
-};
+MeasurementService::~MeasurementService()
+{}
 
 } // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_BARO_H

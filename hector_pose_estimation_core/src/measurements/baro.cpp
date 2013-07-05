@@ -56,7 +56,7 @@ void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
   }
 }
 
-double BaroModel::getAltitude(const Update_<BaroModel>& update)
+double BaroModel::getAltitude(const BaroUpdate& update)
 {
   return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
 }

@@ -33,6 +33,8 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 
+#include <boost/function.hpp>
+
 namespace hector_pose_estimation {
 
 class PositionXYModel : public MeasurementModel_<PositionXYModel,2> {
@@ -42,6 +44,8 @@ public:
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
   virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+  void updateState(State& state, const ColumnVector &diff) const;
 };
 
 class PositionZModel : public MeasurementModel_<PositionZModel,1> {
@@ -51,6 +55,8 @@ public:
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
   virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+  void updateState(State& state, const ColumnVector &diff) const;
 };
 
 class YawModel : public MeasurementModel_<YawModel,1> {
@@ -60,6 +66,8 @@ public:
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
   virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+  void updateState(State& state, const ColumnVector &diff) const;
 };
 
 class TwistModel : public MeasurementModel_<TwistModel,6> {
@@ -122,10 +130,11 @@ private:
 
   bool jump_on_max_error_;
 
+  typedef boost::function<void(State &state, const ColumnVector &diff)> JumpFunction;
   double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy);
 
   template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
-  double updateInternal(State &state, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, const std::string& text, const double max_error = 0.0);
+  double updateInternal(State &state, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, const std::string& text, const double max_error = 0.0, JumpFunction jump_function = JumpFunction());
 
 protected:
   Queue_<Update> queue_;

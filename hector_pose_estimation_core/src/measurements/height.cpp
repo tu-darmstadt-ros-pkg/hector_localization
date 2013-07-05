@@ -82,9 +82,8 @@ void HeightBaroCommon::onReset() {
 
 double HeightBaroCommon::resetElevation(const State &state, boost::function<double()> altitude_func) {
   if (!elevation_initialized_) {
-    GlobalReference::Instance()->setAltitude(altitude_func() - state.getPosition().z());
+    GlobalReference::Instance()->setCurrentAltitude(state, altitude_func());
     elevation_initialized_ = true;
-    ROS_INFO("Set new reference altitude to %f", GlobalReference::Instance()->position().altitude);
   }
 
   return  GlobalReference::Instance()->position().altitude;

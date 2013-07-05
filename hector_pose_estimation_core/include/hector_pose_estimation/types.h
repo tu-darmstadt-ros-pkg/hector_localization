@@ -94,6 +94,7 @@ namespace hector_pose_estimation {
 
   class PoseEstimation;
   class Filter;
+  class State;
 
   class SubState;
   template <int Dimension> class SubState_;

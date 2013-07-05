@@ -37,14 +37,14 @@ template class Measurement_<MagneticModel>;
 
 MagneticModel::MagneticModel()
   : declination_(0.0), inclination_(60.0 * M_PI/180.0), magnitude_(0.0)
-  , C_full_(3,StateDimension)
+//  , C_full_(3,StateDimension)
 {
   parameters().add("stddev", stddev_, 1.0);
   parameters().add("declination", declination_);
   parameters().add("inclination", inclination_);
   parameters().add("magnitude", magnitude_);
 
-  C_full_.setZero();
+//  C_full_.setZero();
 }
 
 MagneticModel::~MagneticModel() {}
@@ -82,18 +82,22 @@ void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
   State::ConstOrientationType q(state.getOrientation());
 
   if (state.getOrientationIndex() >= 0) {
-    C_full_(0,State::QUATERNION_W) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
-    C_full_(0,State::QUATERNION_X) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
-    C_full_(0,State::QUATERNION_Y) = -2.0*q.y() * magnetic_field_reference_.x() + 2.0*q.x() * magnetic_field_reference_.y() - 2.0*q.w() * magnetic_field_reference_.z();
-    C_full_(0,State::QUATERNION_Z) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
-    C_full_(1,State::QUATERNION_W) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
-    C_full_(1,State::QUATERNION_X) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
-    C_full_(1,State::QUATERNION_Y) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
-    C_full_(1,State::QUATERNION_Z) = -2.0*q.w() * magnetic_field_reference_.x() - 2.0*q.z() * magnetic_field_reference_.y() + 2.0*q.y() * magnetic_field_reference_.z();
-    C_full_(2,State::QUATERNION_W) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
-    C_full_(2,State::QUATERNION_X) =  2.0*q.z() * magnetic_field_reference_.x() - 2.0*q.w() * magnetic_field_reference_.y() - 2.0*q.x() * magnetic_field_reference_.z();
-    C_full_(2,State::QUATERNION_Y) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
-    C_full_(2,State::QUATERNION_Z) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
+    const double& m1 = magnetic_field_reference_.x();
+    const double& m2 = magnetic_field_reference_.y();
+//    const double& m3 = magnetic_field_reference_.y();
+
+//    C_full_(0,State::QUATERNION_W) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
+//    C_full_(0,State::QUATERNION_X) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
+//    C_full_(0,State::QUATERNION_Y) = -2.0*q.y() * magnetic_field_reference_.x() + 2.0*q.x() * magnetic_field_reference_.y() - 2.0*q.w() * magnetic_field_reference_.z();
+//    C_full_(0,State::QUATERNION_Z) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
+//    C_full_(1,State::QUATERNION_W) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
+//    C_full_(1,State::QUATERNION_X) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
+//    C_full_(1,State::QUATERNION_Y) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
+//    C_full_(1,State::QUATERNION_Z) = -2.0*q.w() * magnetic_field_reference_.x() - 2.0*q.z() * magnetic_field_reference_.y() + 2.0*q.y() * magnetic_field_reference_.z();
+//    C_full_(2,State::QUATERNION_W) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
+//    C_full_(2,State::QUATERNION_X) =  2.0*q.z() * magnetic_field_reference_.x() - 2.0*q.w() * magnetic_field_reference_.y() - 2.0*q.x() * magnetic_field_reference_.z();
+//    C_full_(2,State::QUATERNION_Y) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
+//    C_full_(2,State::QUATERNION_Z) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
 
     // return C_full_;
 
@@ -104,21 +108,43 @@ void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
     //   -qx*qz -qx*qy  qx*qx  qx*qw ;
     //   -qw*qz -qw*qy  qw*qx  qw*qw ]
 
-    for(int i = 0; i <= 2; ++i) {
-      C(i,State::QUATERNION_W) =  C_full_(i,State::QUATERNION_W) * q.z()*q.z() + C_full_(i,State::QUATERNION_X) * q.y()*q.z() - C_full_(i,State::QUATERNION_Y) * q.x()*q.z() - C_full_(i,State::QUATERNION_Z) * q.w()*q.z();
-      C(i,State::QUATERNION_X) =  C_full_(i,State::QUATERNION_W) * q.z()*q.y() + C_full_(i,State::QUATERNION_X) * q.y()*q.y() - C_full_(i,State::QUATERNION_Y) * q.x()*q.y() - C_full_(i,State::QUATERNION_Z) * q.w()*q.y();
-      C(i,State::QUATERNION_Y) = -C_full_(i,State::QUATERNION_W) * q.z()*q.x() - C_full_(i,State::QUATERNION_X) * q.y()*q.x() + C_full_(i,State::QUATERNION_Y) * q.x()*q.x() + C_full_(i,State::QUATERNION_Z) * q.w()*q.x();
-      C(i,State::QUATERNION_Z) = -C_full_(i,State::QUATERNION_W) * q.z()*q.w() - C_full_(i,State::QUATERNION_X) * q.y()*q.w() + C_full_(i,State::QUATERNION_Y) * q.x()*q.w() + C_full_(i,State::QUATERNION_Z) * q.w()*q.w();
-    }
+//    for(int i = 0; i <= 2; ++i) {
+//      C(i,State::QUATERNION_W) =  C_full_(i,State::QUATERNION_W) * q.z()*q.z() + C_full_(i,State::QUATERNION_X) * q.y()*q.z() - C_full_(i,State::QUATERNION_Y) * q.x()*q.z() - C_full_(i,State::QUATERNION_Z) * q.w()*q.z();
+//      C(i,State::QUATERNION_X) =  C_full_(i,State::QUATERNION_W) * q.z()*q.y() + C_full_(i,State::QUATERNION_X) * q.y()*q.y() - C_full_(i,State::QUATERNION_Y) * q.x()*q.y() - C_full_(i,State::QUATERNION_Z) * q.w()*q.y();
+//      C(i,State::QUATERNION_Y) = -C_full_(i,State::QUATERNION_W) * q.z()*q.x() - C_full_(i,State::QUATERNION_X) * q.y()*q.x() + C_full_(i,State::QUATERNION_Y) * q.x()*q.x() + C_full_(i,State::QUATERNION_Z) * q.w()*q.x();
+//      C(i,State::QUATERNION_Z) = -C_full_(i,State::QUATERNION_W) * q.z()*q.w() - C_full_(i,State::QUATERNION_X) * q.y()*q.w() + C_full_(i,State::QUATERNION_Y) * q.x()*q.w() + C_full_(i,State::QUATERNION_Z) * q.w()*q.w();
+//    }
+
+  double temp1 = -m2*q.w()*q.w() + 2*m1*q.w()*q.z() - m2*q.x()*q.x() + 2*m1*q.x()*q.y() + m2*q.y()*q.y() + m2*q.z()*q.z();
+  double temp2 =  m1*q.w()*q.w() + 2*m2*q.w()*q.z() - m1*q.x()*q.x() - 2*m2*q.x()*q.y() + m1*q.y()*q.y() - m1*q.z()*q.z();
+  double temp3 =  m1*q.w()*q.x() +   m2*q.w()*q.y() + m2*q.x()*q.z() -   m1*q.y()*q.z();
+  C(0,State::QUATERNION_W) =  2*q.z()*temp1;
+  C(0,State::QUATERNION_X) =  2*q.y()*temp1;
+  C(0,State::QUATERNION_Y) = -2*q.x()*temp1;
+  C(0,State::QUATERNION_Z) = -2*q.w()*temp1;
+  C(1,State::QUATERNION_W) =  2*q.z()*temp2;
+  C(1,State::QUATERNION_X) =  2*q.y()*temp2;
+  C(1,State::QUATERNION_Y) = -2*q.x()*temp2;
+  C(1,State::QUATERNION_Z) = -2*q.w()*temp2;
+  C(2,State::QUATERNION_W) = -4*q.z()*temp3;
+  C(2,State::QUATERNION_X) = -4*q.y()*temp3;
+  C(2,State::QUATERNION_Y) =  4*q.x()*temp3;
+  C(2,State::QUATERNION_Z) =  4*q.w()*temp3;
   }
 }
 
-double MagneticModel::getMagneticHeading(const MeasurementVector &y) const {
-  return -(-atan2(y.y(), y.x()));
+double MagneticModel::getMagneticHeading(const State& state, const MeasurementVector &y) const {
+  MeasurementVector y_nav;
+  State::ConstOrientationType q(state.getOrientation());
+  y_nav(0) = y(0) * (q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z()) + y(1) * (2*q.x()*q.y() - 2*q.w()*q.z())                         + y(2) * (2*q.w()*q.y() + 2*q.x()*q.z());
+  y_nav(1) = y(0) * (2*q.w()*q.z() + 2*q.x()*q.y())                         + y(1) * (q.w()*q.w() - q.x()*q.x() + q.y()*q.y() - q.z()*q.z()) + y(2) * (2*q.y()*q.z() - 2*q.w()*q.x());
+  double heading_nav = -atan2(2*q.x()*q.y() + 2*q.w()*q.z(), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
+
+  return heading_nav - (-atan2(y_nav(1), y_nav(0)));
 }
 
-double MagneticModel::getTrueHeading(const MeasurementVector &y) const {
-  return getMagneticHeading(y) + declination_;
+double MagneticModel::getTrueHeading(const State& state, const MeasurementVector &y) const {
+  return getMagneticHeading(state, y) + declination_;
 }
 
 void MagneticModel::updateMagneticField()
@@ -141,8 +167,11 @@ void MagneticModel::updateMagneticField()
 Magnetic::Magnetic(const std::string &name)
   : Measurement_<MagneticModel>(name)
   , auto_heading_(true)
+  , deviation_(3)
 {
+  deviation_.setZero();
   parameters().add("auto_heading", auto_heading_);
+  parameters().add("deviation", deviation_);
 }
 
 void Magnetic::onReset() {
@@ -150,9 +179,9 @@ void Magnetic::onReset() {
 }
 
 const MagneticModel::MeasurementVector& Magnetic::getVector(const Magnetic::Update& update, const State& state) {
-  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getVector(update, state);
+  y_ = Measurement_<MagneticModel>::getVector(update, state) + deviation_;
+  if (getModel()->hasMagnitude()) return y_;
 
-  y_ = Measurement_<MagneticModel>::getVector(update, state);
   double c = 1.0 / y_.norm();
   if (isinf(c)) {
     y_ = MeasurementVector(0.0);
@@ -181,12 +210,7 @@ bool Magnetic::prepareUpdate(State &state, const Update &update) {
 
   if (reference_ != GlobalReference::Instance()) {
     reference_ = GlobalReference::Instance();
-
-    if (auto_heading_) {
-      double yaw = Eigen::Quaterniond(state.getOrientation()).matrix().eulerAngles(2,1,0)[0];
-      reference_->setHeading(getModel()->getTrueHeading(update.getVector()) - (-yaw));
-      ROS_INFO("Set new reference heading to %.1f degress", reference_->heading() * 180.0 / M_PI);
-    }
+    if (auto_heading_) reference_->setCurrentHeading(state, getModel()->getTrueHeading(state, update.getVector()));
   }
 
   getModel()->setReference(reference_->heading());

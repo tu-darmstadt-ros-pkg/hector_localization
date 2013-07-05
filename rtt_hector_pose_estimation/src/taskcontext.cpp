@@ -26,14 +26,17 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/hector_pose_estimation_rtt.h>
+#include <hector_pose_estimation/rtt/taskcontext.h>
 #include "services.h"
+#include "parameters.h"
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
 #include <hector_pose_estimation/measurements/height.h>
 #include <hector_pose_estimation/measurements/magnetic.h>
 #include <hector_pose_estimation/measurements/gps.h>
+
+#include <hector_pose_estimation/ros/parameters.h>
 
 #include <rtt/Component.hpp>
 
@@ -80,8 +83,8 @@ PoseEstimationTaskContext::PoseEstimationTaskContext(const std::string& name, co
     this->provides()->addService(RTT::Service::shared_ptr(new MeasurementService(this, *it)));
   }
 
-  PoseEstimation::parameters().setNodeHandle(ros::NodeHandle(param_namespace_));
-  PoseEstimation::parameters().setRegistry(boost::bind(&registerParamAsProperty, _1, _2, this->properties()), false);
+  PoseEstimation::parameters().initialize(ParameterRegistryROS(ros::NodeHandle(param_namespace_)));
+  PoseEstimation::parameters().initialize(ParameterRegistryProperties(this->properties()));
 }
 
 PoseEstimationTaskContext::~PoseEstimationTaskContext()

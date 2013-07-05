@@ -147,13 +147,7 @@ bool GPS::prepareUpdate(State &state, const Update &update) {
   // find new reference position
   if (reference_ != GlobalReference::Instance()) {
     reference_ = GlobalReference::Instance();
-    reference_->setPosition(update.latitude, update.longitude);
-
-    double new_latitude, new_longitude;
-    reference_->toWGS84(-state.getPosition().x(), -state.getPosition().y(), new_latitude, new_longitude);
-    reference_->setPosition(new_latitude, new_longitude);
-
-    ROS_INFO("Set new GPS reference position to %f/%f", reference_->position().latitude * 180.0/M_PI, reference_->position().longitude * 180.0/M_PI);
+    reference_->setCurrentPosition(state, update.latitude, update.longitude);
   }
 
   return true;

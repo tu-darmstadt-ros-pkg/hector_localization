@@ -31,6 +31,8 @@
 
 #include <Eigen/Core>
 
+#include <boost/bind.hpp>
+
 namespace hector_pose_estimation {
 
 PoseUpdate::PoseUpdate(const std::string& name)
@@ -154,7 +156,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Position Update: ");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_xy", max_position_xy_error_);
+      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_xy", max_position_xy_error_, boost::bind(&PositionXYModel::updateState, position_xy_model_, _1, _2));
       position_xy_model_.getExpectedValue(x, filter()->state());
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x << "], Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
@@ -184,7 +186,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Height Update: ");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) << ", H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(0) << ", Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_z", max_position_z_error_);
+      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_z", max_position_z_error_, boost::bind(&PositionZModel::updateState, position_z_model_, _1, _2));
       position_z_model_.getExpectedValue(x, filter()->state());
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) << ", Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
@@ -218,7 +220,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       YawModel::MeasurementVector error(y - x);
       error(0) = error(0) - 2.0*M_PI * round(error(0) / (2.0*M_PI));
 
-      double innovation = updateInternal(filter()->state(), Iy, error, H, "yaw", max_yaw_error_);
+      double innovation = updateInternal(filter()->state(), Iy, error, H, "yaw", max_yaw_error_, boost::bind(&YawModel::updateState, yaw_model_, _1, _2));
       yaw_model_.getExpectedValue(x, filter()->state());
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) * 180.0/M_PI << "°, Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
@@ -342,7 +344,7 @@ double PoseUpdate::calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatr
 }
 
 template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
-double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, const std::string& text, const double max_error) {
+double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, const std::string& text, const double max_error, JumpFunction jump_function) {
   NoiseVariance H_Px_HT(H * state.P0() * H.transpose());
 
   if (H_Px_HT.determinant() <= 0) {
@@ -370,13 +372,13 @@ double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const M
   if (max_error > 0.0) {
     double error2 = error.transpose() * Ix * (Ix + Iy).inverse() * Iy * error;
     if (error2 > max_error * max_error) {
-      if (!jump_on_max_error_) {
+      if (!jump_on_max_error_ || !jump_function) {
         ROS_WARN_STREAM_NAMED("poseupdate", "Ignoring poseupdate for " << text << " as the error [ " << error.transpose() << " ], |error| = " << sqrt(error2) << " sigma exceeds max_error!");
         return 0.0;
       } else {
         ROS_WARN_STREAM_NAMED("poseupdate", "Update for " << text << " with error [ " << error.transpose() << " ], |error| = " << sqrt(error2) << " sigma exceeds max_error!");
-        alpha = 0.0;
-        beta = 1.0;
+        jump_function(state, error);
+        return 0.0;
       }
     }
   }
@@ -413,6 +415,10 @@ void PositionXYModel::getStateJacobian(MeasurementMatrix &C, const State &state,
   }
 }
 
+void PositionXYModel::updateState(State &state, const ColumnVector &diff) const {
+  state.position().segment(0,2) += diff;
+}
+
 void PositionZModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
   y_pred = state.getPosition().segment<1>(2);
 }
@@ -421,6 +427,10 @@ void PositionZModel::getStateJacobian(MeasurementMatrix &C, const State &state, 
   if (init && state.getPositionIndex() >= 0) {
     C(0,State::POSITION_Z)   = 1.0;
   }
+}
+
+void PositionZModel::updateState(State &state, const ColumnVector &diff) const {
+  state.position().segment(2,1) += diff;
 }
 
 void YawModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
@@ -440,6 +450,33 @@ void YawModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool i
     C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
     C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
   }
+}
+
+void YawModel::updateState(State &state, const ColumnVector &diff) const {
+  Eigen::Quaterniond rotation(Eigen::AngleAxisd(diff(1), Eigen::Vector3d::UnitZ()));
+
+  Eigen::MatrixXd S(state.getDimension(), state.getDimension()); S.setIdentity();
+
+  if (state.getOrientationIndex() >= 0) {
+    S.block(state.getOrientationIndex(), state.getOrientationIndex(), 4, 4) <<
+      rotation.w(), -rotation.x(), -rotation.y(), -rotation.z(),
+      rotation.x(),  rotation.w(), -rotation.z(),  rotation.y(),
+      rotation.y(),  rotation.z(),  rotation.w(), -rotation.x(),
+      rotation.z(), -rotation.y(),  rotation.x(),  rotation.w();
+  }
+
+  if (state.getVelocityIndex() >= 0) {
+    S.block(state.getVelocityIndex() - 1, state.getVelocityIndex() - 1, 3, 3) = rotation.toRotationMatrix().transpose();
+  }
+
+  if (state.getRateIndex() >= 0) {
+    S.block(state.getRateIndex(), state.getRateIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
+  }
+
+  // ROS_DEBUG_STREAM_NAMED("poseupdate", "Jump yaw by " << (diff(1) * 180.0/M_PI) << " degrees. rotation = [" << rotation.coeffs().transpose() << "], S = [" << S << "].");
+
+  state.x() = S * state.x();
+  state.P() = S * state.P() * S.transpose();
 }
 
 void TwistModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {

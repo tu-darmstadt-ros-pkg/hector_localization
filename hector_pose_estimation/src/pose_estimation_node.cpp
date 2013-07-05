@@ -27,6 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/pose_estimation_node.h>
+#include <hector_pose_estimation/ros/parameters.h>
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
@@ -62,8 +63,9 @@ PoseEstimationNode::~PoseEstimationNode()
 
 bool PoseEstimationNode::init() {
   // get parameters
-  pose_estimation_->parameters().setNodeHandle(getPrivateNodeHandle());
+  pose_estimation_->parameters().initialize(ParameterRegistryROS(getPrivateNodeHandle()));
   getPrivateNodeHandle().param("publish_covariances", publish_covariances_, false);
+  getPrivateNodeHandle().param("publish_world_map_transform", publish_world_other_transform_, false);
   getPrivateNodeHandle().param("map_frame", other_frame_, std::string());
 
   if (!pose_estimation_->init()) {
@@ -89,6 +91,7 @@ bool PoseEstimationNode::init() {
   velocity_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("velocity", 10, false);
   imu_publisher_         = getNodeHandle().advertise<sensor_msgs::Imu>("imu", 10, false);
   global_publisher_      = getNodeHandle().advertise<sensor_msgs::NavSatFix>("global", 10, false);
+  euler_publisher_       = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("euler", 10, false);
 
   angular_velocity_bias_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("angular_velocity_bias", 10, false);
   linear_acceleration_bias_publisher_ = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("linear_acceleration_bias", 10, false);
@@ -122,14 +125,7 @@ void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
   publish();
 }
 
-#if defined(USE_MAV_MSGS)
-void PoseEstimationNode::heightCallback(const mav_msgs::HeightConstPtr& height) {
-  Height::MeasurementVector update(1);
-  update = height->height;
-  pose_estimation_->getMeasurement("height")->add(Height::Update(update));
-}
-
-#elif defined(USE_HECTOR_UAV_MSGS)
+#if defined(USE_HECTOR_UAV_MSGS)
 void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& altimeter) {
   pose_estimation_->getMeasurement("baro")->add(Baro::Update(altimeter->pressure, altimeter->qnh));
 }
@@ -224,6 +220,13 @@ void PoseEstimationNode::publish() {
     global_publisher_.publish(global_msg);
   }
 
+  if (euler_publisher_) {
+    geometry_msgs::Vector3Stamped euler_msg;
+    pose_estimation_->getHeader(euler_msg.header);
+    pose_estimation_->getOrientation(euler_msg.vector.x, euler_msg.vector.y, euler_msg.vector.z);
+    euler_publisher_.publish(euler_msg);
+  }
+
   if (angular_velocity_bias_publisher_ || linear_acceleration_bias_publisher_) {
     geometry_msgs::Vector3Stamped angular_velocity_msg, linear_acceleration_msg;
     pose_estimation_->getBias(angular_velocity_msg, linear_acceleration_msg);
@@ -234,9 +237,10 @@ void PoseEstimationNode::publish() {
   if (getTransformBroadcaster())
   {
     transforms_.clear();
+
     pose_estimation_->getTransforms(transforms_);
 
-    if (!other_frame_.empty()) {
+    if (publish_world_other_transform_) {
       tf::StampedTransform world_to_other_transform;
       std::string nav_frame = pose_estimation_->parameters().getAs<std::string>("nav_frame");
       try {

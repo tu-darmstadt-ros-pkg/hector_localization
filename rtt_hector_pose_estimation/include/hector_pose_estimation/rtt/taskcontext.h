@@ -26,8 +26,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_RTT_H
-#define HECTOR_POSE_ESTIMATION_RTT_H
+#ifndef HECTOR_POSE_ESTIMATION_RTT_TASKCONTEXT_H
+#define HECTOR_POSE_ESTIMATION_RTT_TASKCONTEXT_H
 
 #include <hector_pose_estimation/pose_estimation.h>
 
@@ -124,4 +124,4 @@ private:
 
 } // namespace hector_pose_estimation
 
-#endif // HECTOR_POSE_ESTIMATION_RTT_H
+#endif // HECTOR_POSE_ESTIMATION_RTT_TASKCONTEXT_H

@@ -47,8 +47,8 @@ public:
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
   virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
-  double getMagneticHeading(const MeasurementVector& y) const;
-  double getTrueHeading(const MeasurementVector& y) const;
+  double getMagneticHeading(const State& state, const MeasurementVector& y) const;
+  double getTrueHeading(const State& state, const MeasurementVector& y) const;
 
   void setReference(const GlobalReference::Heading &reference_heading);
   bool hasMagnitude() const { return magnitude_ != 0.0; }
@@ -60,7 +60,7 @@ protected:
 
   MeasurementVector magnetic_field_north_;
   MeasurementVector magnetic_field_reference_;
-  mutable Matrix C_full_;
+//  mutable Matrix C_full_;
 };
 
 extern template class Measurement_<MagneticModel>;
@@ -81,6 +81,7 @@ public:
 private:
   bool auto_heading_;
   GlobalReferencePtr reference_;
+  ColumnVector deviation_;
 
   MeasurementVector y_;
   NoiseVariance R_;

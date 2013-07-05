@@ -99,6 +99,12 @@ void State::getRotationMatrix(RotationMatrix &R) const
        (2.0*q.x()*q.z()-2.0*q.w()*q.y()),                 (2.0*q.y()*q.z()+2.0*q.w()*q.x()),                 (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
 }
 
+double State::getYaw() const
+{
+  ConstOrientationType q(getOrientation());
+  return atan2(2*q.x()*q.y() + 2*q.w()*q.z(), q.x()*q.x() + q.w()*q.w() - q.z()*q.z() - q.y()*q.y());
+}
+
 bool State::inSystemStatus(SystemStatus test_status) const {
   return (getSystemStatus() & test_status) == test_status;
 }

@@ -35,17 +35,13 @@
 #include <boost/function.hpp>
 #include <boost/type_traits.hpp>
 
-namespace ros {
-  class NodeHandle;
-}
-
 namespace hector_pose_estimation {
 
   class Parameter;
   template <typename T> class ParameterT;
   typedef boost::shared_ptr<Parameter> ParameterPtr;
   typedef boost::shared_ptr<const Parameter> ParameterConstPtr;
-  typedef boost::function<bool(ParameterPtr, std::string)> ParameterUpdateFunc;
+  typedef boost::function<void(ParameterPtr)> ParameterRegisterFunc;
 
   class Parameter {
   public:
@@ -58,7 +54,7 @@ namespace hector_pose_estimation {
     virtual const char *type() const { return parameter_ ? parameter_->type() : 0; }
 
     virtual bool empty() const { return !parameter_; }
-    virtual bool isAlias() const { return parameter_ != this; }
+    virtual bool isAlias() const { return false; }
 
     template <typename T> bool hasType() const {
       return dynamic_cast<const ParameterT<T> *>(parameter_) != 0;
@@ -113,6 +109,8 @@ namespace hector_pose_estimation {
     Alias(const ParameterPtr& other) : Parameter(other->key) { *this = parameter_; }
     Alias(const ParameterPtr& other, const std::string& key) : Parameter(key) { *this = parameter_; }
     virtual ~Alias() {}
+
+    virtual bool isAlias() const { return true; }
 
     using Parameter::operator =;
     Alias& operator =(const ParameterPtr& other) {
@@ -174,18 +172,7 @@ namespace hector_pose_estimation {
     using std::list<ParameterPtr>::erase;
     iterator erase(const std::string& key);
 
-    bool update();
-    void setRegistry(const ParameterUpdateFunc& func, bool recursive = true, bool update = true);
-    void setNodeHandle(const ros::NodeHandle &nh, bool update = true);
-
-  private:
-    ParameterUpdateFunc register_func_;
-    bool register_recursive_;
-
-    std::string prefix_;
-    static const std::string s_separator;
-
-    bool update(const ParameterPtr& parameter);
+    void initialize(ParameterRegisterFunc func) const;
   };
 
   template <typename T> inline ParameterList& ParameterList::add(const std::string& key, T& value) {
@@ -197,6 +184,10 @@ namespace hector_pose_estimation {
     ParameterList result;
     return result.add(list1).add(list2);
   }
+
+  struct ParameterRegistry {
+    virtual void operator()(ParameterPtr) {}
+  };
 
 } // namespace hector_pose_estimation
 

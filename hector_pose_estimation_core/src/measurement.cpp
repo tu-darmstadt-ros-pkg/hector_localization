@@ -41,6 +41,7 @@ Measurement::Measurement(const std::string& name)
   parameters().add("enabled", enabled_);
   parameters().add("timeout", timeout_);
   parameters().add("min_interval", min_interval_);
+  parameters().add("timeout", timeout_);
 }
 
 Measurement::~Measurement()
