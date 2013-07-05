@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
@@ -16,6 +17,7 @@ std::string g_child_frame_id;
 
 tf::TransformBroadcaster *g_transform_broadcaster;
 ros::Publisher g_pose_publisher;
+ros::Publisher g_euler_publisher;
 
 #ifndef TF_MATRIX3x3_H
   typedef btScalar tfScalar;
@@ -92,6 +94,16 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
     pose_stamped.pose = pose;
     pose_stamped.header = header;
     g_pose_publisher.publish(pose_stamped);
+  }
+
+  // publish pose message
+  if (g_euler_publisher) {
+    geometry_msgs::Vector3Stamped euler_stamped;
+    euler_stamped.vector.x = roll;
+    euler_stamped.vector.y = pitch;
+    euler_stamped.vector.z = yaw;
+    euler_stamped.header = header;
+    g_euler_publisher.publish(euler_stamped);
   }
 }
 
@@ -175,6 +187,18 @@ int main(int argc, char** argv) {
       g_pose_publisher = node.advertise<geometry_msgs::PoseStamped>(publish_pose_topic, 10);
     else
       g_pose_publisher = priv_nh.advertise<geometry_msgs::PoseStamped>("pose", 10);
+  }
+
+  bool publish_euler = true;
+  priv_nh.getParam("publish_euler", publish_euler);
+  if (publish_euler) {
+    std::string publish_euler_topic;
+    priv_nh.getParam("publish_euler_topic", publish_euler_topic);
+
+    if (!publish_euler_topic.empty())
+      g_euler_publisher = node.advertise<geometry_msgs::Vector3Stamped>(publish_euler_topic, 10);
+    else
+      g_euler_publisher = priv_nh.advertise<geometry_msgs::Vector3Stamped>("euler", 10);
   }
 
   ros::spin();
