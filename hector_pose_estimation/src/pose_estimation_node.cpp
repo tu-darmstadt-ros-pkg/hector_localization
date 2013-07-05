@@ -223,7 +223,7 @@ void PoseEstimationNode::publish() {
   if (euler_publisher_) {
     geometry_msgs::Vector3Stamped euler_msg;
     pose_estimation_->getHeader(euler_msg.header);
-    pose_estimation_->getOrientation(euler_msg.vector.x, euler_msg.vector.y, euler_msg.vector.z);
+    pose_estimation_->getOrientation(euler_msg.vector.z, euler_msg.vector.y, euler_msg.vector.x);
     euler_publisher_.publish(euler_msg);
   }
 
