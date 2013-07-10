@@ -74,9 +74,9 @@ public:
     POSITION_X,
     POSITION_Y,
     POSITION_Z,
-    VELOCITY_X, // body frame
-    VELOCITY_Y, // body frame
-    VELOCITY_Z, // body frame
+    VELOCITY_X,
+    VELOCITY_Y,
+    VELOCITY_Z,
     Dimension,
 
 #ifndef USE_RATE_SYSTEM_MODEL
