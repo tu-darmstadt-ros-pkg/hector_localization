@@ -125,9 +125,9 @@ void PoseEstimationTaskContext::updateHook()
   while(magnetic_input_.read(magnetic_) == RTT::NewData && PoseEstimation::getMeasurement("Magnetic"))
   {
     Magnetic::MeasurementVector update(3);
-    update(1) = magnetic_.vector.x;
-    update(2) = magnetic_.vector.y;
-    update(3) = magnetic_.vector.z;
+    update.x() = magnetic_.vector.x;
+    update.y() = magnetic_.vector.y;
+    update.z() = magnetic_.vector.z;
     PoseEstimation::getMeasurement("Magnetic")->add(Magnetic::Update(update));
   }
 
