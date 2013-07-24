@@ -115,7 +115,23 @@ void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
 //      C(i,State::QUATERNION_Z) = -C_full_(i,State::QUATERNION_W) * q.z()*q.w() - C_full_(i,State::QUATERNION_X) * q.y()*q.w() + C_full_(i,State::QUATERNION_Y) * q.x()*q.w() + C_full_(i,State::QUATERNION_Z) * q.w()*q.w();
 //    }
 
-  double temp1 = -m2*q.w()*q.w() + 2*m1*q.w()*q.z() - m2*q.x()*q.x() + 2*m1*q.x()*q.y() + m2*q.y()*q.y() + m2*q.z()*q.z();
+//
+// Simplified with symbolic Matlab toolbox:
+//
+// C = [  2*qz*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
+//        2*qy*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
+//       -2*qx*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
+//       -2*qw*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz);
+//        2*qz*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
+//        2*qy*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
+//       -2*qx*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
+//       -2*qw*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2);
+//       -4*qz*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
+//       -4*qy*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
+//        4*qx*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
+//        4*qw*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz) ]
+
+  double temp1 = -m2*q.x()*q.x() + 2*m1*q.x()*q.y() + m2*q.z()*q.x() + m2*q.y()*q.y()   + m2*q.w()*q.y() + 2*m1*q.w()*q.z();
   double temp2 =  m1*q.w()*q.w() + 2*m2*q.w()*q.z() - m1*q.x()*q.x() - 2*m2*q.x()*q.y() + m1*q.y()*q.y() - m1*q.z()*q.z();
   double temp3 =  m1*q.w()*q.x() +   m2*q.w()*q.y() + m2*q.x()*q.z() -   m1*q.y()*q.z();
   C(0,State::QUATERNION_W) =  2*q.z()*temp1;
