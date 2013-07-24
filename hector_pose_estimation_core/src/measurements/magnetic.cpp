@@ -123,7 +123,23 @@ Matrix MagneticModel::dfGet(unsigned int i) const {
 //    C_(i,QUATERNION_Z) = -C_full_(i,QUATERNION_W) * qz*qw - C_full_(i,QUATERNION_X) * qy*qw + C_full_(i,QUATERNION_Y) * qx*qw + C_full_(i,QUATERNION_Z) * qw*qw;
 //  }
 
-  double temp1 = -m2*qw*qw + 2*m1*qw*qz - m2*qx*qx + 2*m1*qx*qy + m2*qy*qy + m2*qz*qz;
+//
+// Simplified with symbolic Matlab toolbox:
+//
+// C = [  2*qz*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
+//        2*qy*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
+//       -2*qx*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
+//       -2*qw*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz);
+//        2*qz*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
+//        2*qy*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
+//       -2*qx*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
+//       -2*qw*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2);
+//       -4*qz*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
+//       -4*qy*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
+//        4*qx*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
+//        4*qw*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz) ]
+
+  double temp1 = -m2*qx*qx + 2*m1*qx*qy + m2*qz*qx + m2*qy*qy   + m2*qw*qy + 2*m1*qw*qz;
   double temp2 =  m1*qw*qw + 2*m2*qw*qz - m1*qx*qx - 2*m2*qx*qy + m1*qy*qy - m1*qz*qz;
   double temp3 =  m1*qw*qx +   m2*qw*qy + m2*qx*qz -   m1*qy*qz;
   C_(1,QUATERNION_W) =  2*qz*temp1;
