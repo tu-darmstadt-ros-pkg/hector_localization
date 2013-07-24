@@ -30,8 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_BARO_H
 
 #include <hector_pose_estimation/measurement.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
-#include "height.h"
+#include <hector_pose_estimation/measurements/height.h>
 
 #ifdef USE_HECTOR_UAV_MSGS
   #include <hector_uav_msgs/Altimeter.h>
@@ -47,8 +46,8 @@ public:
   BaroModel();
   virtual ~BaroModel();
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
   void setQnh(double qnh) { qnh_ = qnh; }
   double getQnh() const { return qnh_; }
@@ -67,14 +66,22 @@ public:
   double qnh() const { return qnh_; }
   BaroUpdate& qnh(double qnh) { qnh_ = qnh; return *this; }
 
+  using Update_<BaroModel>::operator =;
+
 private:
   double qnh_;
 };
 
-class Baro : public Measurement_<BaroModel,BaroUpdate>, HeightBaroCommon
+namespace traits {
+  template <> struct Update<BaroModel> { typedef BaroUpdate type; };
+}
+
+extern template class Measurement_<BaroModel>;
+
+class Baro : public Measurement_<BaroModel>, HeightBaroCommon
 {
 public:
-  Baro(const std::string& name = "baro") : Measurement_<BaroModel,BaroUpdate>(name), HeightBaroCommon(this) {}
+  Baro(const std::string& name = "baro") : Measurement_<BaroModel>(name), HeightBaroCommon(this) {}
   virtual ~Baro() {}
 
   void setElevation(double elevation) { getModel()->setElevation(elevation); }
@@ -84,7 +91,7 @@ public:
   double getQnh() const { return getModel()->getQnh(); }
 
   virtual void onReset();
-  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+  virtual bool prepareUpdate(State &state, const Update &update);
 };
 
 } // namespace hector_pose_estimation

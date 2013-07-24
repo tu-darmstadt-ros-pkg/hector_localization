@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,58 +26,29 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_BFL_CONVERSIONS_H
-#define HECTOR_POSE_ESTIMATION_BFL_CONVERSIONS_H
+#ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
+#define HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
 
-#include <geometry_msgs/PoseWithCovariance.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
-#include <bfl/wrappers/matrix/vector_wrapper.h>
+#include <hector_pose_estimation/measurement.h>
 
 namespace hector_pose_estimation {
 
-  void covarianceMsgToBfl(geometry_msgs::PoseWithCovariance::_covariance_type const &msg, MatrixWrapper::SymmetricMatrix_Wrapper &bfl) {
-    unsigned int dim = sqrt(msg.size());
-    bfl.resize(dim,false,false);
-    for(unsigned int i = 0; i < dim; ++i)
-      for(unsigned int j = 0; j < dim; ++j)
-        bfl(i+1,j+1) = msg[i*dim+j];
-  }
+template <class ConcreteModel>
+bool Measurement_<ConcreteModel>::updateImpl(const MeasurementUpdate &update_)
+{
+  Update const &update = dynamic_cast<Update const &>(update_);
+  if (!prepareUpdate(filter()->state(), update)) return false;
 
-  void covarianceBflToMsg(MatrixWrapper::SymmetricMatrix const &bfl, geometry_msgs::PoseWithCovariance::_covariance_type &msg) {
-    unsigned int dim = sqrt(msg.size());
-    for(unsigned int i = 0; i < dim; ++i)
-      for(unsigned int j = 0; j < dim; ++j)
-        msg[i*6+j] = bfl(i+1,j+1);
-  }
+  ROS_DEBUG("Updating with measurement %s", getName().c_str());
+  const MeasurementVector &y = getVector(update, filter()->state());
+  const NoiseVariance &R = getVariance(update, filter()->state());
 
-  void pointMsgToBfl(geometry_msgs::Point const &msg, MatrixWrapper::ColumnVector_Wrapper &bfl) {
-    bfl.resize(3);
-    bfl(1) = msg.x;
-    bfl(2) = msg.y;
-    bfl(3) = msg.z;
-  }
+  this->corrector()->correct(y, R);
 
-  void pointBflToMsg(MatrixWrapper::ColumnVector_Wrapper const &bfl, geometry_msgs::Point &msg) {
-    msg.x = bfl(1);
-    msg.y = bfl(2);
-    msg.z = bfl(3);
-  }
-
-  void quaternionMsgToBfl(geometry_msgs::Quaternion const &msg, MatrixWrapper::ColumnVector_Wrapper &bfl) {
-    bfl.resize(4);
-    bfl(1) = msg.w;
-    bfl(2) = msg.x;
-    bfl(3) = msg.y;
-    bfl(4) = msg.z;
-  }
-
-  void quaternionBflToMsg(MatrixWrapper::ColumnVector_Wrapper const &bfl, geometry_msgs::Quaternion &msg) {
-    msg.w = bfl(1);
-    msg.x = bfl(2);
-    msg.y = bfl(3);
-    msg.z = bfl(4);
-  }
+  afterUpdate(filter()->state());
+  return true;
+}
 
 } // namespace hector_pose_estimation
 
-#endif // HECTOR_POSE_ESTIMATION_BFL_CONVERSIONS_H
+#endif // HECTOR_POSE_ESTIMATION_MEASUREMENT_INL

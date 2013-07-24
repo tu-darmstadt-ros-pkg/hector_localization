@@ -27,7 +27,7 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/global_reference.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/state.h>
 #include <cmath>
 
 using namespace std;
@@ -42,6 +42,13 @@ GlobalReference::GlobalReference()
   parameters().add("reference_heading",   heading_.value);
 
   reset();
+}
+
+const GlobalReferencePtr &GlobalReference::Instance()
+{
+  static GlobalReferencePtr instance;
+  if (!instance) { instance.reset(new GlobalReference); }
+  return instance;
 }
 
 void GlobalReference::reset()
@@ -136,8 +143,8 @@ GlobalReference& GlobalReference::setAltitude(double altitude, bool quiet /* = f
   return *this;
 }
 
-GlobalReference& GlobalReference::setCurrentPosition(PoseEstimation& estimator, double new_latitude, double new_longitude) {
-  const StateVector& state = estimator.getState();
+GlobalReference& GlobalReference::setCurrentPosition(const State& state, double new_latitude, double new_longitude) {
+  State::ConstPositionType position = state.getPosition();
 
   // set reference to new latitude/longitude first (intermediate reference)
   setPosition(new_latitude, new_longitude, true);
@@ -145,22 +152,21 @@ GlobalReference& GlobalReference::setCurrentPosition(PoseEstimation& estimator, 
   // convert current position back to WGS84 using the new reference position
   // and reset the reference position so that current position in x/y coordinates remains the same
   // This will work unless the radii at the origin and the x/y position of the robot differ too much
-  toWGS84(-state(POSITION_X), -state(POSITION_Y), new_latitude, new_longitude);
+  toWGS84(-position.x(), -position.y(), new_latitude, new_longitude);
   setPosition(new_latitude, new_longitude);
 
   return *this;
 }
 
-GlobalReference& GlobalReference::setCurrentHeading(PoseEstimation& estimator, double new_heading) {
+GlobalReference& GlobalReference::setCurrentHeading(const State& state, double new_heading) {
   // get current yaw angle
-  double current_yaw, temp;
-  estimator.getOrientation(current_yaw, temp, temp);
+  double current_yaw = state.getYaw();
+  State::ConstPositionType position = state.getPosition();
 
   // get current position in WGS84
-  const StateVector& state = estimator.getState();
   double current_latitude, current_longitude;
   if (hasPosition()) {
-    toWGS84(state(POSITION_X), state(POSITION_Y), current_latitude, current_longitude);
+    toWGS84(position.x(), position.y(), current_latitude, current_longitude);
   }
 
   // set the new reference heading
@@ -168,15 +174,15 @@ GlobalReference& GlobalReference::setCurrentHeading(PoseEstimation& estimator, d
 
   // set the new reference position so that current position in WGS84 coordinates remains the same as before
   if (hasPosition()) {
-    setCurrentPosition(estimator, current_latitude, current_longitude);
+    setCurrentPosition(state, current_latitude, current_longitude);
   }
 
   return *this;
 }
 
-GlobalReference& GlobalReference::setCurrentAltitude(PoseEstimation& estimator, double new_altitude) {
-  const StateVector& state = estimator.getState();
-  setAltitude(new_altitude - state(POSITION_Z));
+GlobalReference& GlobalReference::setCurrentAltitude(const State& state, double new_altitude) {
+  State::ConstPositionType position = state.getPosition();
+  setAltitude(new_altitude - position.z());
   return *this;
 }
 

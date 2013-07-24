@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,26 +26,43 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurement_model.h>
+#include <hector_pose_estimation/filter/ekf.h>
 
 namespace hector_pose_estimation {
+namespace filter {
 
-MeasurementModel::MeasurementModel(unsigned int dimension, unsigned int conditional_arguments)
-  : BFL::AnalyticConditionalGaussianAdditiveNoise(dimension, conditional_arguments == 0 ? 1 : 2)
-  , BFL::AnalyticMeasurementModelGaussianUncertainty(this)
-  , x_(static_cast<const StateVector&>(ConditionalArgumentGet(0)))
-  , u_(conditional_arguments > 0 ? ConditionalArgumentGet(1) : *static_cast<ColumnVector *>(0))
-  , y_(dimension)
-  , C_(dimension, StateDimension)
-  , D_(dimension, conditional_arguments)
+EKF::EKF()
+{}
+
+EKF::~EKF()
+{}
+
+bool EKF::init(PoseEstimation &estimator)
 {
-  C_ = 0.0; D_ = 0.0;
-  AdditiveNoiseMuSet(ColumnVector(dimension, 0.0));
-  AdditiveNoiseSigmaSet(SymmetricMatrix(dimension) = 0.0);
+  x_pred.resize(state_.getDimension());
+  x_pred.setZero();
+  A.resize(state_.getDimension(), state_.getDimension());
+  A.setZero();
+  Q.resize(state_.getDimension());
+  Q.setZero();
+  return true;
 }
 
-MeasurementModel::~MeasurementModel()
-{
+bool EKF::doPredict(double dt) {
+  ROS_DEBUG("EKF prediction (dt = %f):", dt);
+
+  ROS_DEBUG_STREAM("A      = [" << A << "]");
+  ROS_DEBUG_STREAM("Q      = [" << Q << "]");
+
+  state().P() = A * state().P().selfadjointView<Upper>() * A.transpose() + Q;
+  state().x() = x_pred;
+
+  ROS_DEBUG_STREAM("x_pred = [" << state().getVector().transpose() << "]");
+  ROS_DEBUG_STREAM("P_pred = [" << state().getCovariance() << "]");
+
+  Filter::doPredict(dt);
+  return true;
 }
 
+} // namespace filter
 } // namespace hector_pose_estimation

@@ -31,28 +31,26 @@
 
 #include <hector_pose_estimation/measurement.h>
 #include <hector_pose_estimation/global_reference.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 
-class GPSModel : public MeasurementModel {
+class GPSModel : public MeasurementModel_<GPSModel,4> {
 public:
-  static const unsigned int MeasurementDimension = 4;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   GPSModel();
   virtual ~GPSModel();
 
-  virtual bool init();
-  virtual SystemStatus getStatusFlags() const;
+  virtual SystemStatus getStatusFlags() { return STATE_POSITION_XY | STATE_VELOCITY_XY; }
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual bool prepareUpdate(State &state, const MeasurementUpdate &update);
+
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
 protected:
   double position_stddev_;
   double velocity_stddev_;
+  State::RotationMatrix R;
 };
 
 struct GPSUpdate : public MeasurementUpdate {
@@ -62,19 +60,25 @@ struct GPSUpdate : public MeasurementUpdate {
   double velocity_east;
 };
 
-class GPS : public Measurement_<GPSModel,GPSUpdate>
+namespace traits {
+  template <> struct Update<GPSModel> { typedef GPSUpdate type; };
+}
+
+extern template class Measurement_<GPSModel>;
+
+class GPS : public Measurement_<GPSModel>
 {
 public:
   GPS(const std::string& name = "gps");
   virtual ~GPS();
 
-  void onReset();
+  virtual void onReset();
 
-  GPSModel::MeasurementVector const& getVector(const GPSUpdate &update);
-  bool beforeUpdate(PoseEstimation &estimator, const GPSUpdate &update);
+  virtual GPSModel::MeasurementVector const& getVector(const GPSUpdate &update, const State&);
+  virtual bool prepareUpdate(State &state, const GPSUpdate &update);
 
 private:
-  GlobalReference *reference_;
+  GlobalReferencePtr reference_;
   GPSUpdate last_;
   GPSModel::MeasurementVector y_;
 };

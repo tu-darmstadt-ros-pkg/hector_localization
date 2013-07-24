@@ -30,30 +30,37 @@
 #define HECTOR_POSE_ESTIMATION_ZERORATE_H
 
 #include <hector_pose_estimation/measurement.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 
-class ZeroRateModel : public MeasurementModel {
-public:
-  static const unsigned int MeasurementDimension = 1;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
+class GyroModel;
 
+class ZeroRateModel : public MeasurementModel_<ZeroRateModel,1,3> {
+public:
   ZeroRateModel();
   virtual ~ZeroRateModel();
 
-  virtual bool init();
-  bool applyStatusMask(const SystemStatus &status) const;
+  SubState& sub(State& state) const { return *gyro_drift_; }
+  const SubState& sub(const State& state) const { return *gyro_drift_; }
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual bool init(PoseEstimation &estimator, State &state);
+
+  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_RATE_Z); }
+  virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_RATE_Z; }
+
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init);
+
+  virtual const MeasurementVector* getFixedMeasurementVector();
 
 protected:
   double stddev_;
+  SubStatePtr gyro_drift_;
 };
 
 typedef Measurement_<ZeroRateModel> ZeroRate;
+extern template class Measurement_<ZeroRateModel>;
 
 } // namespace hector_pose_estimation
 

@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,62 +26,38 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/zerorate.h>
-#include <hector_pose_estimation/system/imu_model.h>
-#include <hector_pose_estimation/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H
+#define HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H
+
+#include <hector_pose_estimation/system.h>
+#include <hector_pose_estimation/measurement.h>
+
+#include <hector_pose_estimation/filter/ekf.h>
+
+#include <ros/console.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<ZeroRateModel>;
-
-ZeroRateModel::ZeroRateModel()
-{
-  parameters().add("stddev", stddev_, 90.0*M_PI/180.0);
-}
-
-ZeroRateModel::~ZeroRateModel() {}
-
-bool ZeroRateModel::init(PoseEstimation &estimator, State &state)
-{
-  gyro_drift_ = state.addSubState<3>(this, "gyro");
-
-  if (!gyro_drift_ && state.getRateIndex() < 0) {
-    ROS_WARN_NAMED("zerorate", "Updating with zero rate is a no-op, as the state does not contain rates and gyro drift estimation is disabled.");
-    // return false;
-  }
-
-  return true;
-}
-
-void ZeroRateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
-{
-  if (init) {
-    R = pow(stddev_, 2);
+template <class ConcreteModel>
+void System_<ConcreteModel>::setFilter(Filter *filter) {
+  System::setFilter(filter);
+  if (filter->derived<filter::EKF>()) {
+    predictor_ = Filter::factory(filter->derived<filter::EKF>()).addPredictor<ConcreteModel>(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
   }
 }
 
-void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = state.getRate().z();
-
-  if (state.getRateIndex() < 0 && gyro_drift_) {
-    y_pred(0) += gyro_drift_->getVector().z();
+template <class ConcreteModel>
+void Measurement_<ConcreteModel>::setFilter(Filter *filter) {
+  Measurement::setFilter(filter);
+  if (filter->derived<filter::EKF>()) {
+    corrector_ = Filter::factory(filter->derived<filter::EKF>()).addCorrector<ConcreteModel>(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
   }
 }
 
-void ZeroRateModel::getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool)
-{
-  if (state.getRateIndex() >= 0) {
-    C0(0, State::RATE_Z) = 1.0;
-  } else if (gyro_drift_) {
-    C1(0, GyroModel::BIAS_GYRO_Z) = 1.0;
-  }
 }
 
-const ZeroRateModel::MeasurementVector* ZeroRateModel::getFixedMeasurementVector()
-{
-  static MeasurementVector zero = 0.0;
-  return &zero;
-}
-
-} // namespace hector_pose_estimation
+#endif // HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H

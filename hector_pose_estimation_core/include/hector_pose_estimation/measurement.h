@@ -29,14 +29,15 @@
 #ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_H
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_H
 
-#include <bfl/filter/kalmanfilter.h>
-#include "measurement_model.h"
-#include "measurement_update.h"
-#include "queue.h"
+#include <hector_pose_estimation/measurement_model.h>
+#include <hector_pose_estimation/measurement_update.h>
+#include <hector_pose_estimation/types.h>
+#include <hector_pose_estimation/queue.h>
+#include <hector_pose_estimation/filter.h>
 
 namespace hector_pose_estimation {
 
-class PoseEstimation;
+template <class ConcreteModel> class Measurement_;
 
 class Measurement
 {
@@ -44,40 +45,51 @@ public:
   Measurement(const std::string& name);
   virtual ~Measurement();
 
+  template <class ConcreteModel> static boost::shared_ptr<Measurement_<ConcreteModel> > create(ConcreteModel *model, const std::string& name);
+
   virtual const std::string& getName() const { return name_; }
   void setName(const std::string& name) { name_ = name; }
 
   virtual MeasurementModel* getModel() const { return 0; }
+  virtual int getDimension() const { return 0; }
 
-  virtual bool init();
+  virtual Filter *filter() const { return filter_; }
+  virtual void setFilter(Filter *filter) { filter_ = filter; }
+
+  virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
-  virtual void reset();
-
-  virtual SystemStatus getStatusFlags() const { return status_flags_; }
-  virtual bool active(const SystemStatus& status) { return enabled(); }
+  virtual void reset(State& state);
 
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
 
   virtual void add(const MeasurementUpdate &update);
-  virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update) = 0;
-  virtual void process(PoseEstimation &estimator);
+  virtual bool process();
+  virtual bool update(const MeasurementUpdate &update);
 
   bool enabled() const { return enabled_; }
   void enable() { enabled_ = true; }
   void disable() { enabled_ = false; }
 
+  virtual bool active(const State& state);
+  virtual SystemStatus getStatusFlags() const { return status_flags_; }
+
+  void setTimeout(double timeout) { timeout_ = timeout; }
+  double getTimeout() const { return timeout_; }
+
+  void setMinInterval(double min_interval) { min_interval_ = min_interval; }
+  double getMinInterval() const { return min_interval_; }
+
   void increase_timer(double dt);
-  void updated();
   bool timedout() const;
 
 protected:
   virtual Queue& queue() = 0;
-  void updateInternal(PoseEstimation &estimator, ColumnVector const& y);
+  virtual bool updateImpl(const MeasurementUpdate &update) { return false; }
 
-  virtual bool onInit() { return true; }
+  virtual bool onInit(PoseEstimation& estimator) { return true; } // currently unsed...
   virtual void onReset() { }
-  virtual void onCleanup() { }
+  virtual void onCleanup() { } // currently unsed...
 
 protected:
   std::string name_;
@@ -89,18 +101,19 @@ protected:
 
   double timeout_;
   double timer_;
+
+  Filter *filter_;
 };
 
-typedef boost::shared_ptr<Measurement> MeasurementPtr;
-
-template <class ConcreteModel, class ConcreteUpdate = typename Update_<ConcreteModel>::Type >
+template <class ConcreteModel>
 class Measurement_ : public Measurement {
 public:
   typedef ConcreteModel Model;
-  typedef ConcreteUpdate Update;
-  static const unsigned int MeasurementDimension = Model::MeasurementDimension;
+  typedef typename traits::Update<ConcreteModel>::type Update;
+
+  enum { MeasurementDimension = Model::MeasurementDimension };
   typedef typename Model::MeasurementVector MeasurementVector;
-  typedef typename Model::NoiseCovariance NoiseCovariance;
+  typedef typename Model::NoiseVariance NoiseVariance;
 
   Measurement_(const std::string& name)
     : Measurement(name)
@@ -119,55 +132,63 @@ public:
   virtual ~Measurement_() {
   }
 
-  virtual bool init() { return model_->init() && Measurement::init(); }
-  virtual void cleanup() { model_->cleanup(); Measurement::cleanup(); }
-  virtual void reset() { model_->reset(); Measurement::reset(); }
-
   virtual Model* getModel() const { return model_.get(); }
-  virtual bool active(const SystemStatus& status) { return enabled() && model_->applyStatusMask(status); }
+  virtual int getDimension() const { return MeasurementDimension; }
 
-  virtual MeasurementVector const& getVector(const Update &update) { return internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getVector(update, getModel()); }
-  virtual NoiseCovariance const& getCovariance(const Update &update) { return update.hasCovariance() ? internal::UpdateInspector<ConcreteModel,ConcreteUpdate>::getCovariance(update, getModel()) : static_cast<NoiseCovariance const&>(model_->AdditiveNoiseSigmaGet()); }
-  virtual void setNoiseCovariance(NoiseCovariance const& sigma);
+  virtual Filter *filter() const { return corrector_ ? corrector_->base() : 0; }
+  virtual const boost::shared_ptr< Filter::Corrector_<Model> >& corrector() const { return corrector_; }
+  virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
-  virtual bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
+  virtual MeasurementVector const& getVector(const Update &update, const State &state) {
+    const MeasurementVector *fixed = getModel()->getFixedMeasurementVector();
+    if (fixed) return *fixed;
+    return traits::UpdateInspector<ConcreteModel>(update).getVector(state);
+  }
+
+  virtual NoiseVariance const& getVariance(const Update &update, const State &state) {
+    if (update.hasVariance()) return traits::UpdateInspector<ConcreteModel>(update).getVariance(state);
+
+    bool init = false;
+    if (!R_) {
+      R_.reset(new NoiseVariance);
+      init = true;
+    }
+    model_->getMeasurementNoise(*R_, state, init);
+    return *R_;
+  }
+
+  virtual void setNoiseVariance(NoiseVariance const& R) {
+    if (!R_) R_.reset(new NoiseVariance);
+    *R_ = R;
+  }
+
+  virtual void clearNoiseVariance() {
+    R_.reset();
+  }
+
+protected:
+  virtual bool updateImpl(const MeasurementUpdate &update);
+  virtual bool prepareUpdate(State &state, const Update &update) { return getModel()->prepareUpdate(state, update); }
+  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
 
 protected:
   boost::shared_ptr<Model> model_;
+  boost::shared_ptr<NoiseVariance> R_;
 
   Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }
 
-  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update) { return true; }
-  virtual void afterUpdate(PoseEstimation &estimator) { }
+  boost::shared_ptr< Filter::Corrector_<Model> > corrector_;
 };
 
-template <class ConcreteModel, class ConcreteUpdate>
-bool Measurement_<ConcreteModel, ConcreteUpdate>::update(PoseEstimation &estimator, const MeasurementUpdate &update_)
+template <class ConcreteModel>
+boost::shared_ptr<Measurement_<ConcreteModel> > Measurement::create(ConcreteModel *model, const std::string& name)
 {
-  if (!enabled()) return false;
-  if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
-
-  try {
-    Update const &update = dynamic_cast<Update const &>(update_);
-    if (!beforeUpdate(estimator, update)) return false;
-
-    if (update.hasCovariance()) setNoiseCovariance(getCovariance(update));
-    updateInternal(estimator, getVector(update));
-  } catch(std::bad_cast& e) {
-    std::cerr << "In measurement " << getName() << ": " << e.what() << std::endl;
-  }
-
-  afterUpdate(estimator);
-  return true;
-}
-
-template <class ConcreteModel, class ConcreteUpdate>
-void Measurement_<ConcreteModel, ConcreteUpdate>::setNoiseCovariance(Measurement_<ConcreteModel, ConcreteUpdate>::NoiseCovariance const& sigma)
-{
-  model_->AdditiveNoiseSigmaSet(sigma);
+  return boost::make_shared<Measurement_<ConcreteModel> >(model, name);
 }
 
 } // namespace hector_pose_estimation
+
+#include "measurement.inl"
 
 #endif // HECTOR_POSE_ESTIMATION_MEASUREMENT_H

@@ -31,54 +31,63 @@
 
 #include <hector_pose_estimation/system_model.h>
 #include <hector_pose_estimation/system/imu_input.h>
+#include <hector_pose_estimation/system/imu_model.h>
 
 namespace hector_pose_estimation {
 
 class GenericQuaternionSystemModel;
-template <> struct Input_<GenericQuaternionSystemModel> {
-  typedef ImuInput Type;
-};
 
-class GenericQuaternionSystemModel : public SystemModel
+namespace traits {
+  template <> struct Input<GenericQuaternionSystemModel> {
+    enum { Dimension = ImuInput::Dimension };
+    typedef ImuInput Type;
+    typedef ImuInput::Vector Vector;
+    typedef ImuInput::Variance Variance;
+  };
+} // namespace traits
+
+class GenericQuaternionSystemModel : public TimeContinuousSystemModel_<GenericQuaternionSystemModel>
 {
 public:
-  static const unsigned int InputDimension = ImuInput::InputDimension;
-  typedef ImuInput::InputVector InputVector;
-
   GenericQuaternionSystemModel();
   virtual ~GenericQuaternionSystemModel();
 
-  virtual std::string getName() const { return "GenericQuaternionSystemModel"; }
-  virtual bool init();
+  virtual bool init(PoseEstimation& estimator, State& state);
 
-  virtual SystemStatus getStatusFlags() const;
+  virtual void getPrior(State &state);
 
-  virtual ColumnVector ExpectedValueGet(double dt) const;
-  virtual SymmetricMatrix CovarianceGet(double dt) const;
-  virtual Matrix dfGet(unsigned int i, double dt) const;
+  virtual bool prepareUpdate(State& state, double dt);
+  virtual SystemStatus getStatusFlags(const State& state);
 
-  virtual void Limit(StateVector& x) const;
+  using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getDerivative;
+  virtual void getDerivative(StateVector& x_dot, const State& state);
+  using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getSystemNoise;
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
+  using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getStateJacobian;
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init);
+  using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getInputJacobian;
+  virtual void getInputJacobian(InputMatrix& B, const State& state, bool init);
 
   void setGravity(double gravity) { gravity_ = gravity; }
   double getGravity() const { return gravity_; }
 
 protected:
-  static void normalize(StateVector& x);
-
-protected:
-  double gravity_;
-  double rate_stddev_;
-#ifdef USE_RATE_SYSTEM_MODEL
+  AliasT<double> gravity_;
+  AliasT<double> rate_stddev_;
+  AliasT<double> acceleration_stddev_;
   double angular_acceleration_stddev_;
-#endif // USE_RATE_SYSTEM_MODEL
-  double acceleration_stddev_;
   double velocity_stddev_;
-  double acceleration_drift_;
-  double rate_drift_;
 
-  mutable double q0,q1,q2,q3;
-  mutable SymmetricMatrix_<StateDimension> noise_;
+  boost::shared_ptr<ImuInput> imu_;
+  boost::shared_ptr<Gyro> gyro_;
+  boost::shared_ptr<Accelerometer> accelerometer_;
+
+  ColumnVector_<3> rate;
+  ColumnVector_<3> acceleration;
+  State::RotationMatrix R;
 };
+
+extern template class System_<GenericQuaternionSystemModel>;
 
 } // namespace hector_pose_estimation
 

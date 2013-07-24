@@ -29,44 +29,117 @@
 #ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 #define HECTOR_POSE_ESTIMATION_MEASUREMENT_MODEL_H
 
-#include <bfl/model/analyticmeasurementmodel_gaussianuncertainty.h>
-#include <bfl/pdf/analyticconditionalgaussian_additivenoise.h>
-
-#include <hector_pose_estimation/parameters.h>
-#include <hector_pose_estimation/types.h>
-
-#include <string>
+#include <hector_pose_estimation/model.h>
+#include <hector_pose_estimation/substate.h>
+#include <hector_pose_estimation/input.h>
 
 namespace hector_pose_estimation {
 
-class MeasurementModel : public BFL::AnalyticConditionalGaussianAdditiveNoise, public BFL::AnalyticMeasurementModelGaussianUncertainty {
+class MeasurementModel : public Model {
 public:
-  MeasurementModel(unsigned int dimension, unsigned int conditional_arguments = 0);
-  virtual ~MeasurementModel();
+  virtual ~MeasurementModel() {}
 
-  virtual bool init() { return true; }
-  virtual void cleanup() { }
-  virtual void reset() { }
+  virtual int getDimension() const = 0;
+  virtual bool hasSubsystem() const { return false; }
 
-  virtual SystemStatus getStatusFlags() const { return SystemStatus(0); }
-  virtual bool applyStatusMask(const SystemStatus& status) { return true; }
+  virtual SystemStatus getStatusFlags() { return SystemStatus(0); }
+  virtual bool active(const State& state) { return !(state.getSystemStatus() & STATUS_ALIGNMENT); }
 
-  ParameterList& parameters() { return parameters_; }
-  const ParameterList& parameters() const { return parameters_; }
+  virtual bool prepareUpdate(State& state, const MeasurementUpdate& update) { return true; }
+  virtual void afterUpdate(State& state) {}
+};
 
-  virtual ColumnVector ExpectedValueGet() const = 0;
-  virtual Matrix dfGet(unsigned int i) const = 0;
+template <class Derived, int _Dimension, int _SubDimension = 0> class MeasurementModel_;
 
-  using BFL::AnalyticConditionalGaussianAdditiveNoise::CovarianceGet;
-  using BFL::AnalyticMeasurementModelGaussianUncertainty::CovarianceGet;
+namespace traits {
 
-protected:
-  ParameterList parameters_;
-  const StateVector& x_;
-  const ColumnVector& u_;
-  mutable ColumnVector y_;
-  mutable Matrix C_;
-  mutable Matrix D_;
+  template <int _Dimension, int _SubDimension>
+  struct MeasurementModel {
+    enum { StateDimension = State::Dimension };
+    typedef typename State::Vector StateVector;
+//    typedef SymmetricMatrix_<StateDimension> StateVariance;
+    typedef typename State::VectorSegment StateVectorSegment;
+    typedef typename State::CovarianceBlock StateCovarianceBlock;
+    typedef typename State::ConstVectorSegment ConstStateVectorSegment;
+    typedef typename State::ConstCovarianceBlock ConstStateCovarianceBlock;
+
+    enum { MeasurementDimension = _Dimension };
+    typedef ColumnVector_<MeasurementDimension> MeasurementVector;
+    typedef SymmetricMatrix_<MeasurementDimension> NoiseVariance;
+    typedef Matrix_<MeasurementDimension,StateDimension> MeasurementMatrix;
+    typedef Matrix_<State::Covariance::RowsAtCompileTime,MeasurementDimension> GainMatrix;
+
+    enum { SubDimension = _SubDimension };
+    struct HasSubSystem : public boost::integral_constant<bool, (_SubDimension > 0)> {};
+    typedef SubState_<SubDimension> SubState;
+    typedef typename SubState::Ptr SubStatePtr;
+    typedef typename SubState::Vector SubStateVector;
+    // typedef SymmetricMatrix_<SubDimension> SubStateVariance;
+    typedef typename SubState::VectorSegment SubStateVectorSegment;
+    typedef typename SubState::CovarianceBlock SubStateCovarianceBlock;
+    typedef typename SubState::ConstVectorSegment ConstSubStateVectorSegment;
+    typedef typename SubState::ConstCovarianceBlock ConstSubStateCovarianceBlock;
+    typedef Matrix_<MeasurementDimension,SubDimension> SubMeasurementMatrix;
+  };
+
+  #define MEASUREMENT_MODEL_TRAIT(_Dimension, _SubDimension) \
+    typedef typename traits::MeasurementModel<_Dimension, _SubDimension> trait; \
+    \
+    enum { StateDimension = trait::StateDimension }; \
+    typedef typename trait::StateVector StateVector; \
+    typedef typename trait::StateVectorSegment StateVectorSegment; \
+    typedef typename trait::StateCovarianceBlock StateCovarianceBlock; \
+    \
+    enum { MeasurementDimension = _Dimension }; \
+    typedef typename trait::MeasurementVector MeasurementVector; \
+    typedef typename trait::NoiseVariance NoiseVariance; \
+    typedef typename trait::MeasurementMatrix MeasurementMatrix; \
+    typedef typename trait::GainMatrix GainMatrix; \
+    \
+    enum { InputDimension = traits::Input<Derived>::Dimension }; \
+    typedef typename traits::Input<Derived>::Type InputType; \
+    typedef typename traits::Input<Derived>::Vector InputVector; \
+    typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix; \
+    \
+    typedef typename trait::HasSubSystem HasSubSystem; \
+    enum { SubDimension = _SubDimension }; \
+    typedef typename trait::SubState SubState; \
+    typedef typename trait::SubStatePtr SubStatePtr; \
+    typedef typename trait::SubStateVector SubStateVector; \
+    typedef typename trait::SubStateVectorSegment SubStateVectorSegment; \
+    typedef typename trait::SubStateCovarianceBlock SubStateCovarianceBlock; \
+    typedef typename trait::ConstSubStateVectorSegment ConstSubStateVectorSegment; \
+    typedef typename trait::ConstSubStateCovarianceBlock ConstSubStateCovarianceBlock; \
+    typedef typename trait::SubMeasurementMatrix SubMeasurementMatrix; \
+
+} // namespace traits
+
+template <class Derived, int _Dimension, int _SubDimension>
+class MeasurementModel_ : public MeasurementModel {
+public:
+  MEASUREMENT_MODEL_TRAIT(_Dimension, _SubDimension)
+  virtual ~MeasurementModel_() {}
+
+  virtual int getDimension() const { return trait::MeasurementDimension; }
+  virtual bool hasSubSystem() const { return trait::HasSubSystem::value; }
+
+  Derived *derived() { return static_cast<Derived *>(this); }
+  const Derived *derived() const { return static_cast<const Derived *>(this); }
+
+  SubState& sub(State& state) const { return *state.getSubState<SubDimension>(this); }
+  const SubState& sub(const State& state) const { return *state.getSubState<SubDimension>(this); }
+
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state) {}
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init) {}
+  virtual void getInputJacobian(InputMatrix& D, const State& state, bool init) {}
+  virtual void getMeasurementNoise(NoiseVariance& R, const State& state, bool init) {}
+
+  // variant for MeasurementModels that use a SubSystem
+  virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init) {}
+
+  virtual void limitError(MeasurementVector& error) {}
+
+  virtual const MeasurementVector* getFixedMeasurementVector() { return 0; }
 };
 
 } // namespace hector_pose_estimation

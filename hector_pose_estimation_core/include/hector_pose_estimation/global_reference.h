@@ -29,6 +29,7 @@
 #ifndef HECTOR_POSE_ESTIMATION_GLOBAL_REFERENCE_H
 #define HECTOR_POSE_ESTIMATION_GLOBAL_REFERENCE_H
 
+#include <hector_pose_estimation/types.h>
 #include <hector_pose_estimation/parameters.h>
 
 namespace hector_pose_estimation {
@@ -66,9 +67,9 @@ namespace hector_pose_estimation {
     GlobalReference& setHeading(double heading, bool quiet = false);
     GlobalReference& setAltitude(double altitude, bool quiet = false);
 
-    GlobalReference& setCurrentPosition(PoseEstimation& estimator, double latitude, double longitude);
-    GlobalReference& setCurrentHeading(PoseEstimation& estimator, double heading);
-    GlobalReference& setCurrentAltitude(PoseEstimation& estimator, double altitude);
+    GlobalReference& setCurrentPosition(const State& state, double latitude, double longitude);
+    GlobalReference& setCurrentHeading(const State& state, double heading);
+    GlobalReference& setCurrentAltitude(const State& state, double altitude);
 
     bool hasPosition() const { return has_position_; }
     bool hasHeading() const  { return has_heading_; }
@@ -79,13 +80,16 @@ namespace hector_pose_estimation {
     void fromNorthEast(double north, double east, double &x, double &y);
     void toNorthEast(double x, double y, double &north, double &east);
 
-    GlobalReference();
     ParameterList& parameters();
+
+    static const GlobalReferencePtr &Instance();
 
     void updated();
     void reset();
 
   private:
+    GlobalReference();
+
     Position position_;
     Heading heading_;
     Radius radius_;

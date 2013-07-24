@@ -26,15 +26,25 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include "hector_pose_estimation/types.h"
+#include <hector_pose_estimation/types.h>
 
 namespace hector_pose_estimation {
 
-std::string getSystemStatusString(const SystemStatus& status) {
+std::string getSystemStatusString(const SystemStatus& status, const SystemStatus& asterisk_status) {
   std::string result;
+  static const char* const str[] = {
+    "ALIGNMENT", "DEGRADED", "READY", 0,
+    "ROLLPITCH", "YAW", "PSEUDO_ROLLPITCH", "PSEUDO_YAW",
+    "RATE_XY", "RATE_Z", "PSEUDO_RATE_XY", "PSEUDO_RATE_Z",
+    "VELOCITY_XY", "VELOCITY_Z", "PSEUDO_VELOCITY_XY", "PSEUDO_VELOCITY_Z",
+    "POSITION_XY", "POSITION_Z", "PSEUDO_POSITION_XY", "PSEUDO_POSITION_Z",
+  };
 
-  for(unsigned int i = 0; i < sizeof(SystemStatusStrings)/sizeof(*SystemStatusStrings); ++i) {
-    if (status & (1 << i)) result = result + std::string(SystemStatusStrings[i]) + " ";
+  for(unsigned int i = 0; i < sizeof(str)/sizeof(*str); ++i) {
+    if (status & (1 << i)) {
+      if (asterisk_status & (1 << i)) result += "*";
+      result += std::string(str[i]) + " ";
+    }
   }
   if (result.size() > 0) result.resize(result.size() - 1);
 

@@ -28,76 +28,60 @@
 
 #include <hector_pose_estimation/measurements/gravity.h>
 #include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 namespace hector_pose_estimation {
 
+template class Measurement_<GravityModel>;
+
 GravityModel::GravityModel()
-  : MeasurementModel(MeasurementDimension)
-  , gravity_(0.0)
+  : gravity_(0.0)
 {
   parameters().add("stddev", stddev_, 10.0);
 }
 
-bool GravityModel::init()
-{
-  NoiseCovariance noise = 0.0;
-  noise(1,1) = noise(2,2) = noise(3,3) = pow(stddev_, 2);
-  this->AdditiveNoiseSigmaSet(noise);
-  return true;
-}
-
 GravityModel::~GravityModel() {}
 
-bool GravityModel::applyStatusMask(const SystemStatus &status) const {
-  if (status & STATE_ROLLPITCH) return false;
+bool GravityModel::init(PoseEstimation &estimator, State &state) {
+  setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
   return true;
 }
 
-SystemStatus GravityModel::getStatusFlags() const {
-  return STATE_ROLLPITCH;
+void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
+{
+  if (init) {
+    R(0,0) = R(1,1) = R(2,2) = pow(stddev_, 2);
+  }
 }
 
-ColumnVector GravityModel::ExpectedValueGet() const {
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
+void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
+{
+  State::ConstOrientationType q(state.getOrientation());
 
   // y = q * [0 0 1] * q';
-  this->y_(1) = -gravity_ * (2*qx*qz - 2*qw*qy);
-  this->y_(2) = -gravity_ * (2*qw*qx + 2*qy*qz);
-  this->y_(3) = -gravity_ * (qw*qw - qx*qx - qy*qy + qz*qz);
-
-  return y_;
+  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
+  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
+  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
 }
 
-Matrix GravityModel::dfGet(unsigned int i) const {
-  if (i != 0) return Matrix();
+void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
+{
+  State::ConstOrientationType q(state.getOrientation());
 
-  const double qw = x_(QUATERNION_W);
-  const double qx = x_(QUATERNION_X);
-  const double qy = x_(QUATERNION_Y);
-  const double qz = x_(QUATERNION_Z);
-
-  C_(1,QUATERNION_W) =  gravity_*2*qy;
-  C_(1,QUATERNION_X) = -gravity_*2*qz;
-  C_(1,QUATERNION_Y) =  gravity_*2*qw;
-  C_(1,QUATERNION_Z) = -gravity_*2*qx;
-  C_(2,QUATERNION_W) = -gravity_*2*qx;
-  C_(2,QUATERNION_X) = -gravity_*2*qw;
-  C_(2,QUATERNION_Y) = -gravity_*2*qz;
-  C_(2,QUATERNION_Z) = -gravity_*2*qy;
-  C_(3,QUATERNION_W) = -gravity_*2*qw;
-  C_(3,QUATERNION_X) =  gravity_*2*qx;
-  C_(3,QUATERNION_Y) =  gravity_*2*qy;
-  C_(3,QUATERNION_Z) = -gravity_*2*qz;
-
-  return C_;
-}
-
-bool Gravity::beforeUpdate(PoseEstimation &estimator, const Update &update) {
-  model_->setGravity(estimator.getSystemModel()->getGravity());
-  return true;
+  if (state.getOrientationIndex() >= 0) {
+    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
+    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
+    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
+    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
+    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
+    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
+    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
+    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
+    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
+    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
+    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
+    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
+  }
 }
 
 } // namespace hector_pose_estimation

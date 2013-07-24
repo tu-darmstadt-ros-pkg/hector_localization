@@ -30,41 +30,36 @@
 #define HECTOR_POSE_ESTIMATION_GRAVITY_H
 
 #include <hector_pose_estimation/measurement.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 
-class GravityModel : public MeasurementModel {
+class GravityModel : public MeasurementModel_<GravityModel,3> {
 public:
-  static const unsigned int MeasurementDimension = 3;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
+  using MeasurementModel_<GravityModel,3>::MeasurementVector;
+  using MeasurementModel_<GravityModel,3>::NoiseVariance;
 
   GravityModel();
   virtual ~GravityModel();
 
-  virtual bool init();
+  virtual bool init(PoseEstimation &estimator, State &state);
 
-  virtual void setGravity(double gravity) { gravity_ = gravity; }
-  virtual double getGravity() const { return gravity_; }
+  virtual void setGravity(double gravity) { gravity_.z() = gravity; }
+  virtual double getGravity() const { return gravity_.z(); }
 
-  bool applyStatusMask(const SystemStatus &status) const;
-  virtual SystemStatus getStatusFlags() const;
+  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_ROLLPITCH); }
+  virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_ROLLPITCH; }
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
 protected:
   double stddev_;
-  double gravity_;
+  MeasurementVector gravity_;
 };
 
-class Gravity : public Measurement_<GravityModel>
-{
-public:
-  Gravity(const std::string& name = "gravity") : Measurement_<GravityModel>(name) {}
-  bool beforeUpdate(PoseEstimation &estimator, const Update &update);
-};
+typedef Measurement_<GravityModel> Gravity;
+extern template class Measurement_<GravityModel>;
 
 } // namespace hector_pose_estimation
 

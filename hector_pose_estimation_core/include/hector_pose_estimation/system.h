@@ -29,14 +29,17 @@
 #ifndef HECTOR_POSE_ESTIMATION_SYSTEM_H
 #define HECTOR_POSE_ESTIMATION_SYSTEM_H
 
-#include "system_model.h"
-#include "system_input.h"
+#include <hector_pose_estimation/system_model.h>
+#include <hector_pose_estimation/types.h>
+#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation/input.h>
+#include <hector_pose_estimation/filter.h>
 
-namespace BFL { class KalmanFilter; }
+#include <ros/console.h>
 
 namespace hector_pose_estimation {
 
-class PoseEstimation;
+template <class ConcreteModel> class System_;
 
 class System
 {
@@ -44,50 +47,54 @@ public:
   System(const std::string& name);
   virtual ~System();
 
-  template <typename ConcreteModel> static boost::shared_ptr<System> create(ConcreteModel *model, const std::string& name = "system");
+  template <class ConcreteModel> static boost::shared_ptr<System_<ConcreteModel> > create(ConcreteModel *model, const std::string& name = "system");
 
   virtual const std::string& getName() const { return name_; }
   virtual void setName(const std::string& name) { name_ = name; }
 
-  virtual SystemModel *getModel() const = 0;
+  virtual SystemModel *getModel() const { return 0; }
+  virtual int getDimension() const = 0;
 
-  virtual bool init();
+  virtual Filter *filter() const { return filter_; }
+  virtual void setFilter(Filter *filter) { filter_ = filter; }
+
+  virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
-  virtual void reset();
+  virtual void reset(State& state);
 
+  virtual bool active(const State& state);
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
 
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
 
-  BFL::Gaussian *getPrior();
-  virtual const SystemInput& getInput() const = 0;
-  virtual void setInput(const SystemInput& input) = 0;
+  virtual void getPrior(State &state) const;
 
-  virtual bool update(PoseEstimation &estimator, double dt) = 0;
+  virtual bool update(double dt);
+
   virtual void updated();
-  virtual StateVector limitState(StateVector state) const;
+  virtual bool limitState(State& state);
 
 protected:
-  void updateInternal(PoseEstimation &estimator, double dt, ColumnVector const& u);
+  virtual bool updateImpl(double dt) = 0;
+  virtual bool prepareUpdate(State &state, double dt) { return getModel()->prepareUpdate(state, dt); }
+  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
 
 protected:
   std::string name_;
   ParameterList parameters_;
   SystemStatus status_flags_;
-  BFL::Gaussian prior_;
+
+  Filter *filter_;
 };
 
-typedef boost::shared_ptr<System> SystemPtr;
-
-template <typename ConcreteModel, typename ConcreteInput = typename Input_<ConcreteModel>::Type >
+template <class ConcreteModel>
 class System_ : public System
 {
 public:
   typedef ConcreteModel Model;
-  typedef ConcreteInput Input;
-  static const unsigned int InputDimension = Model::InputDimension;
-  typedef typename Model::InputVector InputVector;
+  typedef typename traits::Input<ConcreteModel>::Type InputType;
+  typedef typename traits::Input<ConcreteModel>::Vector InputVector;
 
   System_(const std::string& name = "system")
     : System(name)
@@ -102,39 +109,32 @@ public:
   {
     parameters_.add(model_->parameters());
   }
-  virtual SystemModel *getModel() const { return model_.get(); }
 
-  virtual const Input& getInput() const { return input_; }
-  virtual void setInput(const Input& input) { input_ = input; }
-  virtual void setInput(const SystemInput& input) {
-    try {
-      input_ = dynamic_cast<const Input&>(input);
-    } catch(std::bad_cast& e) {
-      std::cerr << "In system " << getName() << ": " << e.what() << std::endl;
-      std::cerr << "Expected type " << std::string(typeid(Input).name()) << ", you gave me " << std::string(typeid(input).name()) << std::endl;
-    }
-  }
+  virtual ~System_() {}
 
-  virtual bool update(PoseEstimation &estimator, double dt);
+  virtual Model *getModel() const { return model_.get(); }
+  virtual int getDimension() const { return model_->getDimension(); }
+
+  virtual Filter *filter() const { return predictor_ ? predictor_->base() : 0; }
+  virtual const boost::shared_ptr< Filter::Predictor_<Model> >& predictor() const { return predictor_; }
+  virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
+
+protected:
+  virtual bool updateImpl(double dt);
 
 private:
   boost::shared_ptr<Model> model_;
-  Input input_;
+  boost::shared_ptr< Filter::Predictor_<Model> > predictor_;
 };
 
-template <class ConcreteModel, class ConcreteInput>
-bool System_<ConcreteModel, ConcreteInput>::update(PoseEstimation &estimator, double dt)
+template <class ConcreteModel>
+boost::shared_ptr<System_<ConcreteModel> > System::create(ConcreteModel *model, const std::string& name)
 {
-  updateInternal(estimator, dt, input_.getVector());
-  return true;
-}
-
-template <typename ConcreteModel>
-SystemPtr System::create(ConcreteModel *model, const std::string& name)
-{
-  return SystemPtr(new System_<ConcreteModel>(model, name));
+  return boost::make_shared<System_<ConcreteModel> >(model, name);
 }
 
 } // namespace hector_pose_estimation
+
+#include "system.inl"
 
 #endif // HECTOR_POSE_ESTIMATION_SYSTEM_H

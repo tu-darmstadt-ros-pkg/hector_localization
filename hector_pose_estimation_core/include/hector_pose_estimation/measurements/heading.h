@@ -30,32 +30,29 @@
 #define HECTOR_POSE_ESTIMATION_HEADING_H
 
 #include <hector_pose_estimation/measurement.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 
-class HeadingModel : public MeasurementModel {
+class HeadingModel : public MeasurementModel_<HeadingModel,1> {
 public:
-  static const unsigned int MeasurementDimension = 1;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   HeadingModel();
   virtual ~HeadingModel();
 
-  virtual bool init();
+  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_YAW); }
+  virtual SystemStatus getStatusFlags() { return STATE_YAW; }
 
-  bool applyStatusMask(const SystemStatus &status) const;
-  virtual SystemStatus getStatusFlags() const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void limitError(MeasurementVector &error);
 
 protected:
   double stddev_;
 };
 
 typedef Measurement_<HeadingModel> Heading;
+extern template class Measurement_<HeadingModel>;
 
 } // namespace hector_pose_estimation
 

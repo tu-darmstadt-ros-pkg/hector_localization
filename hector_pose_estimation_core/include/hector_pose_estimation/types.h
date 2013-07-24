@@ -30,62 +30,80 @@
 #define HECTOR_POSE_ESTIMATION_TYPES_H
 
 #include <hector_pose_estimation/matrix.h>
+#include <hector_pose_estimation/collection.h>
 
 // Use system model with angular rates.
 // #define USE_RATE_SYSTEM_MODEL
 
 namespace hector_pose_estimation {
 
-  enum StateIndex {
-    QUATERNION_W = 1,
-    QUATERNION_X,
-    QUATERNION_Y,
-    QUATERNION_Z,
-#ifdef USE_RATE_SYSTEM_MODEL
-    RATE_X,
-    RATE_Y,
-    RATE_Z,
-#endif // USE_RATE_SYSTEM_MODEL
-    POSITION_X,
-    POSITION_Y,
-    POSITION_Z,
-    VELOCITY_X,
-    VELOCITY_Y,
-    VELOCITY_Z,
-    BIAS_ACCEL_X,
-    BIAS_ACCEL_Y,
-    BIAS_ACCEL_Z,
-    BIAS_GYRO_X,
-    BIAS_GYRO_Y,
-    BIAS_GYRO_Z,
-  };
-  static const unsigned int StateDimension = BIAS_GYRO_Z;
-  typedef ColumnVector_<StateDimension> StateVector;
-  typedef SymmetricMatrix_<StateDimension> StateCovariance;
-
   enum {
-    STATE_ALIGNMENT = 1,
-    STATE_DEGRADED = 2,
-    STATE_READY = 4,
+    STATUS_ALIGNMENT = 0x1,
+    STATUS_DEGRADED = 0x2,
+    STATUS_READY = 0x4,
+    STATUS_MASK = 0xf,
 
-    STATE_ROLLPITCH = 8,
-    STATE_YAW = 16,
-    STATE_XY_VELOCITY = 32,
-    STATE_XY_POSITION = 64,
-    STATE_Z_VELOCITY = 128,
-    STATE_Z_POSITION = 256,
+    STATE_ROLLPITCH = 0x10,
+    STATE_YAW = 0x20,
+    STATE_RATE_XY = 0x100,
+    STATE_RATE_Z = 0x200,
+    STATE_VELOCITY_XY = 0x1000,
+    STATE_VELOCITY_Z = 0x2000,
+    STATE_POSITION_XY = 0x10000,
+    STATE_POSITION_Z = 0x20000,
+    STATE_MASK = 0x33330,
 
-    STATE_ALL = -1
+    STATE_PSEUDO_ROLLPITCH = 0x40,
+    STATE_PSEUDO_YAW = 0x80,
+    STATE_PSEUDO_RATE_XY = 0x400,
+    STATE_PSEUDO_RATE_Z = 0x800,
+    STATE_PSEUDO_VELOCITY_XY = 0x4000,
+    STATE_PSEUDO_VELOCITY_Z = 0x8000,
+    STATE_PSEUDO_POSITION_XY = 0x40000,
+    STATE_PSEUDO_POSITION_Z = 0x80000,
+    STATE_PSEUDO_MASK = 0xcccc0
   };
   typedef unsigned int SystemStatus;
 
-  static const char* const SystemStatusStrings[] = {
-    "ALIGNMENT", "DEGRADED", "READY", "ROLLPITCH", "YAW", "XY_VELOCITY", "XY_POSITION", "Z_VELOCITY", "Z_POSITION"
-  };
-  std::string getSystemStatusString(const SystemStatus& status);
+  std::string getSystemStatusString(const SystemStatus& status, const SystemStatus& asterisk_status = 0);
   static inline std::ostream& operator<<(std::ostream& os, const SystemStatus& status) {
     return os << getSystemStatusString(status);
   }
+
+  class Model;
+
+  class SystemModel;
+  class System;
+  template <class Derived> class System_;
+  typedef boost::shared_ptr<System> SystemPtr;
+  typedef boost::weak_ptr<System> SystemWPtr;
+  typedef Collection<System> Systems;
+
+  class MeasurementModel;
+  class MeasurementUpdate;
+  class Measurement;
+  template <class Derived> class Measurement_;
+  typedef boost::shared_ptr<Measurement> MeasurementPtr;
+  typedef boost::weak_ptr<Measurement> MeasurementWPtr;
+  typedef Collection<Measurement> Measurements;
+
+  class Input;
+  typedef boost::shared_ptr<Input> InputPtr;
+  typedef boost::weak_ptr<Input> InputWPtr;
+  typedef Collection<Input> Inputs;
+
+  class PoseEstimation;
+  class Filter;
+  class State;
+
+  class SubState;
+  template <int Dimension> class SubState_;
+  typedef SubState_<0> BaseState;
+  typedef boost::shared_ptr<SubState> SubStatePtr;
+  typedef boost::weak_ptr<SubState> SubStateWPtr;
+
+  class GlobalReference;
+  typedef boost::shared_ptr<GlobalReference> GlobalReferencePtr;
 
 } // namespace hector_pose_estimation
 

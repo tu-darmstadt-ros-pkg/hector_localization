@@ -27,65 +27,61 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/system.h>
-#include <hector_pose_estimation/pose_estimation.h>
-#include <bfl/filter/kalmanfilter.h>
+#include <hector_pose_estimation/filter/ekf.h>
 
 namespace hector_pose_estimation {
 
 System::System(const std::string &name)
   : name_(name)
   , status_flags_(0)
-  , prior_(StateDimension)
 {
 }
 
 System::~System() {
 }
 
-BFL::Gaussian *System::getPrior()
+void System::getPrior(State &state) const
 {
-  getModel()->getPrior(prior_);
-  return &prior_;
+  getModel()->getPrior(state);
 }
 
-bool System::init()
+bool System::init(PoseEstimation& estimator, State& state)
 {
-  if (!getModel()) return false;
-  return getModel()->init();
+  if (!getModel() || !getModel()->init(estimator, state)) return false;
+  return true;
 }
 
 void System::cleanup()
 {
-  getModel()->cleanup();
+  if (getModel()) getModel()->cleanup();
 }
 
-void System::reset()
+void System::reset(State& state)
 {
-  getModel()->reset();
+  if (getModel()) getModel()->reset(state);
 }
 
-void System::updateInternal(PoseEstimation &estimator, double dt, ColumnVector const& u) {
-  ROS_DEBUG("Updating with system model %s", getName().c_str());
+bool System::active(const State& state) {
+  bool active = (!getModel() || getModel()->active(state));
+  if (!active) status_flags_ = 0;
+  return active;
+}
 
-//  std::cout << "     dt = " << dt << ", u = [" << u.transpose() << "]" << std::endl;
+bool System::update(double dt) {
+  if (!filter() || !active(filter()->state())) return false;
 
-  getModel()->set_dt(dt);
-  getModel()->setMeasurementStatus(estimator.getMeasurementStatus());
-  estimator.filter()->Update(getModel(), u);
+  if (getModel()) status_flags_ = getModel()->getStatusFlags(filter()->state());
+  if (!this->updateImpl(dt)) return false;
+
   updated();
-  estimator.updated();
-
-//  std::cout << "x_pred = [" << estimator.getState().transpose() << "]" << std::endl;
-//  std::cout << "P_pred = [" << estimator.getCovariance() << "]" << std::endl;
+  return true;
 }
 
 void System::updated() {
-  if (getModel()) status_flags_ = getModel()->getStatusFlags();
 }
 
-StateVector System::limitState(StateVector state) const {
-  getModel()->Limit(state);
-  return state;
+bool System::limitState(State &state) {
+  return getModel()->limitState(state);
 }
 
 } // namespace hector_pose_estimation

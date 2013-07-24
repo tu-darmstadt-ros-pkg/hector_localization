@@ -37,18 +37,74 @@
 
 namespace hector_pose_estimation {
 
+namespace {
+  struct null_deleter {
+    void operator()(void const *) const {}
+  };
+}
+
+ParameterList& ParameterList::add(ParameterPtr const& parameter) {
+  erase(parameter->key);
+  push_back(parameter);
+  return *this;
+}
+
+ParameterList& ParameterList::add(ParameterList const& other) {
+  for(ParameterList::const_iterator it = other.begin(); it != other.end(); ++it) push_back(*it);
+  return *this;
+}
+
+ParameterList& ParameterList::add(Parameter& alias, const std::string& key) {
+  if (!key.empty()) alias.key = key;
+  return add(ParameterPtr(&alias, null_deleter()));
+}
+
+ParameterList& ParameterList::copy(const std::string& prefix, ParameterList const& parameters) {
+  for(ParameterList::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
+    ParameterPtr copy((*it)->clone());
+    if (!copy) continue;
+    if (!prefix.empty()) copy->key = prefix + copy->key;
+    push_back(copy);
+  }
+  return *this;
+}
+
+ParameterList& ParameterList::copy(ParameterList const& parameters) {
+  copy(std::string(), parameters);
+  return *this;
+}
+
+ParameterPtr const& ParameterList::get(const std::string& key) const {
+  for(const_iterator it = begin(); it != end(); ++it) {
+    if ((*it)->key == key) {
+      return *it;
+    }
+  }
+  throw std::runtime_error("parameter not found");
+}
+
+ParameterList::iterator ParameterList::erase(const std::string& key) {
+  iterator it = begin();
+  for(; it != end(); ++it) {
+    if ((*it)->key == key) return erase(it);
+  }
+  return it;
+}
+
 template <typename T>
 struct ParameterRegistryROS::Handler
 {
-  bool operator()(const ParameterPtr& parameter, ros::NodeHandle& nh) {
+  bool operator()(const ParameterPtr& parameter, ros::NodeHandle& nh, bool set_all = false) {
     try {
-      TypedParameter<T> p(*parameter);
+      ParameterT<T> p(*parameter);
       std::string param_key(boost::algorithm::to_lower_copy(parameter->key));
-      if (!nh.getParam(param_key, p.value)) {
-        nh.setParam(param_key, p.value);
-        ROS_DEBUG_STREAM("Registered parameter " << param_key << " with new value " << p.value);
+      if (!nh.getParam(param_key, p.value())) {
+        if (set_all) {
+          nh.setParam(param_key, p.value());
+          ROS_DEBUG_STREAM("Registered parameter " << param_key << " with new value " << p.value());
+        }
       } else {
-        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value);
+        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value());
       }
       return true;
     } catch(std::bad_cast&) {
@@ -60,22 +116,24 @@ struct ParameterRegistryROS::Handler
 template <>
 struct ParameterRegistryROS::Handler<ColumnVector>
 {
-  bool operator()(const ParameterPtr& parameter, ros::NodeHandle& nh) {
+  bool operator()(const ParameterPtr& parameter, ros::NodeHandle& nh, bool set_all = false) {
     try {
-      TypedParameter<ColumnVector> p(*parameter);
+      ParameterT<ColumnVector> p(*parameter);
       std::string param_key(boost::algorithm::to_lower_copy(parameter->key));
       XmlRpc::XmlRpcValue vector;
       if (!nh.getParam(param_key, vector)) {
-        /// nh.setParam(param_key, p.value);
-        ROS_DEBUG_STREAM("Not registered vector parameter " << param_key << ". Using defaults.");
+        if (set_all) {
+          /// nh.setParam(param_key, p.value);
+          ROS_DEBUG_STREAM("Not registered vector parameter " << param_key << ". Using defaults.");
+        }
       } else {
         if (vector.getType() != XmlRpc::XmlRpcValue::TypeArray) {
           ROS_WARN_STREAM("Found parameter " << param_key << ", but it's not an array!");
           return false;
         }
-        p.value.resize(vector.size());
-        for(int i = 0; i < vector.size(); ++i) p.value[i] = vector[i];
-        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value);
+        p.value().resize(vector.size());
+        for(int i = 0; i < vector.size(); ++i) p.value()[i] = vector[i];
+        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value());
       }
       return true;
     } catch(std::bad_cast&) {
@@ -98,22 +156,24 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& vector) {
 template <typename T>
 struct ParameterRegistryROS::Handler< std::vector<T> >
 {
-  bool operator()(const ParameterPtr& parameter, ros::NodeHandle& nh) {
+  bool operator()(const ParameterPtr& parameter, ros::NodeHandle& nh, bool set_all = false) {
     try {
-      TypedParameter< std::vector<T> > p(*parameter);
+      ParameterT< std::vector<T> > p(*parameter);
       std::string param_key(boost::algorithm::to_lower_copy(parameter->key));
       XmlRpc::XmlRpcValue vector;
       if (!nh.getParam(param_key, vector)) {
-        /// nh.setParam(param_key, p.value);
-        ROS_DEBUG_STREAM("Not registered vector parameter " << param_key << ". Using defaults.");
+        if (set_all) {
+          /// nh.setParam(param_key, p.value);
+          ROS_DEBUG_STREAM("Not registered vector parameter " << param_key << ". Using defaults.");
+        }
       } else {
         if (vector.getType() != XmlRpc::XmlRpcValue::TypeArray) {
           ROS_WARN_STREAM("Found parameter " << param_key << ", but it's not an array!");
           return false;
         }
-        p.value.resize(vector.size());
-        for(int i = 0; i < vector.size(); ++i) p.value[i] = vector[i];
-        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value);
+        p.value().resize(vector.size());
+        for(int i = 0; i < vector.size(); ++i) p.value()[i] = vector[i];
+        ROS_DEBUG_STREAM("Found parameter " << param_key << " with value " << p.value());
       }
       return true;
     } catch(std::bad_cast&) {
@@ -124,23 +184,43 @@ struct ParameterRegistryROS::Handler< std::vector<T> >
 
 ParameterRegistryROS::ParameterRegistryROS(ros::NodeHandle nh)
   : nh_(nh)
-{}
+  , set_all_(false)
+{
+  nh_.getParam("set_all_parameters", set_all_);
+}
 
 void ParameterRegistryROS::operator ()(ParameterPtr parameter) {
-  if (Handler<std::string>()(parameter, nh_) ||
-      Handler<double>()(parameter, nh_) ||
-      Handler<std::vector<double> >()(parameter, nh_) ||
-      Handler<int>()(parameter, nh_) ||
-      Handler<bool>()(parameter, nh_) ||
-      Handler<ColumnVector>()(parameter, nh_)
+  // call initialize recursively for ParameterList parameters
+  if (parameter->hasType<ParameterList>()) {
+    ParameterList with_prefix;
+    with_prefix.copy(parameter->key + "/", parameter->as<ParameterList>());
+    with_prefix.initialize(*this);
+    return;
+  }
+
+  ROS_DEBUG_STREAM("Registering ROS parameter " << parameter->key);
+
+  if (Handler<std::string>()(parameter, nh_, set_all_) ||
+      Handler<double>()(parameter, nh_, set_all_) ||
+      Handler<std::vector<double> >()(parameter, nh_, set_all_) ||
+      Handler<int>()(parameter, nh_, set_all_) ||
+      Handler<bool>()(parameter, nh_, set_all_) ||
+      Handler<ColumnVector>()(parameter, nh_, set_all_)
      ) {
     return;
   }
-  ROS_ERROR("Could not register parameter %s due to unknown type %s!", parameter->key.c_str(), parameter->type());
+
+  ROS_ERROR("Parameter %s has unknown type %s!", parameter->key.c_str(), parameter->type());
 }
 
 void ParameterList::initialize(ParameterRegisterFunc func) const {
-  for(const_iterator it = begin(); it != end(); ++it) func(*it);
+  for(const_iterator it = begin(); it != end(); ++it) {
+    const ParameterPtr& parameter = *it;
+    if (parameter->empty()) continue;
+    if (parameter->isAlias()) continue;
+
+    func(*it);
+  }
 }
 
 } // namespace hector_pose_estimation

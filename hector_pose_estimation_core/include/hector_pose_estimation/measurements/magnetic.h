@@ -31,27 +31,24 @@
 
 #include <hector_pose_estimation/measurement.h>
 #include <hector_pose_estimation/global_reference.h>
-#include <bfl/wrappers/matrix/matrix_wrapper.h>
 
 namespace hector_pose_estimation {
 
-class MagneticModel : public MeasurementModel {
+class MagneticModel : public MeasurementModel_<MagneticModel,3> {
 public:
-  static const unsigned int MeasurementDimension = 3;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
   MagneticModel();
   virtual ~MagneticModel();
 
-  virtual bool init();
-  virtual SystemStatus getStatusFlags() const;
+  virtual bool init(PoseEstimation &estimator, State &state);
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual SystemStatus getStatusFlags() { return STATE_YAW; }
 
-  double getMagneticHeading(const StateVector& state, const MeasurementVector& y) const;
-  double getTrueHeading(const StateVector& state, const MeasurementVector& y) const;
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+  double getMagneticHeading(const State& state, const MeasurementVector& y) const;
+  double getTrueHeading(const State& state, const MeasurementVector& y) const;
 
   void setReference(const GlobalReference::Heading &reference_heading);
   bool hasMagnitude() const { return magnitude_ != 0.0; }
@@ -66,6 +63,8 @@ protected:
 //  mutable Matrix C_full_;
 };
 
+extern template class Measurement_<MagneticModel>;
+
 class Magnetic : public Measurement_<MagneticModel>
 {
 public:
@@ -74,18 +73,18 @@ public:
 
   virtual void onReset();
 
-  virtual MeasurementVector const& getVector(const Update &update);
-  virtual NoiseCovariance const& getCovariance(const Update &update);
+  virtual MeasurementVector const& getVector(const Update &update, const State&);
+  virtual NoiseVariance const& getVariance(const Update &update, const State&);
 
-  virtual bool beforeUpdate(PoseEstimation &estimator, const Update &update);
+  virtual bool prepareUpdate(State &state, const Update &update);
 
 private:
   bool auto_heading_;
-  GlobalReference *reference_;
+  GlobalReferencePtr reference_;
   ColumnVector deviation_;
 
   MeasurementVector y_;
-  NoiseCovariance R_;
+  NoiseVariance R_;
 };
 
 } // namespace hector_pose_estimation

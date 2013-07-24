@@ -27,13 +27,14 @@
 //=================================================================================================
 
 #include "services.h"
+#include "parameters.h"
 
 namespace hector_pose_estimation {
 
 SystemService::SystemService(RTT::TaskContext *owner, const SystemPtr& system, const std::string& name)
   : RTT::Service(name.empty() ? system->getName() : name, owner)
 {
-  system->parameters().initialize(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  system->parameters().initialize(ParameterRegistryProperties(this->properties()));
 }
 
 SystemService::~SystemService()
@@ -42,18 +43,10 @@ SystemService::~SystemService()
 MeasurementService::MeasurementService(RTT::TaskContext *owner, const MeasurementPtr& measurement, const std::string& name)
   : RTT::Service(name.empty() ? measurement->getName() : name, owner)
 {
-  measurement->parameters().initialize(boost::bind(&registerParamAsProperty, _1, this->properties()));
+  measurement->parameters().initialize(ParameterRegistryProperties(this->properties()));
 }
 
 MeasurementService::~MeasurementService()
 {}
-
-void registerParamAsProperty(ParameterPtr &parameter, RTT::PropertyBag *bag) {
-  bag->removeProperty(bag->getProperty(parameter->key));
-  if (parameter->hasType<std::string>()) bag->addProperty(parameter->key, parameter->as<std::string>());
-  if (parameter->hasType<double>()) bag->addProperty(parameter->key, parameter->as<double>());
-  if (parameter->hasType<int>()) bag->addProperty(parameter->key, parameter->as<int>());
-  if (parameter->hasType<bool>()) bag->addProperty(parameter->key, parameter->as<bool>());
-}
 
 } // namespace hector_pose_estimation

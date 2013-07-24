@@ -41,6 +41,7 @@ namespace hector_pose_estimation {
   private:
     template <typename T> struct Handler;
     ros::NodeHandle nh_;
+    bool set_all_;
   };
 
 } // namespace hector_pose_estimation

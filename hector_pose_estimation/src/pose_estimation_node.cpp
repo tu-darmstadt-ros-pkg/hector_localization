@@ -43,7 +43,7 @@ PoseEstimationNode::PoseEstimationNode(const SystemPtr& system)
   , private_nh_("~")
   , transform_listener_(0)
 {
-  if (!system) pose_estimation_->setSystemModel(new GenericQuaternionSystemModel);
+  if (!system) pose_estimation_->addSystem(System::create(new GenericQuaternionSystemModel));
 
   pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
 #if defined(USE_HECTOR_UAV_MSGS)
@@ -62,7 +62,11 @@ PoseEstimationNode::~PoseEstimationNode()
 }
 
 bool PoseEstimationNode::init() {
-  pose_estimation_->getParameters().initialize(ParameterRegistryROS(getPrivateNodeHandle()));
+  // get parameters
+  pose_estimation_->parameters().initialize(ParameterRegistryROS(getPrivateNodeHandle()));
+  getPrivateNodeHandle().param("publish_covariances", publish_covariances_, false);
+  getPrivateNodeHandle().param("publish_world_map_transform", publish_world_other_transform_, false);
+  getPrivateNodeHandle().param("map_frame", other_frame_, std::string());
 
   if (!pose_estimation_->init()) {
     ROS_ERROR("Intitialization of pose estimation failed!");
@@ -97,11 +101,6 @@ bool PoseEstimationNode::init() {
   twistupdate_subscriber_ = getNodeHandle().subscribe("twistupdate", 10, &PoseEstimationNode::twistupdateCallback, this);
   syscommand_subscriber_  = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
 
-  getPrivateNodeHandle().param("with_covariances", with_covariances_, false);
-
-  getPrivateNodeHandle().param("publish_world_map_transform", publish_world_other_transform_, false);
-  getPrivateNodeHandle().param("map_frame", other_frame_, std::string("map"));
-
   // publish initial state
   publish();
 
@@ -121,7 +120,8 @@ void PoseEstimationNode::cleanup() {
 }
 
 void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
-  pose_estimation_->update(ImuInput(*imu), imu->header.stamp);
+  pose_estimation_->setInput(ImuInput(*imu));
+  pose_estimation_->update(imu->header.stamp);
   publish();
 }
 
@@ -132,17 +132,17 @@ void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& 
 
 #else
 void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
-  Height::MeasurementVector update(1);
+  Height::MeasurementVector update;
   update = height->point.z;
   pose_estimation_->getMeasurement("height")->add(Height::Update(update));
 }
 #endif
 
 void PoseEstimationNode::magneticCallback(const geometry_msgs::Vector3StampedConstPtr& magnetic) {
-  Magnetic::MeasurementVector update(3);
-  update(1) = magnetic->vector.x;
-  update(2) = magnetic->vector.y;
-  update(3) = magnetic->vector.z;
+  Magnetic::MeasurementVector update;
+  update.x() = magnetic->vector.x;
+  update.y() = magnetic->vector.y;
+  update.z() = magnetic->vector.z;
   pose_estimation_->getMeasurement("magnetic")->add(Magnetic::Update(update));
 }
 
@@ -160,7 +160,7 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
     pose_estimation_->getHeader(gps_pose.header);
     gps_pose.header.seq = gps->header.seq;
     gps_pose.header.stamp = gps->header.stamp;
-    GPSModel::MeasurementVector y = boost::shared_static_cast<GPS>(pose_estimation_->getMeasurement("gps"))->getVector(update);
+    GPSModel::MeasurementVector y = boost::shared_static_cast<GPS>(pose_estimation_->getMeasurement("gps"))->getVector(update, pose_estimation_->state());
     gps_pose.pose.position.x = y(1);
     gps_pose.pose.position.y = y(2);
     gps_pose.pose.position.z = gps->altitude - pose_estimation_->globalReference()->position().altitude;
@@ -190,7 +190,7 @@ void PoseEstimationNode::syscommandCallback(const std_msgs::StringConstPtr& sysc
 void PoseEstimationNode::publish() {
   if (state_publisher_) {
     nav_msgs::Odometry state;
-    pose_estimation_->getState(state, with_covariances_);
+    pose_estimation_->getState(state, publish_covariances_);
     state_publisher_.publish(state);
   }
 
@@ -242,7 +242,7 @@ void PoseEstimationNode::publish() {
 
     if (publish_world_other_transform_) {
       tf::StampedTransform world_to_other_transform;
-      std::string nav_frame = pose_estimation_->parameters().get<std::string>("nav_frame");
+      std::string nav_frame = pose_estimation_->parameters().getAs<std::string>("nav_frame");
       try {
         getTransformListener()->lookupTransform(nav_frame, other_frame_, ros::Time(), world_to_other_transform);
         pose_estimation_->updateWorldToOtherTransform(world_to_other_transform);

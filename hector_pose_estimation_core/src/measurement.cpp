@@ -27,8 +27,6 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurement.h>
-#include <hector_pose_estimation/pose_estimation.h>
-#include <ros/console.h>
 
 namespace hector_pose_estimation {
 
@@ -41,6 +39,7 @@ Measurement::Measurement(const std::string& name)
   , timer_(0.0)
 {
   parameters().add("enabled", enabled_);
+  parameters().add("timeout", timeout_);
   parameters().add("min_interval", min_interval_);
   parameters().add("timeout", timeout_);
 }
@@ -49,69 +48,71 @@ Measurement::~Measurement()
 {
 }
 
-bool Measurement::init()
+bool Measurement::init(PoseEstimation& estimator, State& state)
 {
-  return onInit();
+  if (getModel() && !getModel()->init(estimator, state)) return false;
+  if (!onInit(estimator)) return false;
+  return true;
 }
 
 void Measurement::cleanup()
 {
+  if (getModel()) getModel()->cleanup();
   onCleanup();
 }
 
-void Measurement::reset()
+void Measurement::reset(State& state)
 {
   queue().clear();
   timer_ = 0;
+
+  if (getModel()) getModel()->reset(state);
   onReset();
+}
+
+bool Measurement::active(const State& state) {
+  bool active = enabled() && (getModel() ? getModel()->active(state) : !(state.getSystemStatus() & STATUS_ALIGNMENT));
+  if (!active) status_flags_ = 0;
+  if (min_interval_ > 0.0 && timer_ < min_interval_) return false;
+  return active;
 }
 
 void Measurement::increase_timer(double dt) {
   timer_ += dt;
 }
 
-void Measurement::updated() {
-  timer_ = 0.0;
-  if (getModel()) status_flags_ = getModel()->getStatusFlags();
-}
-
 bool Measurement::timedout() const {
-  if (timer_ > timeout_) {
-    if (status_flags_ > 0) ROS_WARN("Measurement %s timed out.", getName().c_str());
-    return true;
-  }
-  return false;
+  return timeout_ > 0.0 && timer_ > timeout_;
 }
 
 void Measurement::add(const MeasurementUpdate& update) {
   queue().push(update);
 }
 
-void Measurement::process(PoseEstimation &estimator) {
+bool Measurement::process() {
+  bool result = true;
+
   while(!(queue().empty())) {
-    update(estimator, queue().pop());
+    result &= update(queue().pop());
   }
 
   // check for timeout
-  if (timedout()) status_flags_ = 0;
+  if (timedout()) {
+    if (status_flags_ > 0) ROS_WARN("Measurement %s timed out.", getName().c_str());
+    status_flags_ = 0;
+  }
+  return result;
 }
 
-void Measurement::updateInternal(PoseEstimation &estimator, ColumnVector const& y) {
-  ROS_DEBUG("Updating with measurement %s", getName().c_str());
+bool Measurement::update(const MeasurementUpdate &update)
+{
+  if (!filter() || !active(filter()->state())) return false;
 
-//  std::cout << "[" << getName() << "] x_prior   = [" << estimator.getState().transpose() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] P_prior   = [" << estimator.getCovariance() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] update    = [" << y.transpose() << "]" << std::endl;
+  if (!updateImpl(update)) return false;
 
-  estimator.filter()->Update(getModel(), y);
-  updated();
-  estimator.updated();
-
-//  std::cout << "[" << getName() << "] expected  = [" << getModel()->ExpectedValueGet().transpose() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] R         = [" << getModel()->CovarianceGet() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] H = dy/dx = [" << getModel()->dfGet(0) << "]" << std::endl;
-//  std::cout << "[" << getName() << "] x_post    = [" << estimator.getState().transpose() << "]" << std::endl;
-//  std::cout << "[" << getName() << "] P_post    = [" << estimator.getCovariance() << "]" << std::endl;
+  timer_ = 0.0;
+  if (getModel()) status_flags_ = getModel()->getStatusFlags();
+  return true;
 }
 
 } // namespace hector_pose_estimation

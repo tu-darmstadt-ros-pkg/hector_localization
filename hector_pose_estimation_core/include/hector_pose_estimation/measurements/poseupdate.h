@@ -37,62 +37,46 @@
 
 namespace hector_pose_estimation {
 
-class PositionXYModel : public MeasurementModel {
+class PositionXYModel : public MeasurementModel_<PositionXYModel,2> {
 public:
-  static const unsigned int MeasurementDimension = 2;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
-  PositionXYModel() : MeasurementModel(MeasurementDimension) {}
+  PositionXYModel() {}
   virtual ~PositionXYModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
-  void updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const;
+  void updateState(State& state, const ColumnVector &diff) const;
 };
 
-class PositionZModel : public MeasurementModel {
+class PositionZModel : public MeasurementModel_<PositionZModel,1> {
 public:
-  static const unsigned int MeasurementDimension = 1;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
-  PositionZModel() : MeasurementModel(MeasurementDimension) {}
+  PositionZModel() {}
   virtual ~PositionZModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
-  void updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const;
+  void updateState(State& state, const ColumnVector &diff) const;
 };
 
-class YawModel : public MeasurementModel {
+class YawModel : public MeasurementModel_<YawModel,1> {
 public:
-  static const unsigned int MeasurementDimension = 1;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
-  YawModel() : MeasurementModel(MeasurementDimension) {}
+  YawModel() {}
   virtual ~YawModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
-  void updateState(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy) const;
+  void updateState(State& state, const ColumnVector &diff) const;
 };
 
-class TwistModel : public MeasurementModel {
+class TwistModel : public MeasurementModel_<TwistModel,6> {
 public:
-  static const unsigned int MeasurementDimension = 6;
-  typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-  typedef SymmetricMatrix_<MeasurementDimension> NoiseCovariance;
-
-  TwistModel() : MeasurementModel(MeasurementDimension) {}
+  TwistModel() {}
   virtual ~TwistModel() {}
 
-  virtual ColumnVector ExpectedValueGet() const;
-  virtual Matrix dfGet(unsigned int i) const;
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 };
 
 class PoseUpdate : public Measurement
@@ -114,7 +98,7 @@ public:
     geometry_msgs::TwistWithCovarianceStampedConstPtr twist;
   };
 
-  bool update(PoseEstimation &estimator, const MeasurementUpdate &update);
+  virtual bool updateImpl(const MeasurementUpdate &update);
 
 private:
   PositionXYModel position_xy_model_;
@@ -146,9 +130,11 @@ private:
 
   bool jump_on_max_error_;
 
-  typedef boost::function<void(const SymmetricMatrix &Px, const ColumnVector &x, const ColumnVector &diff, SymmetricMatrix &Pxy, ColumnVector &xy)> JumpFunction;
-  double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy) const;
-  double updateInternal(const SymmetricMatrix &Px, const ColumnVector &x, const SymmetricMatrix &Iy, const ColumnVector &error, const Matrix &H, SymmetricMatrix &Pxy, ColumnVector &xy, const std::string& text, const double max_error = 0.0, JumpFunction jump_function = JumpFunction());
+  typedef boost::function<void(State &state, const ColumnVector &diff)> JumpFunction;
+  double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy);
+
+  template <typename MeasurementVector, typename MeasurementMatrix, typename NoiseVariance>
+  double updateInternal(State &state, const NoiseVariance &Iy, const MeasurementVector &error, const MeasurementMatrix &H, const std::string& text, const double max_error = 0.0, JumpFunction jump_function = JumpFunction());
 
 protected:
   Queue_<Update> queue_;

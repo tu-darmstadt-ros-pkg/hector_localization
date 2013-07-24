@@ -55,8 +55,6 @@ public:
   virtual ~MeasurementService();
 };
 
-void registerParamAsProperty(ParameterPtr&, RTT::PropertyBag*);
-
 } // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_RTT_SERVICES_H

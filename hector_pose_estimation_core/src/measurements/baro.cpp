@@ -27,11 +27,13 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/measurements/baro.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation/filter/set_filter.h>
 
 #include <boost/bind.hpp>
 
 namespace hector_pose_estimation {
+
+template class Measurement_<BaroModel>;
 
 BaroModel::BaroModel()
 {
@@ -42,35 +44,35 @@ BaroModel::BaroModel()
 
 BaroModel::~BaroModel() {}
 
-ColumnVector BaroModel::ExpectedValueGet() const
+void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  y_(1) = qnh_ * pow(1.0 - (0.0065 * (x_(POSITION_Z) + getElevation())) / 288.15, 5.255);
-  return y_;
+  y_pred(0) = qnh_ * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 5.255);
 }
 
-Matrix BaroModel::dfGet(unsigned int i) const
+void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  C_(1,POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (x_(POSITION_Z) + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
-  return C_;
+  if (state.getPositionIndex() >= 0) {
+    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
+  }
 }
 
 double BaroModel::getAltitude(const BaroUpdate& update)
 {
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(1) / qnh_, 1.0/5.255));
+  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
 }
 
 BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { setValue(pressure); }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { setValue(pressure); }
+BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
+BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
 
 void Baro::onReset()
 {
   HeightBaroCommon::onReset();
 }
 
-bool Baro::beforeUpdate(PoseEstimation &estimator, const Baro::Update &update) {
+bool Baro::prepareUpdate(State &state, const Update &update) {
   if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(estimator, boost::bind(&BaroModel::getAltitude, getModel(), update)));
+  setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
   return true;
 }
 
