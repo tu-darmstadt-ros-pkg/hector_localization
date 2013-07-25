@@ -210,7 +210,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       // fixed_yaw_stddev_ = 5.0 * M_PI/180.0;
       if (fixed_yaw_stddev_ != 0.0) {
         Iy = 0.0;
-        Iy(1,1) = 1.0 / (fixed_yaw_stddev_*fixed_yaw_stddev_);
+        Iy(0,0) = 1.0 / (fixed_yaw_stddev_*fixed_yaw_stddev_);
       }
 
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Yaw Update: ");
@@ -453,7 +453,7 @@ void YawModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool i
 }
 
 void YawModel::updateState(State &state, const ColumnVector &diff) const {
-  Eigen::Quaterniond rotation(Eigen::AngleAxisd(diff(1), Eigen::Vector3d::UnitZ()));
+  Eigen::Quaterniond rotation(Eigen::AngleAxisd(diff(0), Eigen::Vector3d::UnitZ()));
 
   Eigen::MatrixXd S(state.getDimension(), state.getDimension()); S.setIdentity();
 
@@ -465,15 +465,17 @@ void YawModel::updateState(State &state, const ColumnVector &diff) const {
       rotation.z(), -rotation.y(),  rotation.x(),  rotation.w();
   }
 
+#ifdef VELOCITY_IN_WORLD_FRAME
   if (state.getVelocityIndex() >= 0) {
-    S.block(state.getVelocityIndex() - 1, state.getVelocityIndex() - 1, 3, 3) = rotation.toRotationMatrix().transpose();
+    S.block(state.getVelocityIndex(), state.getVelocityIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
   }
+#endif // VELOCITY_IN_WORLD_FRAME
 
   if (state.getRateIndex() >= 0) {
     S.block(state.getRateIndex(), state.getRateIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
   }
 
-  // ROS_DEBUG_STREAM_NAMED("poseupdate", "Jump yaw by " << (diff(1) * 180.0/M_PI) << " degrees. rotation = [" << rotation.coeffs().transpose() << "], S = [" << S << "].");
+  // ROS_DEBUG_STREAM_NAMED("poseupdate", "Jump yaw by " << (diff(0) * 180.0/M_PI) << " degrees. rotation = [" << rotation.coeffs().transpose() << "], S = [" << S << "].");
 
   state.x() = S * state.x();
   state.P() = S * state.P() * S.transpose();
