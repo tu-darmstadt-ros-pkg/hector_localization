@@ -32,7 +32,8 @@
 #include <Eigen/Geometry>
 #include <stdexcept>
 
-#define BREAK_IF_SYMMETRIC_MATRIX_IS_NOT_SYMMETRIC
+#define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
+#define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION 1e-5
 #define FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
 
 namespace hector_pose_estimation {
@@ -253,8 +254,8 @@ namespace hector_pose_estimation {
     }
 
     Derived& symmetric() {
-#if defined(BREAK_IF_SYMMETRIC_MATRIX_IS_NOT_SYMMETRIC)
-      eigen_assert(this->isApprox(this->transpose()));
+#if defined(ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
+      eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
 #endif
 #if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
       this->template triangularView<Eigen::Lower>() = this->transpose();
