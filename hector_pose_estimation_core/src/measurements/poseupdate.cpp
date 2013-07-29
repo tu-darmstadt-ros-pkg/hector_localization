@@ -459,10 +459,10 @@ void YawModel::updateState(State &state, const ColumnVector &diff) const {
 
   if (state.getOrientationIndex() >= 0) {
     S.block(state.getOrientationIndex(), state.getOrientationIndex(), 4, 4) <<
-      rotation.w(), -rotation.x(), -rotation.y(), -rotation.z(),
-      rotation.x(),  rotation.w(), -rotation.z(),  rotation.y(),
-      rotation.y(),  rotation.z(),  rotation.w(), -rotation.x(),
-      rotation.z(), -rotation.y(),  rotation.x(),  rotation.w();
+      /* QUATERNION_X: */  rotation.w(), -rotation.z(),  rotation.y(), rotation.x(),
+      /* QUATERNION_Y: */  rotation.z(),  rotation.w(), -rotation.x(), rotation.y(),
+      /* QUATERNION_Z: */ -rotation.y(),  rotation.x(),  rotation.w(), rotation.z(),
+      /* QUATERNION_W: */ -rotation.x(), -rotation.y(), -rotation.z(), rotation.w();
   }
 
 #ifdef VELOCITY_IN_WORLD_FRAME
@@ -475,7 +475,7 @@ void YawModel::updateState(State &state, const ColumnVector &diff) const {
     S.block(state.getRateIndex(), state.getRateIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
   }
 
-  // ROS_DEBUG_STREAM_NAMED("poseupdate", "Jump yaw by " << (diff(0) * 180.0/M_PI) << " degrees. rotation = [" << rotation.coeffs().transpose() << "], S = [" << S << "].");
+  ROS_DEBUG_STREAM_NAMED("poseupdate", "Jump yaw by " << (diff(0) * 180.0/M_PI) << " degrees. rotation = [" << rotation.coeffs().transpose() << "], S = [" << S << "].");
 
   state.x() = S * state.x();
   state.P() = S * state.P() * S.transpose();
