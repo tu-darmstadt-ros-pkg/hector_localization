@@ -51,6 +51,7 @@ public:
   GroundVehicleModel();
   virtual ~GroundVehicleModel();
 
+  virtual void getPrior(State &state);
   virtual SystemStatus getStatusFlags(const State& state);
 
   using GenericQuaternionSystemModel::getDerivative;
@@ -62,7 +63,7 @@ public:
 
 protected:
   double gain_;
-  double min_height_, max_height_;
+  double base_height_, min_height_, max_height_;
   Matrix_<3,4> dr3_dq_;
 };
 

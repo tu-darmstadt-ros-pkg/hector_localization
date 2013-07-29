@@ -39,17 +39,24 @@ template class System_<GroundVehicleModel>;
 GroundVehicleModel::GroundVehicleModel()
 {
   gain_ = 1.0;
-
+  base_height_ = 0.0;
   min_height_ = -std::numeric_limits<double>::quiet_NaN();
   max_height_ =  std::numeric_limits<double>::quiet_NaN();
 
   parameters().add("gain", gain_);
+  parameters().add("base_height", base_height_);
   parameters().add("min_height", min_height_);
   parameters().add("max_height", max_height_);
 }
 
 GroundVehicleModel::~GroundVehicleModel()
 {
+}
+
+void GroundVehicleModel::getPrior(State &state)
+{
+  GenericQuaternionSystemModel::getPrior(state);
+  state.position().z() = base_height_;
 }
 
 void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state)
