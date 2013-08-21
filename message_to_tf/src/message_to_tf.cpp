@@ -4,6 +4,7 @@
 #include <geometry_msgs/Vector3Stamped.h>
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h> // for tf::getPrefixParam()
 #include <tf/transform_datatypes.h>
 
 #include <topic_tools/shape_shifter.h>
@@ -17,6 +18,8 @@ std::string g_footprint_frame_id;
 std::string g_position_frame_id;
 std::string g_stabilized_frame_id;
 std::string g_child_frame_id;
+
+std::string g_tf_prefix;
 
 tf::TransformBroadcaster *g_transform_broadcaster;
 ros::Publisher g_pose_publisher;
@@ -38,9 +41,12 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
   std::vector<geometry_msgs::TransformStamped> transforms;
 
   tf::StampedTransform tf;
+  tf.stamp_ = header.stamp;
+
   tf.frame_id_ = header.frame_id;
   if (!g_frame_id.empty()) tf.frame_id_ = g_frame_id;
-  tf.stamp_ = header.stamp;
+  tf.frame_id_ = tf::resolve(g_tf_prefix, tf.frame_id_);
+
   if (!g_child_frame_id.empty()) child_frame_id = g_child_frame_id;
   if (child_frame_id.empty()) child_frame_id = "base_link";
 
@@ -53,7 +59,7 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
 
   // position intermediate transform (x,y,z)
   if( !g_position_frame_id.empty() && child_frame_id != g_position_frame_id) {
-    tf.child_frame_id_ = g_position_frame_id;
+    tf.child_frame_id_ = tf::resolve(g_tf_prefix, g_position_frame_id);
     tf.setOrigin(tf::Vector3(position.x(), position.y(), position.z() ));
     tf.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
     addTransform(transforms, tf);
@@ -61,7 +67,7 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
 
   // footprint intermediate transform (x,y,yaw)
   if (!g_footprint_frame_id.empty() && child_frame_id != g_footprint_frame_id) {
-    tf.child_frame_id_ = g_footprint_frame_id;
+    tf.child_frame_id_ = tf::resolve(g_tf_prefix, g_footprint_frame_id);
     tf.setOrigin(tf::Vector3(position.x(), position.y(), 0.0));
     tf.setRotation(tf::createQuaternionFromRPY(0.0, 0.0, yaw));
     addTransform(transforms, tf);
@@ -69,22 +75,22 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
     yaw = 0.0;
     position.setX(0.0);
     position.setY(0.0);
-    tf.frame_id_ = g_footprint_frame_id;
+    tf.frame_id_ = tf::resolve(g_tf_prefix, g_footprint_frame_id);
   }
 
   // stabilized intermediate transform (z)
   if (!g_footprint_frame_id.empty() && child_frame_id != g_stabilized_frame_id) {
-    tf.child_frame_id_ = g_stabilized_frame_id;
+    tf.child_frame_id_ = tf::resolve(g_tf_prefix, g_stabilized_frame_id);
     tf.setOrigin(tf::Vector3(0.0, 0.0, position.z()));
     tf.setBasis(tf::Matrix3x3::getIdentity());
     addTransform(transforms, tf);
 
     position.setZ(0.0);
-    tf.frame_id_ = g_stabilized_frame_id;
+    tf.frame_id_ = tf::resolve(g_tf_prefix, g_stabilized_frame_id);
   }
 
   // base_link transform (roll, pitch)
-  tf.child_frame_id_ = child_frame_id;
+  tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
   tf.setOrigin(position);
   tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, yaw));
   addTransform(transforms, tf);
@@ -123,8 +129,9 @@ void imuCallback(sensor_msgs::Imu const &imu) {
   std::string child_frame_id;
 
   tf::StampedTransform tf;
-  tf.frame_id_ = g_stabilized_frame_id;
   tf.stamp_ = imu.header.stamp;
+
+  tf.frame_id_ = tf::resolve(g_tf_prefix, g_stabilized_frame_id);
   if (!g_child_frame_id.empty()) child_frame_id = g_child_frame_id;
   if (child_frame_id.empty()) child_frame_id = "base_link";
 
@@ -134,7 +141,7 @@ void imuCallback(sensor_msgs::Imu const &imu) {
   tf::Matrix3x3(orientation).getEulerYPR(yaw, pitch, roll);
 
   // base_link transform (roll, pitch)
-  tf.child_frame_id_ = child_frame_id;
+  tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
   tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, 0.0));
   addTransform(transforms, tf);
 
@@ -178,6 +185,7 @@ int main(int argc, char** argv) {
   g_footprint_frame_id = "base_footprint";
   g_stabilized_frame_id = "base_stabilized";
   // g_position_frame_id = "base_position";
+  // g_child_frame_id = "base_link";
 
   ros::NodeHandle priv_nh("~");
   priv_nh.getParam("odometry_topic", g_odometry_topic);
@@ -190,6 +198,7 @@ int main(int argc, char** argv) {
   priv_nh.getParam("stabilized_frame_id", g_stabilized_frame_id);
   priv_nh.getParam("child_frame_id", g_child_frame_id);
 
+  g_tf_prefix = tf::getPrefixParam(priv_nh);
   g_transform_broadcaster = new tf::TransformBroadcaster;
 
   ros::NodeHandle node;
