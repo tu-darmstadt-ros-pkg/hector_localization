@@ -25,6 +25,7 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>tf</build_depend>
+  <build_depend>eigen</build_depend>
 
   <!-- Dependencies needed after this package is compiled. -->
   <run_depend>rostime</run_depend>
@@ -34,19 +35,8 @@
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>tf</run_depend>
+  <run_depend>eigen</run_depend>
 
   <!-- Dependencies needed only for running tests. -->
-  <!-- <test_depend>rostime</test_depend> -->
-  <!-- <test_depend>rosconsole</test_depend> -->
-  <!-- <test_depend>roscpp</test_depend> -->
-  <!-- <test_depend>sensor_msgs</test_depend> -->
-  <!-- <test_depend>geometry_msgs</test_depend> -->
-  <!-- <test_depend>nav_msgs</test_depend> -->
-  <!-- <test_depend>tf</test_depend> -->
-
-<export>
-    <rosbuild cmake_directory="${prefix}/cmake"/>
-    <cpp lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lhector_pose_estimation" cflags="`pkg-config --cflags eigen3` -I${prefix}/include"/>
-</export>
 
 </package>
