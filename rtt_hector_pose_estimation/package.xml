@@ -32,4 +32,13 @@
 
   <!-- Dependencies needed only for running tests. -->
 
+  <export>
+    <rtt_ros>
+      <plugin_depend>rtt_rosnode</plugin_depend>
+      <plugin_depend>rtt_sensor_msgs</plugin_depend>
+      <plugin_depend>rtt_geometry_msgs</plugin_depend>
+      <plugin_depend>rtt_nav_msgs</plugin_depend>
+    </rtt_ros>
+  </export>
+
 </package>
