@@ -113,7 +113,7 @@ install(TARGETS hector_pose_estimation
 ## Mark cpp header files for installation
 install(DIRECTORY include/hector_pose_estimation
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.inl"
   PATTERN ".svn" EXCLUDE
 )
 
