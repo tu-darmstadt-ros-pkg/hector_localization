@@ -22,6 +22,7 @@
   <build_depend>rtt_sensor_msgs</build_depend>
   <build_depend>rtt_geometry_msgs</build_depend>
   <build_depend>rtt_nav_msgs</build_depend>
+  <!-- <build_depend>rtt_hector_uav_msgs</build_depend> -->
 
   <!-- Dependencies needed after this package is compiled. -->
   <run_depend>hector_pose_estimation_core</run_depend>
@@ -29,6 +30,7 @@
   <run_depend>rtt_sensor_msgs</run_depend>
   <run_depend>rtt_geometry_msgs</run_depend>
   <run_depend>rtt_nav_msgs</run_depend>
+  <!-- <run_depend>rtt_hector_uav_msgs</run_depend> -->
 
   <!-- Dependencies needed only for running tests. -->
 
@@ -38,6 +40,7 @@
       <plugin_depend>rtt_sensor_msgs</plugin_depend>
       <plugin_depend>rtt_geometry_msgs</plugin_depend>
       <plugin_depend>rtt_nav_msgs</plugin_depend>
+      <plugin_depend>rtt_hector_uav_msgs</plugin_depend>
     </rtt_ros>
   </export>
 

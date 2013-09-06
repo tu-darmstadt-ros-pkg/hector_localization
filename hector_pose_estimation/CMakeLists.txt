@@ -60,7 +60,7 @@ endif()
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES hector_pose_estimation_nodelet hector_pose_estimation_node
-    CATKIN_DEPENDS hector_pose_estimation_core nodelet sensor_msgs geometry_msgs nav_msgs tf message_filters ${hector_uav_msgs}
+    CATKIN_DEPENDS hector_pose_estimation_core nodelet sensor_msgs geometry_msgs nav_msgs tf message_filters
     DEPENDS
 )
 

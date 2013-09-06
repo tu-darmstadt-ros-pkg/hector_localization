@@ -72,7 +72,7 @@ endif()
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES
-    CATKIN_DEPENDS hector_pose_estimation_core rtt_rosnode rtt_sensor_msgs rtt_geometry_msgs rtt_nav_msgs ${rtt_hector_uav_msgs}
+    CATKIN_DEPENDS hector_pose_estimation_core
     DEPENDS
 )
 
