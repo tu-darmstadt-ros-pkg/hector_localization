@@ -16,25 +16,11 @@ else()
   include(${OROCOS-RTT_USE_FILE})
 endif()
 
-## Find rtt_hector_uav_msgs
-option(USE_HECTOR_UAV_MSGS "Use hector_uav_msgs message types" ON)
-if(USE_HECTOR_UAV_MSGS)
-  orocos_find_package(rtt_hector_uav_msgs)
-
-  if(rtt_hector_uav_msgs_FOUND)
-    message(STATUS "Found package rtt_hector_uav_msgs. Adding rtt_hector_uav_msgs support.")
-    include_directories(${rtt_hector_uav_msgs_INCLUDE_DIRS})
-    add_definitions(-DUSE_HECTOR_UAV_MSGS)
-    set(rtt_hector_uav_msgs rtt_hector_uav_msgs)
-
-  else()
-    message(STATUS "Package rtt_hector_uav_msgs not found. Disabled rtt_hector_uav_msgs support.")
-    set(rtt_hector_uav_msgs)
-
-    set(USE_HECTOR_UAV_MSGS OFF)
-  endif()
-endif()
-
+# use dependent packages
+orocos_use_package(rtt_rosnode)
+orocos_use_package(rtt_sensor_msgs)
+orocos_use_package(rtt_geometry_msgs)
+orocos_use_package(rtt_nav_msgs)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -134,5 +120,5 @@ install(DIRECTORY include/hector_pose_estimation
 ####################
 
 orocos_generate_package(
-  DEPENDS rtt_rosnode rtt_sensor_msgs rtt_geometry_msgs rtt_nav_msgs ${rtt_hector_uav_msgs}
+  DEPENDS rtt_rosnode rtt_sensor_msgs rtt_geometry_msgs rtt_nav_msgs
 )

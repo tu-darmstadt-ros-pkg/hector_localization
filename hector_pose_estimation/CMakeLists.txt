@@ -6,24 +6,6 @@ project(hector_pose_estimation)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS hector_pose_estimation_core nodelet sensor_msgs geometry_msgs nav_msgs tf message_filters)
 
-## Try to find hector_uav_msgs and use this package if available
-option(USE_HECTOR_UAV_MSGS "Use hector_uav_msgs message types" ON)
-if(USE_HECTOR_UAV_MSGS)
-  find_package(hector_uav_msgs QUIET)
-
-  if(hector_uav_msgs_FOUND)
-    message(STATUS "Found package hector_uav_msgs. Adding hector_uav_msgs support.")
-    include_directories(${hector_uav_msgs_INCLUDE_DIRS})
-    add_definitions(-DUSE_HECTOR_UAV_MSGS)
-    set(hector_uav_msgs hector_uav_msgs)
-  else()
-    message(STATUS "Package hector_uav_msgs not found. Disabled hector_uav_msgs support.")
-    set(USE_HECTOR_UAV_MSGS OFF)
-    set(hector_uav_msgs)
-  endif()
-endif()
-
-
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html

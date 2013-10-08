@@ -97,7 +97,7 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
 
-  ros::Subscriber imu_subscriber_, baro_subscriber_, height_subscriber_, magnetic_subscriber_;
+  ros::Subscriber imu_subscriber_, height_subscriber_, magnetic_subscriber_;
   message_filters::Subscriber<sensor_msgs::NavSatFix> gps_subscriber_;
   message_filters::Subscriber<geometry_msgs::Vector3Stamped> gps_velocity_subscriber_;
   message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped> *gps_synchronizer_;
