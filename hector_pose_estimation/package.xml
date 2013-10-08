@@ -37,7 +37,7 @@
   <!-- Dependencies needed only for running tests. -->
 
   <export>
-    <nodelet plugin="${prefix}/hector_pose_estimation_plugins.xml"/>
+    <nodelet plugin="${prefix}/hector_pose_estimation_nodelets.xml"/>
   </export>
 
 </package>

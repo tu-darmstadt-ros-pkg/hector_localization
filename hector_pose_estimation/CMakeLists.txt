@@ -73,15 +73,15 @@ catkin_package(
 include_directories(include)
 include_directories(${catkin_INCLUDE_DIRS})
 
-add_library(hector_pose_estimation_nodelet
-  src/pose_estimation_nodelet.cpp
-)
-target_link_libraries(hector_pose_estimation_nodelet ${catkin_LIBRARIES})
-
 add_library(hector_pose_estimation_node
   src/pose_estimation_node.cpp
 )
 target_link_libraries(hector_pose_estimation_node ${catkin_LIBRARIES})
+
+add_library(hector_pose_estimation_nodelet
+  src/pose_estimation_nodelet.cpp
+)
+target_link_libraries(hector_pose_estimation_nodelet hector_pose_estimation_node ${catkin_LIBRARIES})
 
 add_executable(pose_estimation
   src/main.cpp
