@@ -68,6 +68,11 @@ bool PoseEstimationNode::init() {
   getPrivateNodeHandle().param("publish_world_map_transform", publish_world_other_transform_, false);
   getPrivateNodeHandle().param("map_frame", other_frame_, std::string());
 
+  // search tf_prefix parameter
+  tf_prefix_ = tf::getPrefixParam(getPrivateNodeHandle());
+  if (!tf_prefix_.empty()) ROS_INFO("Using tf_prefix '%s'", tf_prefix_.c_str());
+
+  // initialize pose estimation
   if (!pose_estimation_->init()) {
     ROS_ERROR("Intitialization of pose estimation failed!");
     return false;
@@ -251,6 +256,12 @@ void PoseEstimationNode::publish() {
       } catch (tf::TransformException& e) {
         ROS_WARN("Could not find a transformation from %s to %s to publish the world transformation", nav_frame.c_str(), other_frame_.c_str());
       }
+    }
+
+    // resolve tf frames
+    for(std::vector<tf::StampedTransform>::iterator t = transforms_.begin(); t != transforms_.end(); t++) {
+      t->frame_id_       = tf::resolve(tf_prefix_, t->frame_id_);
+      t->child_frame_id_ = tf::resolve(tf_prefix_, t->child_frame_id_);
     }
 
     getTransformBroadcaster()->sendTransform(transforms_);
