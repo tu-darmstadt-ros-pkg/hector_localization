@@ -48,6 +48,9 @@ namespace hector_pose_estimation {
   typedef Eigen::Matrix<ScalarType,Dynamic,Dynamic> Matrix;
   typedef Eigen::Quaternion<ScalarType> Quaternion;
 
+  typedef Eigen::Matrix<ScalarType,3,1> Vector3;
+  typedef Eigen::Matrix<ScalarType,4,1> Vector4;
+
   using Eigen::VectorBlock;
   typedef VectorBlock<ColumnVector,3>       VectorBlock3;
   typedef VectorBlock<ColumnVector,4>       VectorBlock4;

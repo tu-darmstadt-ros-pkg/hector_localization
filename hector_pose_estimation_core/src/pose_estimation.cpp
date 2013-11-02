@@ -334,6 +334,21 @@ void PoseEstimation::getState(nav_msgs::Odometry& msg, bool with_covariances) {
   getRate(msg.twist.twist.angular);
   msg.child_frame_id = base_frame_;
 
+  // rotate body vectors to nav frame
+  State::RotationMatrix R = state().getRotationMatrix().transpose();
+  Vector3 rate_nav = R * Vector3(msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z);
+  msg.twist.twist.angular.x = rate_nav.x();
+  msg.twist.twist.angular.y = rate_nav.y();
+  msg.twist.twist.angular.z = rate_nav.z();
+
+#ifdef VELOCITY_IN_BODY_FRAME
+  Vector3 velocity_nav = R * Vector3(msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z);
+  msg.twist.twist.linear.x = velocity_nav.x();
+  msg.twist.twist.linear.y = velocity_nav.y();
+  msg.twist.twist.linear.z = velocity_nav.z();
+#endif // VELOCITY_IN_BODY_FRAME
+
+  // fill covariances
   if (with_covariances) {
     State::ConstOrientationType q(state().getOrientation());
 
@@ -555,11 +570,7 @@ void PoseEstimation::getRate(tf::Vector3& vector) {
 void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
   getRate(static_cast<tf::Vector3 &>(vector));
   vector.stamp_ = getTimestamp();
-#ifdef VELOCITY_IN_BODY_FRAME
   vector.frame_id_ = base_frame_;
-#else
-  vector.frame_id_ = nav_frame_;
-#endif
 }
 
 void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
@@ -596,11 +607,7 @@ void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
   getRate(vector.vector);
 
   if (state().getRateIndex() >= 0) {
-#ifdef VELOCITY_IN_BODY_FRAME
     vector.header.frame_id = base_frame_;
-#else
-    vector.header.frame_id = nav_frame_;
-#endif
   } else {
     vector.header.frame_id = base_frame_;
   }
