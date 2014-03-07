@@ -54,8 +54,8 @@ public:
     return p;
   }
 
-  template <typename Derived> boost::shared_ptr<Derived> add(Derived *p) { return boost::shared_static_cast<Derived>(add(Ptr(p), p->getName())); }
-  template <typename Derived> boost::shared_ptr<Derived> add(Derived *p, const key_type& key) { return boost::shared_static_cast<Derived>(add(Ptr(p), key)); }
+  template <typename Derived> boost::shared_ptr<Derived> add(Derived *p) { return boost::static_pointer_cast<Derived>(add(Ptr(p), p->getName())); }
+  template <typename Derived> boost::shared_ptr<Derived> add(Derived *p, const key_type& key) { return boost::static_pointer_cast<Derived>(add(Ptr(p), key)); }
 
   template <typename Derived> const Ptr& create() {
     Derived *p = new Derived();
@@ -79,12 +79,12 @@ public:
 
 //  template <typename Derived>
 //  boost::shared_ptr<Derived> getType(std::size_t index) const {
-//    return boost::shared_dynamic_cast<Derived>(get(index));
+//    return boost::dynamic_pointer_cast<Derived>(get(index));
 //  }
 
   template <typename Derived>
   boost::shared_ptr<Derived> getType(const key_type& key) const {
-    return boost::shared_dynamic_cast<Derived>(get(key));
+    return boost::dynamic_pointer_cast<Derived>(get(key));
   }
 
   bool empty()           const { return list_.empty(); }

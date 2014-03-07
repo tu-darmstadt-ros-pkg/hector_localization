@@ -114,8 +114,8 @@ public:
     Factory(Derived *filter) : filter_(filter) {}
 //    template <class ConcreteModel> boost::shared_ptr<typename Derived::template Predictor<ConcreteModel> > addPredictor(ConcreteModel *model) { return boost::make_shared<typename Derived::template Predictor_<ConcreteModel> >(filter_, model); }
 //    template <class ConcreteModel> boost::shared_ptr<typename Derived::template Corrector<ConcreteModel> > addCorrector(ConcreteModel *model) { return boost::make_shared<typename Derived::template Corrector_<ConcreteModel> >(filter_, model); }
-    template <class ConcreteModel> boost::shared_ptr<Predictor_<ConcreteModel> > addPredictor(ConcreteModel *model) { return boost::shared_static_cast<Predictor_<ConcreteModel> >(boost::make_shared<typename Derived::template Predictor_<ConcreteModel> >(filter_, model)); }
-    template <class ConcreteModel> boost::shared_ptr<Corrector_<ConcreteModel> > addCorrector(ConcreteModel *model) { return boost::shared_static_cast<Corrector_<ConcreteModel> >(boost::make_shared<typename Derived::template Corrector_<ConcreteModel> >(filter_, model)); }
+    template <class ConcreteModel> boost::shared_ptr<Predictor_<ConcreteModel> > addPredictor(ConcreteModel *model) { return boost::static_pointer_cast<Predictor_<ConcreteModel> >(boost::make_shared<typename Derived::template Predictor_<ConcreteModel> >(filter_, model)); }
+    template <class ConcreteModel> boost::shared_ptr<Corrector_<ConcreteModel> > addCorrector(ConcreteModel *model) { return boost::static_pointer_cast<Corrector_<ConcreteModel> >(boost::make_shared<typename Derived::template Corrector_<ConcreteModel> >(filter_, model)); }
 
   private:
     Derived *filter_;
