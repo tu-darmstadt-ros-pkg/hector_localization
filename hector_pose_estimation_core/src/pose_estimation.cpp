@@ -184,7 +184,7 @@ void PoseEstimation::update(double dt)
   if (systems_.empty() || !filter_) return;
 
   // filter rate measurement first
-  boost::shared_ptr<ImuInput> imu = boost::shared_dynamic_cast<ImuInput>(getInput("imu"));
+  boost::shared_ptr<ImuInput> imu = boost::dynamic_pointer_cast<ImuInput>(getInput("imu"));
   state().setRate(imu->getRate());
   state().setAcceleration(imu->getAcceleration());
 
@@ -509,8 +509,8 @@ void PoseEstimation::getOrientation(double &yaw, double &pitch, double &roll) {
 }
 
 void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleration, geometry_msgs::Vector3& angular_velocity) {
-  boost::shared_ptr<const ImuInput>  input     = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
-  boost::shared_ptr<const Accelerometer> accel = boost::shared_dynamic_cast<const Accelerometer>(getSystem("accelerometer"));
+  boost::shared_ptr<const ImuInput>  input     = boost::dynamic_pointer_cast<const ImuInput>(getInput("imu"));
+  boost::shared_ptr<const Accelerometer> accel = boost::dynamic_pointer_cast<const Accelerometer>(getSystem("accelerometer"));
 
   if (input) {
     linear_acceleration.x = input->getAcceleration().x();
@@ -581,8 +581,8 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
     vector.z    = rate.z();
 
   } else {
-    boost::shared_ptr<const ImuInput> input = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
-    boost::shared_ptr<const Gyro> gyro      = boost::shared_dynamic_cast<const Gyro>(getSystem("gyro"));
+    boost::shared_ptr<const ImuInput> input = boost::dynamic_pointer_cast<const ImuInput>(getInput("imu"));
+    boost::shared_ptr<const Gyro> gyro      = boost::dynamic_pointer_cast<const Gyro>(getSystem("gyro"));
 
     if (input) {
       vector.x = input->getRate().x();
@@ -614,9 +614,9 @@ void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
 }
 
 void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration) {
-  boost::shared_ptr<const ImuInput>  input     = boost::shared_dynamic_cast<const ImuInput>(getInput("imu"));
-  boost::shared_ptr<const Accelerometer> accel = boost::shared_dynamic_cast<const Accelerometer>(getSystem("accelerometer"));
-  boost::shared_ptr<const Gyro> gyro           = boost::shared_dynamic_cast<const Gyro>(getSystem("gyro"));
+  boost::shared_ptr<const ImuInput>  input     = boost::dynamic_pointer_cast<const ImuInput>(getInput("imu"));
+  boost::shared_ptr<const Accelerometer> accel = boost::dynamic_pointer_cast<const Accelerometer>(getSystem("accelerometer"));
+  boost::shared_ptr<const Gyro> gyro           = boost::dynamic_pointer_cast<const Gyro>(getSystem("gyro"));
 
   if (gyro) {
     angular_velocity.x = gyro->getModel()->getBias().x();
