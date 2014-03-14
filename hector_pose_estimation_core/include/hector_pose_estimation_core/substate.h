@@ -117,7 +117,7 @@ extern template class SubState_<0>;
 
 template <int SubDimension>
 boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const Model *model) const {
-  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substates_by_model_.count(model) ? substates_by_model_.at(model).lock() : SubStatePtr());
+  return boost::dynamic_pointer_cast<SubState_<SubDimension> >(substates_by_model_.count(model) ? substates_by_model_.at(model).lock() : SubStatePtr());
 }
 
 template <>
@@ -127,7 +127,7 @@ inline boost::shared_ptr<BaseState> State::getSubState<0>(const Model *) const {
 
 template <int SubDimension>
 boost::shared_ptr<SubState_<SubDimension> > State::getSubState(const std::string& name) const {
-  return boost::shared_dynamic_cast<SubState_<SubDimension> >(substates_by_name_.count(name) ? substates_by_name_.at(name).lock() : SubStatePtr());
+  return boost::dynamic_pointer_cast<SubState_<SubDimension> >(substates_by_name_.count(name) ? substates_by_name_.at(name).lock() : SubStatePtr());
 }
 
 template <int SubDimension>
@@ -136,10 +136,10 @@ boost::shared_ptr<SubState_<SubDimension> > State::addSubState(const Model *mode
   if (!name.empty()) substate = getSubState<SubDimension>(name);
   if (!substate) {
     substate.reset(new SubState_<SubDimension>(*this));
-    substates_.push_back(boost::shared_static_cast<SubState>(substate));
-    if (!name.empty()) substates_by_name_[name] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
+    substates_.push_back(boost::static_pointer_cast<SubState>(substate));
+    if (!name.empty()) substates_by_name_[name] = SubStateWPtr(boost::static_pointer_cast<SubState>(substate));
   }
-  substates_by_model_[model] = SubStateWPtr(boost::shared_static_cast<SubState>(substate));
+  substates_by_model_[model] = SubStateWPtr(boost::static_pointer_cast<SubState>(substate));
   return substate;
 }
 

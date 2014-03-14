@@ -207,7 +207,7 @@ boost::shared_ptr<InputType> PoseEstimation::registerInput(const std::string& na
   if (input) return input;
 
   input.reset(new InputType());
-  if (!addInput(boost::shared_static_cast<Input>(input), name)) input.reset();
+  if (!addInput(boost::static_pointer_cast<Input>(input), name)) input.reset();
   return input;
 }
 
