@@ -26,12 +26,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/filter/ekf.h>
-#include <hector_pose_estimation/global_reference.h>
+#include <hector_pose_estimation_core/pose_estimation.h>
+#include <hector_pose_estimation_core/filter/ekf.h>
+#include <hector_pose_estimation_core/global_reference.h>
 
-#include <hector_pose_estimation/system/imu_input.h>
-#include <hector_pose_estimation/system/imu_model.h>
+#include <hector_pose_estimation_core/system/imu_input.h>
+#include <hector_pose_estimation_core/system/imu_model.h>
 
 #include <boost/weak_ptr.hpp>
 

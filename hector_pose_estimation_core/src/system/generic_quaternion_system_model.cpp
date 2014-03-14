@@ -26,9 +26,9 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/system/generic_quaternion_system_model.h>
-#include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/filter/set_filter.h>
+#include <hector_pose_estimation_core/system/generic_quaternion_system_model.h>
+#include <hector_pose_estimation_core/pose_estimation.h>
+#include <hector_pose_estimation_core/filter/set_filter.h>
 
 namespace hector_pose_estimation {
 

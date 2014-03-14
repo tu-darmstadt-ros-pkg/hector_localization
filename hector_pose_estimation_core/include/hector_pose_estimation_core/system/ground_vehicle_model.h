@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer and contributors, Technische Universitat Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,54 +26,49 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/baro.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
 
-#include <boost/bind.hpp>
+#ifndef HECTOR_POSE_ESTIMATION_GROUND_VEHICLE_MODEL_H
+#define HECTOR_POSE_ESTIMATION_GROUND_VEHICLE_MODEL_H
+
+#include <hector_pose_estimation_core/system/generic_quaternion_system_model.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<BaroModel>;
+class GroundVehicleModel;
 
-BaroModel::BaroModel()
+namespace traits {
+  template <> struct Input<GroundVehicleModel> {
+    enum { Dimension = ImuInput::Dimension };
+    typedef ImuInput Type;
+    typedef ImuInput::Vector Vector;
+    typedef ImuInput::Variance Variance;
+  };
+} // namespace traits
+
+class GroundVehicleModel : public GenericQuaternionSystemModel
 {
-  stddev_ = 1.0;
-  qnh_ = 1013.25;
-  parameters().add("qnh", qnh_);
-}
+public:
+  GroundVehicleModel();
+  virtual ~GroundVehicleModel();
 
-BaroModel::~BaroModel() {}
+  virtual void getPrior(State &state);
+  virtual SystemStatus getStatusFlags(const State& state);
 
-void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = qnh_ * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 5.255);
-}
+  using GenericQuaternionSystemModel::getDerivative;
+  virtual void getDerivative(StateVector& x_dot, const State& state);
+  using GenericQuaternionSystemModel::getStateJacobian;
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init);
 
-void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
-  }
-}
+  virtual bool limitState(State& state);
 
-double BaroModel::getAltitude(const BaroUpdate& update)
-{
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
-}
+protected:
+  double gain_;
+  double base_height_, min_height_, max_height_;
+  Matrix_<3,4> dr3_dq_;
+};
 
-BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
-
-void Baro::onReset()
-{
-  HeightBaroCommon::onReset();
-}
-
-bool Baro::prepareUpdate(State &state, const Update &update) {
-  if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
-  return true;
-}
+extern template class System_<GenericQuaternionSystemModel>;
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_GROUND_VEHICLE_MODEL_H

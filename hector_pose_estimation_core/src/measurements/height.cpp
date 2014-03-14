@@ -26,10 +26,10 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/height.h>
-#include <hector_pose_estimation/pose_estimation.h>
-#include <hector_pose_estimation/global_reference.h>
-#include <hector_pose_estimation/filter/set_filter.h>
+#include <hector_pose_estimation_core/measurements/height.h>
+#include <hector_pose_estimation_core/pose_estimation.h>
+#include <hector_pose_estimation_core/global_reference.h>
+#include <hector_pose_estimation_core/filter/set_filter.h>
 
 #include <ros/console.h>
 

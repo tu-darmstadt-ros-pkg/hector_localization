@@ -26,62 +26,61 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/gravity.h>
-#include <hector_pose_estimation_core/pose_estimation.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_HEIGHT_H
+#define HECTOR_POSE_ESTIMATION_HEIGHT_H
+
+#include <hector_pose_estimation_core/measurement.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<GravityModel>;
+class HeightModel : public MeasurementModel_<HeightModel,1> {
+public:
+  HeightModel();
+  virtual ~HeightModel();
 
-GravityModel::GravityModel()
-  : gravity_(0.0)
+  virtual SystemStatus getStatusFlags() { return STATE_POSITION_Z; }
+
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+  void setElevation(double elevation) { elevation_ = elevation; }
+  double getElevation() const { return elevation_; }
+
+protected:
+  double stddev_;
+  double elevation_;
+};
+
+extern template class Measurement_<HeightModel>;
+
+class HeightBaroCommon
 {
-  parameters().add("stddev", stddev_, 10.0);
-}
+public:
+  HeightBaroCommon(Measurement *measurement);
+  virtual ~HeightBaroCommon();
 
-GravityModel::~GravityModel() {}
+  virtual void onReset();
+  double resetElevation(const State &state, boost::function<double()> altitude_func);
 
-bool GravityModel::init(PoseEstimation &estimator, State &state) {
-  setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
-  return true;
-}
+private:
+  bool auto_elevation_;
+  bool elevation_initialized_;
+};
 
-void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
+class Height : public Measurement_<HeightModel>, HeightBaroCommon
 {
-  if (init) {
-    R(0,0) = R(1,1) = R(2,2) = pow(stddev_, 2);
-  }
-}
+public:
+  Height(const std::string& name = "height") : Measurement_<HeightModel>(name), HeightBaroCommon(this) {}
+  virtual ~Height() {}
 
-void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  State::ConstOrientationType q(state.getOrientation());
+  void setElevation(double elevation) { getModel()->setElevation(elevation); }
+  double getElevation() const { return getModel()->getElevation(); }
 
-  // y = q * [0 0 1] * q';
-  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
-  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
-  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
-}
-
-void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  State::ConstOrientationType q(state.getOrientation());
-
-  if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
-  }
-}
+  virtual void onReset();
+  virtual bool prepareUpdate(State &state, const Update &update);
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_HEIGHT_H

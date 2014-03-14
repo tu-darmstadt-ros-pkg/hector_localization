@@ -26,54 +26,62 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/baro.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_QUEUE_H
+#define HECTOR_POSE_ESTIMATION_QUEUE_H
 
-#include <boost/bind.hpp>
+#include <boost/array.hpp>
+#include <hector_pose_estimation_core/measurement_update.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<BaroModel>;
+class Queue {
+public:
+  static const size_t capacity_ = 10;
 
-BaroModel::BaroModel()
+  virtual ~Queue() {}
+  virtual bool empty() const = 0;
+  virtual bool full() const = 0;
+  virtual size_t size() const = 0;
+  virtual size_t capacity() const = 0;
+
+  virtual void push(const MeasurementUpdate& update) = 0;
+  virtual const MeasurementUpdate& pop() = 0;
+  virtual void clear() = 0;
+};
+
+template <class Update>
+class Queue_ : public Queue
 {
-  stddev_ = 1.0;
-  qnh_ = 1013.25;
-  parameters().add("qnh", qnh_);
-}
+public:
+  Queue_() : in_(0), out_(0), size_(0) {}
+  virtual ~Queue_() {}
 
-BaroModel::~BaroModel() {}
+  virtual bool empty() const { return size_ == 0; }
+  virtual bool full() const { return size_ == capacity_; }
+  virtual size_t size() const { return size_; }
+  virtual size_t capacity() const { return capacity_; }
 
-void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = qnh_ * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 5.255);
-}
-
-void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
+  virtual void push(const MeasurementUpdate& update) {
+    if (full()) return;
+    data_[inc(in_)] = static_cast<Update const &>(update);
+    size_++;
   }
-}
 
-double BaroModel::getAltitude(const BaroUpdate& update)
-{
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
-}
+  virtual const Update& pop() {
+    if (empty()) throw std::runtime_error("queue is empty");
+    size_--;
+    return data_[inc(out_)];
+  }
 
-BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
+  virtual void clear() { out_ = in_ = size_ = 0; }
 
-void Baro::onReset()
-{
-  HeightBaroCommon::onReset();
-}
+private:
+  static size_t inc(size_t& index) { size_t temp = index++; index %= Queue::capacity_; return temp; }
 
-bool Baro::prepareUpdate(State &state, const Update &update) {
-  if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
-  return true;
-}
+  boost::array<Update, Queue::capacity_> data_;
+  size_t in_, out_, size_;
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_QUEUE_H

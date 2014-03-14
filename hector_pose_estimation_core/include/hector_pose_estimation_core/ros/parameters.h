@@ -26,54 +26,24 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/baro.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_ROS_PARAMETERS_H
+#define HECTOR_POSE_ESTIMATION_ROS_PARAMETERS_H
 
-#include <boost/bind.hpp>
+#include <hector_pose_estimation_core/parameters.h>
+#include <ros/node_handle.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<BaroModel>;
+  struct ParameterRegistryROS : public ParameterRegistry {
+    ParameterRegistryROS(ros::NodeHandle nh);
+    virtual void operator()(ParameterPtr);
 
-BaroModel::BaroModel()
-{
-  stddev_ = 1.0;
-  qnh_ = 1013.25;
-  parameters().add("qnh", qnh_);
-}
-
-BaroModel::~BaroModel() {}
-
-void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = qnh_ * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 5.255);
-}
-
-void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
-  }
-}
-
-double BaroModel::getAltitude(const BaroUpdate& update)
-{
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
-}
-
-BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
-
-void Baro::onReset()
-{
-  HeightBaroCommon::onReset();
-}
-
-bool Baro::prepareUpdate(State &state, const Update &update) {
-  if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
-  return true;
-}
+  private:
+    template <typename T> struct Handler;
+    ros::NodeHandle nh_;
+    bool set_all_;
+  };
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_ROS_PARAMETERS_H

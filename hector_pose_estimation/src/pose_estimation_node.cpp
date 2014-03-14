@@ -27,14 +27,14 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/pose_estimation_node.h>
-#include <hector_pose_estimation/ros/parameters.h>
+#include <hector_pose_estimation_core/ros/parameters.h>
 
-#include <hector_pose_estimation/system/generic_quaternion_system_model.h>
-#include <hector_pose_estimation/measurements/poseupdate.h>
-#include <hector_pose_estimation/measurements/baro.h>
-#include <hector_pose_estimation/measurements/height.h>
-#include <hector_pose_estimation/measurements/magnetic.h>
-#include <hector_pose_estimation/measurements/gps.h>
+#include <hector_pose_estimation_core/system/generic_quaternion_system_model.h>
+#include <hector_pose_estimation_core/measurements/poseupdate.h>
+#include <hector_pose_estimation_core/measurements/baro.h>
+#include <hector_pose_estimation_core/measurements/height.h>
+#include <hector_pose_estimation_core/measurements/magnetic.h>
+#include <hector_pose_estimation_core/measurements/gps.h>
 
 namespace hector_pose_estimation {
 

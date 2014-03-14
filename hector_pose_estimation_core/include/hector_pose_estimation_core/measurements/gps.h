@@ -26,54 +26,63 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/baro.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_GPS_H
+#define HECTOR_POSE_ESTIMATION_GPS_H
 
-#include <boost/bind.hpp>
+#include <hector_pose_estimation_core/measurement.h>
+#include <hector_pose_estimation_core/global_reference.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<BaroModel>;
+class GPSModel : public MeasurementModel_<GPSModel,4> {
+public:
+  GPSModel();
+  virtual ~GPSModel();
 
-BaroModel::BaroModel()
+  virtual SystemStatus getStatusFlags() { return STATE_POSITION_XY | STATE_VELOCITY_XY; }
+
+  virtual bool prepareUpdate(State &state, const MeasurementUpdate &update);
+
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+protected:
+  double position_stddev_;
+  double velocity_stddev_;
+  State::RotationMatrix R;
+};
+
+struct GPSUpdate : public MeasurementUpdate {
+  double latitude;
+  double longitude;
+  double velocity_north;
+  double velocity_east;
+};
+
+namespace traits {
+  template <> struct Update<GPSModel> { typedef GPSUpdate type; };
+}
+
+extern template class Measurement_<GPSModel>;
+
+class GPS : public Measurement_<GPSModel>
 {
-  stddev_ = 1.0;
-  qnh_ = 1013.25;
-  parameters().add("qnh", qnh_);
-}
+public:
+  GPS(const std::string& name = "gps");
+  virtual ~GPS();
 
-BaroModel::~BaroModel() {}
+  virtual void onReset();
 
-void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = qnh_ * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 5.255);
-}
+  virtual GPSModel::MeasurementVector const& getVector(const GPSUpdate &update, const State&);
+  virtual bool prepareUpdate(State &state, const GPSUpdate &update);
 
-void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
-  }
-}
-
-double BaroModel::getAltitude(const BaroUpdate& update)
-{
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
-}
-
-BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
-
-void Baro::onReset()
-{
-  HeightBaroCommon::onReset();
-}
-
-bool Baro::prepareUpdate(State &state, const Update &update) {
-  if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
-  return true;
-}
+private:
+  GlobalReferencePtr reference_;
+  GPSUpdate last_;
+  GPSModel::MeasurementVector y_;
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_GPS_H

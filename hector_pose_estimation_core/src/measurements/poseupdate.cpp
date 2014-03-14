@@ -26,8 +26,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/poseupdate.h>
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation_core/measurements/poseupdate.h>
+#include <hector_pose_estimation_core/pose_estimation.h>
 
 #include <Eigen/Core>
 

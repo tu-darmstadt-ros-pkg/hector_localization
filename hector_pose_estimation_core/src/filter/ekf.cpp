@@ -26,7 +26,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/filter/ekf.h>
+#include <hector_pose_estimation_core/filter/ekf.h>
 
 namespace hector_pose_estimation {
 namespace filter {

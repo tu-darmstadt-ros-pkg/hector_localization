@@ -26,12 +26,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/parameters.h>
-#include <hector_pose_estimation/ros/parameters.h>
+#include <hector_pose_estimation_core/parameters.h>
+#include <hector_pose_estimation_core/ros/parameters.h>
 
 #include <boost/algorithm/string.hpp>
 
-#include <hector_pose_estimation/matrix.h>
+#include <hector_pose_estimation_core/matrix.h>
 
 #include <iostream>
 

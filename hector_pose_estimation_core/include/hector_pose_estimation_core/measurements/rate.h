@@ -26,62 +26,37 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/gravity.h>
-#include <hector_pose_estimation_core/pose_estimation.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_RATE_H
+#define HECTOR_POSE_ESTIMATION_RATE_H
+
+#include <hector_pose_estimation_core/measurement.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<GravityModel>;
+class RateModel : public MeasurementModel_<RateModel,3,3> {
+public:
+  RateModel();
+  virtual ~RateModel();
 
-GravityModel::GravityModel()
-  : gravity_(0.0)
-{
-  parameters().add("stddev", stddev_, 10.0);
-}
+  virtual bool init(PoseEstimation &estimator, State &state);
 
-GravityModel::~GravityModel() {}
+  virtual SystemStatus getStatusFlags() { return STATE_RATE_XY | STATE_RATE_Z; }
 
-bool GravityModel::init(PoseEstimation &estimator, State &state) {
-  setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
-  return true;
-}
+  SubState& sub(State& state) const { return *gyro_drift_; }
+  const SubState& sub(const State& state) const { return *gyro_drift_; }
 
-void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
-{
-  if (init) {
-    R(0,0) = R(1,1) = R(2,2) = pow(stddev_, 2);
-  }
-}
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init);
 
-void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  State::ConstOrientationType q(state.getOrientation());
+protected:
+  double stddev_;
+  SubStatePtr gyro_drift_;
+};
 
-  // y = q * [0 0 1] * q';
-  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
-  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
-  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
-}
-
-void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  State::ConstOrientationType q(state.getOrientation());
-
-  if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
-  }
-}
+typedef Measurement_<RateModel> Rate;
+extern template class Measurement_<RateModel>;
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_RATE_H

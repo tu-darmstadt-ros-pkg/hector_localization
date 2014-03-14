@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2012, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,54 +26,52 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/baro.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_IMvector_INPUT_H
+#define HECTOR_POSE_ESTIMATION_IMvector_INPUT_H
 
-#include <boost/bind.hpp>
+#include <hector_pose_estimation_core/input.h>
+#include <hector_pose_estimation_core/matrix.h>
+
+#include <sensor_msgs/Imu.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<BaroModel>;
-
-BaroModel::BaroModel()
+class ImuInput : public Input_<6>
 {
-  stddev_ = 1.0;
-  qnh_ = 1013.25;
-  parameters().add("qnh", qnh_);
-}
+public:
+  enum InputIndex {
+    ACCEL_X = 0,
+    ACCEL_Y,
+    ACCEL_Z,
+    GYRO_X,
+    GYRO_Y,
+    GYRO_Z
+  };
+  typedef typename Vector::ConstFixedSegmentReturnType<3>::Type AccelerationType;
+  typedef typename Vector::ConstFixedSegmentReturnType<3>::Type RateType;
 
-BaroModel::~BaroModel() {}
+  ImuInput() {}
+  ImuInput(const sensor_msgs::Imu& imu) { *this = imu; }
+  virtual ~ImuInput() {}
 
-void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = qnh_ * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 5.255);
-}
+  virtual const std::string& getName() const { static std::string name("imu"); return name; }
 
-void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
+  ImuInput &operator=(const sensor_msgs::Imu& imu) {
+    u_(ACCEL_X) = imu.linear_acceleration.x;
+    u_(ACCEL_Y) = imu.linear_acceleration.y;
+    u_(ACCEL_Z) = imu.linear_acceleration.z;
+    u_(GYRO_X)  = imu.angular_velocity.x;
+    u_(GYRO_Y)  = imu.angular_velocity.y;
+    u_(GYRO_Z)  = imu.angular_velocity.z;
+
+    // TODO: set variance if message contains non-zero covariance matrix
+    return *this;
   }
-}
 
-double BaroModel::getAltitude(const BaroUpdate& update)
-{
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
-}
-
-BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
-
-void Baro::onReset()
-{
-  HeightBaroCommon::onReset();
-}
-
-bool Baro::prepareUpdate(State &state, const Update &update) {
-  if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
-  return true;
-}
+  AccelerationType getAcceleration() const { return u_.segment<3>(ACCEL_X); }
+  RateType getRate() const { return u_.segment<3>(GYRO_X); }
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_IMvector_INPUT_H

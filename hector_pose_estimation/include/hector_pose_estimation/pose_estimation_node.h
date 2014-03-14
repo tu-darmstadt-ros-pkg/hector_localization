@@ -29,7 +29,7 @@
 #ifndef HECTOR_POSE_ESTIMATION_NODE_H
 #define HECTOR_POSE_ESTIMATION_NODE_H
 
-#include <hector_pose_estimation/pose_estimation.h>
+#include <hector_pose_estimation_core/pose_estimation.h>
 
 #include <ros/ros.h>
 

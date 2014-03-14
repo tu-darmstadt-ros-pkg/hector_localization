@@ -26,62 +26,67 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/gravity.h>
-#include <hector_pose_estimation_core/pose_estimation.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_MAGNETIC_H
+#define HECTOR_POSE_ESTIMATION_MAGNETIC_H
+
+#include <hector_pose_estimation_core/measurement.h>
+#include <hector_pose_estimation_core/global_reference.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<GravityModel>;
+class MagneticModel : public MeasurementModel_<MagneticModel,3> {
+public:
+  MagneticModel();
+  virtual ~MagneticModel();
 
-GravityModel::GravityModel()
-  : gravity_(0.0)
+  virtual bool init(PoseEstimation &estimator, State &state);
+
+  virtual SystemStatus getStatusFlags() { return STATE_YAW; }
+
+  virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+  double getMagneticHeading(const State& state, const MeasurementVector& y) const;
+  double getTrueHeading(const State& state, const MeasurementVector& y) const;
+
+  void setReference(const GlobalReference::Heading &reference_heading);
+  bool hasMagnitude() const { return magnitude_ != 0.0; }
+
+protected:
+  double stddev_;
+  double declination_, inclination_, magnitude_;
+  void updateMagneticField();
+
+  MeasurementVector magnetic_field_north_;
+  MeasurementVector magnetic_field_reference_;
+//  mutable Matrix C_full_;
+};
+
+extern template class Measurement_<MagneticModel>;
+
+class Magnetic : public Measurement_<MagneticModel>
 {
-  parameters().add("stddev", stddev_, 10.0);
-}
+public:
+  Magnetic(const std::string& name = "height");
+  virtual ~Magnetic() {}
 
-GravityModel::~GravityModel() {}
+  virtual void onReset();
 
-bool GravityModel::init(PoseEstimation &estimator, State &state) {
-  setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
-  return true;
-}
+  virtual MeasurementVector const& getVector(const Update &update, const State&);
+  virtual NoiseVariance const& getVariance(const Update &update, const State&);
 
-void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
-{
-  if (init) {
-    R(0,0) = R(1,1) = R(2,2) = pow(stddev_, 2);
-  }
-}
+  virtual bool prepareUpdate(State &state, const Update &update);
 
-void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  State::ConstOrientationType q(state.getOrientation());
+private:
+  bool auto_heading_;
+  GlobalReferencePtr reference_;
+  ColumnVector deviation_;
 
-  // y = q * [0 0 1] * q';
-  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
-  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
-  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
-}
-
-void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  State::ConstOrientationType q(state.getOrientation());
-
-  if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
-  }
-}
+  MeasurementVector y_;
+  NoiseVariance R_;
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_MAGNETIC_H

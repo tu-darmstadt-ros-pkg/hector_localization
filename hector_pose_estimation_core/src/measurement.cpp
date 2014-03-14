@@ -26,7 +26,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurement.h>
+#include <hector_pose_estimation_core/measurement.h>
 
 namespace hector_pose_estimation {
 

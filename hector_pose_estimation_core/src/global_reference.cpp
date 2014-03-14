@@ -26,8 +26,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/global_reference.h>
-#include <hector_pose_estimation/state.h>
+#include <hector_pose_estimation_core/global_reference.h>
+#include <hector_pose_estimation_core/state.h>
 #include <cmath>
 
 using namespace std;

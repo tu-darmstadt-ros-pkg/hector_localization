@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,54 +26,38 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/baro.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H
+#define HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H
 
-#include <boost/bind.hpp>
+#include <hector_pose_estimation_core/system.h>
+#include <hector_pose_estimation_core/measurement.h>
+
+#include <hector_pose_estimation_core/filter/ekf.h>
+
+#include <ros/console.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<BaroModel>;
-
-BaroModel::BaroModel()
-{
-  stddev_ = 1.0;
-  qnh_ = 1013.25;
-  parameters().add("qnh", qnh_);
-}
-
-BaroModel::~BaroModel() {}
-
-void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = qnh_ * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 5.255);
-}
-
-void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
+template <class ConcreteModel>
+void System_<ConcreteModel>::setFilter(Filter *filter) {
+  System::setFilter(filter);
+  if (filter->derived<filter::EKF>()) {
+    predictor_ = Filter::factory(filter->derived<filter::EKF>()).addPredictor<ConcreteModel>(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
   }
 }
 
-double BaroModel::getAltitude(const BaroUpdate& update)
-{
-  return 288.15 / 0.0065 * (1.0 - pow(update.getVector()(0) / qnh_, 1.0/5.255));
+template <class ConcreteModel>
+void Measurement_<ConcreteModel>::setFilter(Filter *filter) {
+  Measurement::setFilter(filter);
+  if (filter->derived<filter::EKF>()) {
+    corrector_ = Filter::factory(filter->derived<filter::EKF>()).addCorrector<ConcreteModel>(this->getModel());
+  } else {
+    ROS_ERROR_NAMED(getName(), "Unknown filter type: %s", filter->getType().c_str());
+  }
 }
 
-BaroUpdate::BaroUpdate() : qnh_(0) {}
-BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
-BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
-
-void Baro::onReset()
-{
-  HeightBaroCommon::onReset();
 }
 
-bool Baro::prepareUpdate(State &state, const Update &update) {
-  if (update.qnh() != 0) setQnh(update.qnh());
-  setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
-  return true;
-}
-
-} // namespace hector_pose_estimation
+#endif // HECTOR_POSE_ESTIMATION_FILTER_SET_FILTER_H

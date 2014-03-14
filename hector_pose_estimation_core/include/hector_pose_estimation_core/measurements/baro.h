@@ -26,62 +26,74 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation_core/measurements/gravity.h>
-#include <hector_pose_estimation_core/pose_estimation.h>
-#include <hector_pose_estimation_core/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_BARO_H
+#define HECTOR_POSE_ESTIMATION_BARO_H
+
+#include <hector_pose_estimation_core/measurement.h>
+#include <hector_pose_estimation_core/measurements/height.h>
+
+#ifdef USE_HECTOR_UAV_MSGS
+  #include <hector_uav_msgs/Altimeter.h>
+#endif
 
 namespace hector_pose_estimation {
 
-template class Measurement_<GravityModel>;
+class BaroUpdate;
 
-GravityModel::GravityModel()
-  : gravity_(0.0)
+class BaroModel : public HeightModel
 {
-  parameters().add("stddev", stddev_, 10.0);
+public:
+  BaroModel();
+  virtual ~BaroModel();
+
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
+
+  void setQnh(double qnh) { qnh_ = qnh; }
+  double getQnh() const { return qnh_; }
+
+  double getAltitude(const BaroUpdate& update);
+
+protected:
+  double qnh_;
+};
+
+class BaroUpdate : public Update_<BaroModel> {
+public:
+  BaroUpdate();
+  BaroUpdate(double pressure);
+  BaroUpdate(double pressure, double qnh);
+  double qnh() const { return qnh_; }
+  BaroUpdate& qnh(double qnh) { qnh_ = qnh; return *this; }
+
+  using Update_<BaroModel>::operator =;
+
+private:
+  double qnh_;
+};
+
+namespace traits {
+  template <> struct Update<BaroModel> { typedef BaroUpdate type; };
 }
 
-GravityModel::~GravityModel() {}
+extern template class Measurement_<BaroModel>;
 
-bool GravityModel::init(PoseEstimation &estimator, State &state) {
-  setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
-  return true;
-}
-
-void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
+class Baro : public Measurement_<BaroModel>, HeightBaroCommon
 {
-  if (init) {
-    R(0,0) = R(1,1) = R(2,2) = pow(stddev_, 2);
-  }
-}
+public:
+  Baro(const std::string& name = "baro") : Measurement_<BaroModel>(name), HeightBaroCommon(this) {}
+  virtual ~Baro() {}
 
-void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  State::ConstOrientationType q(state.getOrientation());
+  void setElevation(double elevation) { getModel()->setElevation(elevation); }
+  double getElevation() const { return getModel()->getElevation(); }
 
-  // y = q * [0 0 1] * q';
-  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
-  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
-  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
-}
+  void setQnh(double qnh) { getModel()->setQnh(qnh); }
+  double getQnh() const { return getModel()->getQnh(); }
 
-void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  State::ConstOrientationType q(state.getOrientation());
-
-  if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
-  }
-}
+  virtual void onReset();
+  virtual bool prepareUpdate(State &state, const Update &update);
+};
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_BARO_H
