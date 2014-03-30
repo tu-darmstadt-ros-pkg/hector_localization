@@ -10,5 +10,5 @@ Changelog for package world_magnetic_model
 * Contributors: Scott K Logan
 
 0.1.0 (2013-09-03)
------------
+------------------
 * catkinized stack hector_localization

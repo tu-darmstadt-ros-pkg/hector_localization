@@ -8,5 +8,5 @@ Changelog for package hector_localization
 * Contributors: Johannes Meyer
 
 0.1.0 (2013-09-03)
------------
+------------------
 * catkinized stack hector_localization
