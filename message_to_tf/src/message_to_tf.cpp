@@ -19,6 +19,8 @@ std::string g_position_frame_id;
 std::string g_stabilized_frame_id;
 std::string g_child_frame_id;
 
+bool g_publish_roll_pitch;
+
 std::string g_tf_prefix;
 
 tf::TransformBroadcaster *g_transform_broadcaster;
@@ -141,9 +143,11 @@ void imuCallback(sensor_msgs::Imu const &imu) {
   tf::Matrix3x3(orientation).getEulerYPR(yaw, pitch, roll);
 
   // base_link transform (roll, pitch)
-  tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
-  tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, 0.0));
-  addTransform(transforms, tf);
+  if (g_publish_roll_pitch){
+    tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
+    tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, 0.0));
+    addTransform(transforms, tf);
+  }
 
   g_transform_broadcaster->sendTransform(transforms);
 
@@ -197,6 +201,9 @@ int main(int argc, char** argv) {
   priv_nh.getParam("position_frame_id", g_position_frame_id);
   priv_nh.getParam("stabilized_frame_id", g_stabilized_frame_id);
   priv_nh.getParam("child_frame_id", g_child_frame_id);
+
+  g_publish_roll_pitch = true;
+  priv_nh.getParam("publish_roll_pitch", g_publish_roll_pitch);
 
   g_tf_prefix = tf::getPrefixParam(priv_nh);
   g_transform_broadcaster = new tf::TransformBroadcaster;
