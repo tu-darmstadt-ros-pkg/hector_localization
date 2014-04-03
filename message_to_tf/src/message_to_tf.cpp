@@ -93,7 +93,7 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
   tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
   tf.setOrigin(position);
   tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, yaw));
-  addTransform(transforms, tf);
+  //addTransform(transforms, tf);
 
   g_transform_broadcaster->sendTransform(transforms);
 
