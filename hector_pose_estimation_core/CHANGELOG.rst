@@ -2,6 +2,10 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.2 (2014-05-21)
+------------------
+* Fixed ROS Indigo CMake issues with Eigen
+
 0.1.1 (2014-03-30)
 ------------------
 * Fixed boost 1.53 issues
