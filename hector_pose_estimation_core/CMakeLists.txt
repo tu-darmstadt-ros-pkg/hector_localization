@@ -4,7 +4,7 @@ project(hector_pose_estimation_core)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs tf)
+find_package(catkin REQUIRED COMPONENTS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs tf cmake_modules)
 
 find_package(Eigen REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
