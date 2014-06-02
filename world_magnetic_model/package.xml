@@ -1,6 +1,6 @@
 <package>
   <name>world_magnetic_model</name>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
   <description>
     The World Magnetic Model is the standard model used by the U.S. Department of Defense, the U.K. Ministry of Defence, the North Atlantic Treaty Organization (NATO) and the International Hydrographic Organization (IHO), for navigation, attitude and heading referencing systems using the geomagnetic field. It is also used widely in civilian navigation and heading systems. The model, associated software, and documentation are distributed by NGDC on behalf of NGA. The model is produced at 5-year intervals, with the current model expiring on December 31, 2014.
   </description>

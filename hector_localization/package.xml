@@ -1,6 +1,6 @@
 <package>
   <name>hector_localization</name>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
   <description>
     The hector_localization stack is a collection of packages, that provide the full 6DOF pose of a robot or platform.
     It uses various sensor sources, which are fused using an Extended Kalman filter.

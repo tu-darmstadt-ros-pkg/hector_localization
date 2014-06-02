@@ -2,6 +2,11 @@
 Changelog for package world_magnetic_model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.2 (2014-06-02)
+------------------
+* fixed "format not a string literal and no format arguments" security error
+* Contributors: Johannes Meyer
+
 0.1.1 (2014-03-30)
 ------------------
 * Use "Public Domain" license for world_magnetic_model

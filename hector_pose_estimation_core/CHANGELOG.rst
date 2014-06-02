@@ -2,6 +2,11 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.2 (2014-06-02)
+------------------
+* added cmake_modules dependency for the Eigen cmake config
+* Contributors: Johannes Meyer
+
 0.1.1 (2014-03-30)
 ------------------
 * Fixed boost 1.53 issues
