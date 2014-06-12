@@ -16,12 +16,6 @@ else()
   include(${OROCOS-RTT_USE_FILE})
 endif()
 
-# use dependent packages
-orocos_use_package(rtt_rosnode)
-orocos_use_package(rtt_sensor_msgs)
-orocos_use_package(rtt_geometry_msgs)
-orocos_use_package(rtt_nav_msgs)
-
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -120,5 +114,5 @@ install(DIRECTORY include/hector_pose_estimation
 ####################
 
 orocos_generate_package(
-  DEPENDS rtt_rosnode rtt_sensor_msgs rtt_geometry_msgs rtt_nav_msgs
+  DEPENDS_TARGETS rtt_rosnode rtt_sensor_msgs rtt_geometry_msgs rtt_nav_msgs
 )
