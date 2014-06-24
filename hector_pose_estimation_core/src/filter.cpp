@@ -31,7 +31,8 @@
 
 namespace hector_pose_estimation {
 
-Filter::Filter()
+Filter::Filter(State &state)
+  : state_(state)
 {
 }
 

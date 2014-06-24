@@ -37,9 +37,10 @@ namespace hector_pose_estimation {
 
 class SystemModel : public Model {
 public:
+  SystemModel(IndexType dimension) : dimension_(dimension) {}
   virtual ~SystemModel() {}
 
-  virtual int getDimension() const = 0;
+  virtual int getDimension() const { return dimension_; }
   virtual bool isSubSystem() const { return false; }
   virtual IndexType getStateIndex(const State&) const { return 0; }
 
@@ -55,30 +56,35 @@ public:
   virtual void afterUpdate(State& state) {}
 
   virtual bool limitState(State& state) { return true; }
+
+protected:
+  const IndexType dimension_;
 };
 
 template <int _SubDimension>
 class SubSystemModel_ : public SystemModel {
 public:
-  enum { SubDimension = _SubDimension };
-
+  SubSystemModel_(IndexType dimension) : SystemModel(dimension) {}
   virtual ~SubSystemModel_() {}
 
   virtual bool isSubSystem() const { return true; }
-  virtual IndexType getStateIndex(const State& state) const { return state.getSubState<SubDimension>(this)->getIndex(); }
+  virtual IndexType getStateIndex(const State& state) const { return state.getSubState<_SubDimension>(this)->getIndex(); }
 };
 
 template <>
-class SubSystemModel_<0> : public SystemModel {};
+class SubSystemModel_<None> : public SystemModel {
+public:
+  SubSystemModel_(IndexType dimension) : SystemModel(dimension) {}
+  virtual ~SubSystemModel_() {}
+};
 
 namespace traits {
 
   template <int _SubDimension>
   struct SystemModel {
     typedef SubState_<_SubDimension> StateType;
-    enum { BaseDimension = State::Dimension };
-    enum { SubDimension = _SubDimension };
     enum { Dimension = StateType::Dimension };
+    enum { SubDimension = _SubDimension >= 0 ? _SubDimension : 0 };
 
     typedef typename StateType::Vector StateVector;
     typedef typename StateType::VectorSegment StateVectorSegment;
@@ -94,20 +100,19 @@ namespace traits {
     typedef Block<Matrix,Dimension,Dimension> SystemMatrixBlock;
     typedef Block<const Matrix,Dimension,Dimension> ConstSystemMatrixBlock;
 
-    typedef boost::integral_constant<bool,(_SubDimension > 0)> IsSubSystem;
-    typedef SubState_<SubDimension> SubState;
+    typedef boost::integral_constant<bool,(_SubDimension >= 0)> IsSubSystem;
+    typedef SubState_<_SubDimension> SubState;
     typedef typename SubState::Ptr SubStatePtr;
-    typedef Matrix_<BaseDimension,SubDimension> CrossSystemMatrix;
-    typedef Block<Matrix,BaseDimension,SubDimension> CrossSystemMatrixBlock;
-    typedef Block<const Matrix,BaseDimension,SubDimension> ConstCrossSystemMatrixBlock;
+    typedef Matrix_<Dynamic,SubDimension> CrossSystemMatrix;
+    typedef Block<Matrix,Dynamic,Dynamic> CrossSystemMatrixBlock;
+    typedef Block<const Matrix,Dynamic,SubDimension> ConstCrossSystemMatrixBlock;
   };
 
   #define SYSTEM_MODEL_TRAIT(Derived, _SubDimension) \
     typedef traits::SystemModel<_SubDimension> trait; \
     typedef typename trait::StateType StateType; \
-    enum { BaseDimension = trait::BaseDimension }; \
-    enum { SubDimension = trait::SubDimension }; \
     enum { Dimension = trait::Dimension }; \
+    enum { SubDimension = trait::SubDimension }; \
     \
     typedef typename trait::StateVector               StateVector; \
     typedef typename trait::StateVectorSegment        StateVectorSegment; \
@@ -126,9 +131,9 @@ namespace traits {
     enum { InputDimension = traits::Input<Derived>::Dimension }; \
     typedef typename traits::Input<Derived>::Type   InputType; \
     typedef typename traits::Input<Derived>::Vector InputVector; \
-    typedef Matrix_<Dynamic,InputDimension>         InputMatrix; \
-    typedef Block<typename InputMatrix::Base,Dimension,InputDimension>       InputMatrixBlock; \
-    typedef Block<const typename InputMatrix::Base,Dimension,InputDimension> ConstInputMatrixBlock; \
+    typedef Matrix_<InputDimension,Dimension>       InputMatrix; \
+    typedef Block<typename InputMatrix::Base,InputDimension,Dimension>       InputMatrixBlock; \
+    typedef Block<const typename InputMatrix::Base,InputDimension,Dimension> ConstInputMatrixBlock; \
     \
     typedef typename trait::IsSubSystem IsSubSystem; \
     typedef typename trait::SubState                    SubState; \
@@ -143,9 +148,10 @@ template <class Derived, int _SubDimension>
 class SystemModel_ : public SubSystemModel_<_SubDimension> {
 public:
   SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
+
+  SystemModel_(IndexType dimension = SubDimension) : SubSystemModel_<_SubDimension>(dimension) {}
   virtual ~SystemModel_() {}
 
-  int getDimension() const { return trait::Dimension; }
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_DISCRETE; }
 
   virtual void getPrior(State &state);
@@ -153,8 +159,8 @@ public:
   Derived *derived() { return static_cast<Derived *>(this); }
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
-  SubState& sub(State& state) const { return *state.getSubState<SubDimension>(this); }
-  const SubState& sub(const State& state) const { return *state.getSubState<SubDimension>(this); }
+  SubState& sub(State& state) const { return *state.getSubState<_SubDimension>(this); }
+  const SubState& sub(const State& state) const { return *state.getSubState<_SubDimension>(this); }
 
   // time discrete models should overwrite the following virtual methods if required:
   virtual void getExpectedValue(StateVectorSegment& x_pred, const State& state, double dt) { x_pred = this->sub(state).getVector(); }
@@ -172,14 +178,14 @@ public:
   virtual void getStateJacobian(SystemMatrixBlock& A1, CrossSystemMatrixBlock& A01, const State& state, double dt, bool init) { getStateJacobian(A1, A01, state, dt); }
 };
 
-template <class Derived, int _SubDimension = 0>
+template <class Derived, int _SubDimension = None>
 class TimeDiscreteSystemModel_ : public SystemModel_<Derived, _SubDimension> {
 public:
   SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
   virtual ~TimeDiscreteSystemModel_() {}
 };
 
-template <class Derived, int _SubDimension = 0>
+template <class Derived, int _SubDimension = None>
 class TimeContinuousSystemModel_ : public SystemModel_<Derived, _SubDimension> {
 public:
   SYSTEM_MODEL_TRAIT(Derived, _SubDimension)

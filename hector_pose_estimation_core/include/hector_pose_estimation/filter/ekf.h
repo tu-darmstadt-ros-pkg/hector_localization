@@ -37,7 +37,7 @@ namespace filter {
 class EKF : public Filter
 {
 public:
-  EKF();
+  EKF(State &state);
   virtual ~EKF();
 
   virtual std::string getType() const { return "EKF"; }
@@ -56,9 +56,9 @@ public:
     PredictorImpl_(EKF *filter, Model *model)
       : Base(filter, model)
       , filter_(filter)
-      , x_pred(filter_->x_pred.segment<State::Dimension>(0))
-      , A(filter_->A.block<State::Dimension,State::Dimension>(0,0))
-      , Q(filter->Q.block<State::Dimension,State::Dimension>(0,0))
+      , x_pred(filter_->x_pred.segment(0,state().getBaseDimension()))
+      , A(filter_->A.block(0,0,state().getBaseDimension(),state().getBaseDimension()))
+      , Q(filter->Q.block(0,0,state().getBaseDimension(),state().getBaseDimension()))
     {}
     virtual ~PredictorImpl_() {}
 
@@ -87,7 +87,7 @@ public:
       , filter_(filter)
       , x_pred(filter_->x_pred.segment<ConcreteModel::Dimension>(model->getStateIndex(state())))
       , A11(filter_->A.block<ConcreteModel::Dimension,ConcreteModel::Dimension>(model->getStateIndex(state()), model->getStateIndex(state())))
-      , A01(filter_->A.block<State::Dimension,ConcreteModel::Dimension>(0, model->getStateIndex(state())))
+      , A01(filter_->A.block(0, model->getStateIndex(state()), state().getBaseDimension(), model->getDimension()))
       , Q1(filter->Q.block<ConcreteModel::Dimension,ConcreteModel::Dimension>(model->getStateIndex(state()), model->getStateIndex(state())))
     {}
     virtual ~PredictorImpl_() {}
@@ -112,7 +112,14 @@ public:
     typedef typename Filter::template Corrector_<ConcreteModel> Base;
     using Filter::template Corrector_<ConcreteModel>::state;
 
-    CorrectorImpl_(EKF *filter, Model *model) : Base(filter, model), filter_(filter) {}
+    CorrectorImpl_(EKF *filter, Model *model)
+      : Base(filter, model)
+      , filter_(filter)
+      , y_pred(model->getDimension())
+      , error(model->getDimension())
+      , C(model->getDimension(), state().getBaseDimension())
+      , S(model->getDimension())
+    {}
     virtual ~CorrectorImpl_() {}
 
     virtual bool correct(const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
@@ -138,7 +145,15 @@ public:
     using Filter::template Corrector_<ConcreteModel>::state;
     using Filter::template Corrector_<ConcreteModel>::sub;
 
-    CorrectorImpl_(EKF *filter, Model *model) : Base(filter, model), filter_(filter) {}
+    CorrectorImpl_(EKF *filter, Model *model)
+      : Base(filter, model)
+      , filter_(filter)
+      , y_pred(model->getDimension())
+      , error(model->getDimension())
+      , C0(model->getDimension(), state().getBaseDimension())
+      , C1(model->getDimension(), ConcreteModel::SubDimension)
+      , S(model->getDimension())
+    {}
     virtual ~CorrectorImpl_() {}
 
     virtual bool correct(const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);

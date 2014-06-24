@@ -37,9 +37,10 @@ namespace hector_pose_estimation {
 
 class MeasurementModel : public Model {
 public:
+  MeasurementModel(IndexType dimension) : dimension_(dimension) {}
   virtual ~MeasurementModel() {}
 
-  virtual int getDimension() const = 0;
+  virtual int getDimension() const { return dimension_; }
   virtual bool hasSubsystem() const { return false; }
 
   virtual SystemStatus getStatusFlags() { return SystemStatus(0); }
@@ -47,17 +48,18 @@ public:
 
   virtual bool prepareUpdate(State& state, const MeasurementUpdate& update) { return true; }
   virtual void afterUpdate(State& state) {}
+
+protected:
+  const IndexType dimension_;
 };
 
-template <class Derived, int _Dimension, int _SubDimension = 0> class MeasurementModel_;
+template <class Derived, int _Dimension, int _SubDimension = None> class MeasurementModel_;
 
 namespace traits {
 
   template <int _Dimension, int _SubDimension>
   struct MeasurementModel {
-    enum { StateDimension = State::Dimension };
     typedef typename State::Vector StateVector;
-//    typedef SymmetricMatrix_<StateDimension> StateVariance;
     typedef typename State::VectorSegment StateVectorSegment;
     typedef typename State::CovarianceBlock StateCovarianceBlock;
     typedef typename State::ConstVectorSegment ConstStateVectorSegment;
@@ -66,12 +68,12 @@ namespace traits {
     enum { MeasurementDimension = _Dimension };
     typedef ColumnVector_<MeasurementDimension> MeasurementVector;
     typedef SymmetricMatrix_<MeasurementDimension> NoiseVariance;
-    typedef Matrix_<MeasurementDimension,StateDimension> MeasurementMatrix;
+    typedef Matrix_<MeasurementDimension,Dynamic> MeasurementMatrix;
     typedef Matrix_<State::Covariance::RowsAtCompileTime,MeasurementDimension> GainMatrix;
 
-    enum { SubDimension = _SubDimension };
-    struct HasSubSystem : public boost::integral_constant<bool, (_SubDimension > 0)> {};
-    typedef SubState_<SubDimension> SubState;
+    enum { SubDimension = _SubDimension >= 0 ? _SubDimension : 0 };
+    struct HasSubSystem : public boost::integral_constant<bool, (_SubDimension >= 0)> {};
+    typedef SubState_<_SubDimension> SubState;
     typedef typename SubState::Ptr SubStatePtr;
     typedef typename SubState::Vector SubStateVector;
     // typedef SymmetricMatrix_<SubDimension> SubStateVariance;
@@ -85,7 +87,6 @@ namespace traits {
   #define MEASUREMENT_MODEL_TRAIT(_Dimension, _SubDimension) \
     typedef typename traits::MeasurementModel<_Dimension, _SubDimension> trait; \
     \
-    enum { StateDimension = trait::StateDimension }; \
     typedef typename trait::StateVector StateVector; \
     typedef typename trait::StateVectorSegment StateVectorSegment; \
     typedef typename trait::StateCovarianceBlock StateCovarianceBlock; \
@@ -118,9 +119,10 @@ template <class Derived, int _Dimension, int _SubDimension>
 class MeasurementModel_ : public MeasurementModel {
 public:
   MEASUREMENT_MODEL_TRAIT(_Dimension, _SubDimension)
+
+  MeasurementModel_(IndexType dimension = MeasurementDimension) : MeasurementModel(dimension) {}
   virtual ~MeasurementModel_() {}
 
-  virtual int getDimension() const { return trait::MeasurementDimension; }
   virtual bool hasSubSystem() const { return trait::HasSubSystem::value; }
 
   Derived *derived() { return static_cast<Derived *>(this); }
@@ -139,7 +141,7 @@ public:
 
   virtual void limitError(MeasurementVector& error) {}
 
-  virtual const MeasurementVector* getFixedMeasurementVector() { return 0; }
+  virtual const MeasurementVector* getFixedMeasurementVector() const { return 0; }
 };
 
 } // namespace hector_pose_estimation

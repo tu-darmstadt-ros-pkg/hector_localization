@@ -94,11 +94,13 @@ namespace hector_pose_estimation {
 
   class PoseEstimation;
   class Filter;
+  typedef boost::shared_ptr<Filter> FilterPtr;
   class State;
+  typedef boost::shared_ptr<State> StatePtr;
 
   class SubState;
   template <int Dimension> class SubState_;
-  typedef SubState_<0> BaseState;
+  typedef SubState_<Dynamic> BaseState;
   typedef boost::shared_ptr<SubState> SubStatePtr;
   typedef boost::weak_ptr<SubState> SubStateWPtr;
 

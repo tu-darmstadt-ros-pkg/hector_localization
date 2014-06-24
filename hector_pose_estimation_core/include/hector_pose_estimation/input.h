@@ -109,8 +109,8 @@ namespace traits {
   template <class Model> struct Input {
     enum { Dimension = 0 };
     typedef Input_<Dimension> Type;
-    typedef ColumnVector_<0> Vector;
-    typedef SymmetricMatrix_<0> Variance;
+    typedef ColumnVector Vector;
+    typedef SymmetricMatrix Variance;
   };
 }
 

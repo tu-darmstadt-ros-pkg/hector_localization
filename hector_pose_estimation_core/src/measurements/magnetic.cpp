@@ -86,18 +86,18 @@ void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
     const double& m2 = magnetic_field_reference_.y();
 //    const double& m3 = magnetic_field_reference_.y();
 
-//    C_full_(0,State::QUATERNION_W) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
-//    C_full_(0,State::QUATERNION_X) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
-//    C_full_(0,State::QUATERNION_Y) = -2.0*q.y() * magnetic_field_reference_.x() + 2.0*q.x() * magnetic_field_reference_.y() - 2.0*q.w() * magnetic_field_reference_.z();
-//    C_full_(0,State::QUATERNION_Z) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_W) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_X) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_Y) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_Z) = -2.0*q.w() * magnetic_field_reference_.x() - 2.0*q.z() * magnetic_field_reference_.y() + 2.0*q.y() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_W) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_X) =  2.0*q.z() * magnetic_field_reference_.x() - 2.0*q.w() * magnetic_field_reference_.y() - 2.0*q.x() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_Y) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_Z) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
+//    C_full_(0,state.getOrientationIndex(W)) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
+//    C_full_(0,state.getOrientationIndex(X)) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
+//    C_full_(0,state.getOrientationIndex(Y)) = -2.0*q.y() * magnetic_field_reference_.x() + 2.0*q.x() * magnetic_field_reference_.y() - 2.0*q.w() * magnetic_field_reference_.z();
+//    C_full_(0,state.getOrientationIndex(Z)) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
+//    C_full_(1,state.getOrientationIndex(W)) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
+//    C_full_(1,state.getOrientationIndex(X)) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
+//    C_full_(1,state.getOrientationIndex(Y)) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
+//    C_full_(1,state.getOrientationIndex(Z)) = -2.0*q.w() * magnetic_field_reference_.x() - 2.0*q.z() * magnetic_field_reference_.y() + 2.0*q.y() * magnetic_field_reference_.z();
+//    C_full_(2,state.getOrientationIndex(W)) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
+//    C_full_(2,state.getOrientationIndex(X)) =  2.0*q.z() * magnetic_field_reference_.x() - 2.0*q.w() * magnetic_field_reference_.y() - 2.0*q.x() * magnetic_field_reference_.z();
+//    C_full_(2,state.getOrientationIndex(Y)) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
+//    C_full_(2,state.getOrientationIndex(Z)) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
 
     // return C_full_;
 
@@ -109,10 +109,10 @@ void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
     //   -qw*qz -qw*qy  qw*qx  qw*qw ]
 
 //    for(int i = 0; i <= 2; ++i) {
-//      C(i,State::QUATERNION_W) =  C_full_(i,State::QUATERNION_W) * q.z()*q.z() + C_full_(i,State::QUATERNION_X) * q.y()*q.z() - C_full_(i,State::QUATERNION_Y) * q.x()*q.z() - C_full_(i,State::QUATERNION_Z) * q.w()*q.z();
-//      C(i,State::QUATERNION_X) =  C_full_(i,State::QUATERNION_W) * q.z()*q.y() + C_full_(i,State::QUATERNION_X) * q.y()*q.y() - C_full_(i,State::QUATERNION_Y) * q.x()*q.y() - C_full_(i,State::QUATERNION_Z) * q.w()*q.y();
-//      C(i,State::QUATERNION_Y) = -C_full_(i,State::QUATERNION_W) * q.z()*q.x() - C_full_(i,State::QUATERNION_X) * q.y()*q.x() + C_full_(i,State::QUATERNION_Y) * q.x()*q.x() + C_full_(i,State::QUATERNION_Z) * q.w()*q.x();
-//      C(i,State::QUATERNION_Z) = -C_full_(i,State::QUATERNION_W) * q.z()*q.w() - C_full_(i,State::QUATERNION_X) * q.y()*q.w() + C_full_(i,State::QUATERNION_Y) * q.x()*q.w() + C_full_(i,State::QUATERNION_Z) * q.w()*q.w();
+//      C(i,state.getOrientationIndex(W)) =  C_full_(i,state.getOrientationIndex(W)) * q.z()*q.z() + C_full_(i,state.getOrientationIndex(X)) * q.y()*q.z() - C_full_(i,state.getOrientationIndex(Y)) * q.x()*q.z() - C_full_(i,state.getOrientationIndex(Z)) * q.w()*q.z();
+//      C(i,state.getOrientationIndex(X)) =  C_full_(i,state.getOrientationIndex(W)) * q.z()*q.y() + C_full_(i,state.getOrientationIndex(X)) * q.y()*q.y() - C_full_(i,state.getOrientationIndex(Y)) * q.x()*q.y() - C_full_(i,state.getOrientationIndex(Z)) * q.w()*q.y();
+//      C(i,state.getOrientationIndex(Y)) = -C_full_(i,state.getOrientationIndex(W)) * q.z()*q.x() - C_full_(i,state.getOrientationIndex(X)) * q.y()*q.x() + C_full_(i,state.getOrientationIndex(Y)) * q.x()*q.x() + C_full_(i,state.getOrientationIndex(Z)) * q.w()*q.x();
+//      C(i,state.getOrientationIndex(Z)) = -C_full_(i,state.getOrientationIndex(W)) * q.z()*q.w() - C_full_(i,state.getOrientationIndex(X)) * q.y()*q.w() + C_full_(i,state.getOrientationIndex(Y)) * q.x()*q.w() + C_full_(i,state.getOrientationIndex(Z)) * q.w()*q.w();
 //    }
 
 //
@@ -134,18 +134,18 @@ void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
   double temp1 = -m2*q.x()*q.x() + 2*m1*q.x()*q.y() + m2*q.z()*q.x() + m2*q.y()*q.y()   + m2*q.w()*q.y() + 2*m1*q.w()*q.z();
   double temp2 =  m1*q.w()*q.w() + 2*m2*q.w()*q.z() - m1*q.x()*q.x() - 2*m2*q.x()*q.y() + m1*q.y()*q.y() - m1*q.z()*q.z();
   double temp3 =  m1*q.w()*q.x() +   m2*q.w()*q.y() + m2*q.x()*q.z() -   m1*q.y()*q.z();
-  C(0,State::QUATERNION_W) =  2*q.z()*temp1;
-  C(0,State::QUATERNION_X) =  2*q.y()*temp1;
-  C(0,State::QUATERNION_Y) = -2*q.x()*temp1;
-  C(0,State::QUATERNION_Z) = -2*q.w()*temp1;
-  C(1,State::QUATERNION_W) =  2*q.z()*temp2;
-  C(1,State::QUATERNION_X) =  2*q.y()*temp2;
-  C(1,State::QUATERNION_Y) = -2*q.x()*temp2;
-  C(1,State::QUATERNION_Z) = -2*q.w()*temp2;
-  C(2,State::QUATERNION_W) = -4*q.z()*temp3;
-  C(2,State::QUATERNION_X) = -4*q.y()*temp3;
-  C(2,State::QUATERNION_Y) =  4*q.x()*temp3;
-  C(2,State::QUATERNION_Z) =  4*q.w()*temp3;
+  C(0,state.getOrientationIndex(W)) =  2*q.z()*temp1;
+  C(0,state.getOrientationIndex(X)) =  2*q.y()*temp1;
+  C(0,state.getOrientationIndex(Y)) = -2*q.x()*temp1;
+  C(0,state.getOrientationIndex(Z)) = -2*q.w()*temp1;
+  C(1,state.getOrientationIndex(W)) =  2*q.z()*temp2;
+  C(1,state.getOrientationIndex(X)) =  2*q.y()*temp2;
+  C(1,state.getOrientationIndex(Y)) = -2*q.x()*temp2;
+  C(1,state.getOrientationIndex(Z)) = -2*q.w()*temp2;
+  C(2,state.getOrientationIndex(W)) = -4*q.z()*temp3;
+  C(2,state.getOrientationIndex(X)) = -4*q.y()*temp3;
+  C(2,state.getOrientationIndex(Y)) =  4*q.x()*temp3;
+  C(2,state.getOrientationIndex(Z)) =  4*q.w()*temp3;
   }
 }
 

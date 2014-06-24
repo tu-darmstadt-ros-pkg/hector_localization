@@ -75,38 +75,38 @@ void RateModel::getStateJacobian(MeasurementMatrix &C0, SubMeasurementMatrix &C1
 //  const State::RateType& rate = state.getRate();
 
 //  if (state.getOrientationIndex() >= 0) {
-//    C(0,State::QUATERNION_W) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-//    C(0,State::QUATERNION_X) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-//    C(0,State::QUATERNION_Y) = -2.0*q.y() * rate.x() + 2.0*q.x() * rate.y() - 2.0*q.w() * rate.z();
-//    C(0,State::QUATERNION_Z) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-//    C(1,State::QUATERNION_W) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-//    C(1,State::QUATERNION_X) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-//    C(1,State::QUATERNION_Y) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-//    C(1,State::QUATERNION_Z) = -2.0*q.w() * rate.x() - 2.0*q.z() * rate.y() + 2.0*q.y() * rate.z();
-//    C(2,State::QUATERNION_W) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-//    C(2,State::QUATERNION_X) =  2.0*q.z() * rate.x() - 2.0*q.w() * rate.y() - 2.0*q.x() * rate.z();
-//    C(2,State::QUATERNION_Y) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-//    C(2,State::QUATERNION_Z) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(0,state.getOrientationIndex(W)) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
+//    C(0,state.getOrientationIndex(X)) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(0,state.getOrientationIndex(Y)) = -2.0*q.y() * rate.x() + 2.0*q.x() * rate.y() - 2.0*q.w() * rate.z();
+//    C(0,state.getOrientationIndex(Z)) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
+//    C(1,state.getOrientationIndex(W)) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
+//    C(1,state.getOrientationIndex(X)) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
+//    C(1,state.getOrientationIndex(Y)) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(1,state.getOrientationIndex(Z)) = -2.0*q.w() * rate.x() - 2.0*q.z() * rate.y() + 2.0*q.y() * rate.z();
+//    C(2,state.getOrientationIndex(W)) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
+//    C(2,state.getOrientationIndex(X)) =  2.0*q.z() * rate.x() - 2.0*q.w() * rate.y() - 2.0*q.x() * rate.z();
+//    C(2,state.getOrientationIndex(Y)) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
+//    C(2,state.getOrientationIndex(Z)) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
 //  }
 
 //  if (state.getRateIndex() >= 0) {
-//    C(0,State::RATE_X) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());
-//    C(0,State::RATE_Y) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
-//    C(0,State::RATE_Z) = (2.0*q.x()*q.z()-2.0*q.w()*q.y());
-//    C(1,State::RATE_X) = (2.0*q.x()*q.y()-2.0*q.w()*q.z());
-//    C(1,State::RATE_Y) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
-//    C(1,State::RATE_Z) = (2.0*q.y()*q.z()+2.0*q.w()*q.x());
-//    C(2,State::RATE_X) = (2.0*q.x()*q.z()+2.0*q.w()*q.y());
-//    C(2,State::RATE_Y) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
-//    C(2,State::RATE_Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
+//    C(0,state.getRateIndex(X)) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());
+//    C(0,state.getRateIndex(Y)) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
+//    C(0,state.getRateIndex(Z)) = (2.0*q.x()*q.z()-2.0*q.w()*q.y());
+//    C(1,state.getRateIndex(X)) = (2.0*q.x()*q.y()-2.0*q.w()*q.z());
+//    C(1,state.getRateIndex(Y)) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
+//    C(1,state.getRateIndex(Z)) = (2.0*q.y()*q.z()+2.0*q.w()*q.x());
+//    C(2,state.getRateIndex(X)) = (2.0*q.x()*q.z()+2.0*q.w()*q.y());
+//    C(2,state.getRateIndex(Y)) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
+//    C(2,state.getRateIndex(Z)) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
 //  }
 
   if (!init) return;
 
   if (state.getRateIndex() >= 0) {
-   C0(0,State::RATE_X) = 1.0;
-   C0(1,State::RATE_Y) = 1.0;
-   C0(2,State::RATE_Z) = 1.0;
+   C0(0,state.getRateIndex(X)) = 1.0;
+   C0(1,state.getRateIndex(Y)) = 1.0;
+   C0(2,state.getRateIndex(Z)) = 1.0;
   }
 
   if (gyro_drift_) {

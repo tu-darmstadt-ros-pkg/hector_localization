@@ -41,8 +41,9 @@ namespace {
   static PoseEstimation *the_instance = 0;
 }
 
-PoseEstimation::PoseEstimation(const SystemPtr& system)
-  : rate_update_(new Rate("rate"))
+PoseEstimation::PoseEstimation(const SystemPtr& system, const StatePtr& state)
+  : state_(state ? state : StatePtr(new FullState))
+  , rate_update_(new Rate("rate"))
   , gravity_update_(new Gravity ("gravity"))
   , zerorate_update_(new ZeroRate("zerorate"))
 {
@@ -93,7 +94,7 @@ bool PoseEstimation::init()
   if (systems_.empty()) return false;
 
   // create new filter
-  filter_.reset(new filter::EKF);
+  filter_.reset(new filter::EKF(*state_));
 
   // initialize measurements (new systems could be added during initialization!)
   for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)

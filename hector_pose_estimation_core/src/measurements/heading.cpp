@@ -61,10 +61,10 @@ void HeadingModel::getStateJacobian(MeasurementMatrix& C, const State& state, bo
   const double t3 = 1.0 / (t1*t1 + t2*t2);
 
   if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
-    C(0,State::QUATERNION_X) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
-    C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
-    C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
+    C(0,state.getOrientationIndex(W)) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
+    C(0,state.getOrientationIndex(X)) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
+    C(0,state.getOrientationIndex(Y)) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
+    C(0,state.getOrientationIndex(Z)) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
   }
 }
 

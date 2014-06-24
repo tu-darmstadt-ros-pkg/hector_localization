@@ -50,8 +50,8 @@ class GlobalReference;
 class PoseEstimation
 {
 public:
-  PoseEstimation(const SystemPtr& system = SystemPtr());
-  template <typename ConcreteSystemModel> PoseEstimation(ConcreteSystemModel *system_model);
+  PoseEstimation(const SystemPtr& system = SystemPtr(), const StatePtr& state = StatePtr());
+  template <typename ConcreteSystemModel> PoseEstimation(ConcreteSystemModel *system_model, State *state = 0);
   virtual ~PoseEstimation();
 
   static PoseEstimation *Instance();
@@ -96,8 +96,8 @@ public:
 //  InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
   InputPtr getInput(const std::string& name) const { return inputs_.get(name); }
 
-  virtual const State& state() const { return filter_->state(); }
-  virtual State& state() { return filter_->state(); }
+  virtual const State& state() const { return *state_; }
+  virtual State& state() { return *state_; }
 
   virtual const State::Vector& getStateVector();
   virtual const State::Covariance& getCovariance();
@@ -162,7 +162,8 @@ protected:
   Inputs inputs_;
 
 private:
-  boost::shared_ptr<Filter> filter_;
+  StatePtr state_;
+  FilterPtr filter_;
 
   ParameterList parameters_;
 
@@ -186,8 +187,8 @@ private:
 };
 
 template <typename ConcreteSystemModel>
-PoseEstimation::PoseEstimation(ConcreteSystemModel *system_model) {
-  *this = PoseEstimation(System::create(system_model));
+PoseEstimation::PoseEstimation(ConcreteSystemModel *system_model, State *state) {
+  *this = PoseEstimation(System::create(system_model), StatePtr(state));
 }
 
 template <typename ConcreteSystemModel>

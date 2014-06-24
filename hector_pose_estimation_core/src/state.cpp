@@ -31,18 +31,81 @@
 
 namespace hector_pose_estimation {
 
-State::State()
-  : vector_(Dimension)
-  , covariance_(Dimension)
-  , base_(new SubState_<0>(*this))
+enum StateIndex {
+  QUATERNION_X = 0,
+  QUATERNION_Y,
+  QUATERNION_Z,
+  QUATERNION_W,
+#ifdef USE_RATE_SYSTEM_MODEL
+  RATE_X, // body frame
+  RATE_Y, // body frame
+  RATE_Z, // body frame
+#endif // USE_RATE_SYSTEM_MODEL
+  POSITION_X,
+  POSITION_Y,
+  POSITION_Z,
+  VELOCITY_X,
+  VELOCITY_Y,
+  VELOCITY_Z,
+  BaseDimension,
+
+#ifndef USE_RATE_SYSTEM_MODEL
+  RATE_X = -1,
+  RATE_Y = -1,
+  RATE_Z = -1,
+#endif // USE_RATE_SYSTEM_MODEL
+  ACCELERATION_X = -1,
+  ACCELERATION_Y = -1,
+  ACCELERATION_Z = -1
+};
+
+FullState::FullState()
+  : State(BaseDimension)
 {
-  reset();
+  orientation_index_  = QUATERNION_X;
+  rate_index_         = RATE_X;
+  position_index_     = POSITION_X;
+  velocity_index_     = VELOCITY_X;
+  acceleration_index_ = ACCELERATION_X;
 }
 
-State::State(const Vector &vector, const Covariance& covariance)
-  : vector_(vector)
-  , covariance_(covariance)
-  , base_(new SubState_<0>(*this))
+OrientationOnlyState::OrientationOnlyState()
+  : State(BaseDimension - 6)
+{
+  orientation_index_  = QUATERNION_X;
+  rate_index_         = RATE_X;
+  position_index_     = -1;
+  velocity_index_     = -1;
+  acceleration_index_ = -1;
+}
+
+#ifdef USE_RATE_SYSTEM_MODEL
+PositionVelocityState::PositionVelocityState()
+  : State(BaseDimension - 7)
+{
+  orientation_index_  = -1;
+  rate_index_         = -1;
+  position_index_     = POSITION_X - 7;
+  velocity_index_     = VELOCITY_X - 7;
+  acceleration_index_ = ACCELERATION_X - 7;
+}
+#else
+PositionVelocityState::PositionVelocityState()
+  : State(BaseDimension - 4)
+{
+  orientation_index_  = -1;
+  rate_index_         = -1;
+  position_index_     = POSITION_X - 4;
+  velocity_index_     = VELOCITY_X - 4;
+  acceleration_index_ = ACCELERATION_X - 4;
+}
+#endif // USE_RATE_SYSTEM_MODEL
+
+State::State(IndexType base_dimension)
+  : vector_(base_dimension)
+  , covariance_(base_dimension)
+  , base_dimension_(base_dimension)
+  , base_(new SubState_<Dynamic>(*this, base_dimension))
 {
   reset();
 }
@@ -155,6 +218,139 @@ double State::normalize() {
   return s;
 }
 
-template class SubState_<0>;
+void State::setOrientation(const Quaternion& orientation)
+{
+  setOrientation(orientation.coeffs());
+}
+
+void State::setRollPitch(const Quaternion& orientation)
+{
+  ColumnVector3 euler = orientation.matrix().eulerAngles(2,1,0);
+  setRollPitch(euler(2), euler(1));
+}
+
+void State::setRollPitch(ScalarType roll, ScalarType pitch)
+{
+  ColumnVector3 euler = Quaternion(this->orientation()).matrix().eulerAngles(2,1,0);
+  this->orientation() = Quaternion(Eigen::AngleAxis<ScalarType>(euler(0), ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(pitch, ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(roll, ColumnVector3::UnitX())).coeffs();
+  rollpitchSet();
+}
+
+void State::setYaw(const Quaternion& orientation)
+{
+  ColumnVector3 euler = orientation.matrix().eulerAngles(2,1,0);
+  setYaw(euler(0));
+}
+
+void State::setYaw(ScalarType yaw)
+{
+  ColumnVector3 euler = Quaternion(this->orientation()).matrix().eulerAngles(2,1,0);
+  this->orientation() = Quaternion(Eigen::AngleAxis<ScalarType>(yaw, ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(euler(1), ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(euler(2), ColumnVector3::UnitX())).coeffs();
+  yawSet();
+}
+
+void State::orientationSet() {
+    if (getOrientationIndex() >= 0) {
+        Matrix_<Dimension,Dimension> T(Matrix_<Dimension,Dimension>::Identity(getDimension(),getDimension()));
+        T(getOrientationIndex(X),getOrientationIndex(X)) = 0.0;
+        T(getOrientationIndex(Y),getOrientationIndex(Y)) = 0.0;
+        T(getOrientationIndex(Z),getOrientationIndex(Z)) = 0.0;
+        T(getOrientationIndex(W),getOrientationIndex(W)) = 0.0;
+        P() = T * P() * T;
+    }
+    system_status_ |= STATE_ROLLPITCH | STATE_YAW;
+}
+
+void State::rollpitchSet() {
+    if (getOrientationIndex() >= 0) {
+        Matrix_<Dimension,Dimension> T(Matrix_<Dimension,Dimension>::Identity(getDimension(),getDimension()));
+        const ConstOrientationType &q = getOrientation();
+        Matrix_<3,4> W; W <<
+            q.w(), -q.z(),  q.y(), -q.x(),
+            q.z(),  q.w(), -q.x(), -q.y(),
+           -q.y(),  q.x(),  q.w(), -q.z();
+        Matrix_<3,3> W_P_WT(W * P().block<4,4>(getOrientationIndex(),getOrientationIndex()) * W.transpose());
+        const Eigen::internal::inverse_impl< Matrix_<3,3>::Base > W_P_WT_inv(W_P_WT.inverse());
+        Matrix_<3,3> R; R(2,2) = W_P_WT(2,2);
+        P() = P() - P().middleCols<4>(getOrientationIndex()) * W.transpose() * (W_P_WT_inv - W_P_WT_inv * R * W_P_WT_inv) * W * P().middleRows<4>(getOrientationIndex());
+    }
+    system_status_ |= STATE_ROLLPITCH;
+}
+
+void State::yawSet() {
+  if (getOrientationIndex() >= 0) {
+      Matrix_<Dimension,Dimension> T(Matrix_<Dimension,Dimension>::Identity(getDimension(),getDimension()));
+      const ConstOrientationType &q = getOrientation();
+      Matrix_<3,4> W; W <<
+          q.w(), -q.z(),  q.y(), -q.x(),
+          q.z(),  q.w(), -q.x(), -q.y(),
+         -q.y(),  q.x(),  q.w(), -q.z();
+      Matrix_<3,3> W_P_WT(W * P().block<4,4>(getOrientationIndex(),getOrientationIndex()) * W.transpose());
+      const Eigen::internal::inverse_impl< Matrix_<3,3>::Base > W_P_WT_inv(W_P_WT.inverse());
+      Matrix_<3,3> R; R.row(2).setZero(); R.row(2).setZero();
+      P() = P() - P().middleCols<4>(getOrientationIndex()) * W.transpose() * (W_P_WT_inv - W_P_WT_inv * R * W_P_WT_inv) * W * P().middleRows<4>(getOrientationIndex());
+  }
+    system_status_ |= STATE_YAW;
+}
+
+void State::rateSet() {
+    if (getRateIndex() >= 0) {
+        Matrix_<Dimension,Dimension> T(Matrix_<Dimension,Dimension>::Identity(getDimension(),getDimension()));
+        T(getRateIndex(X),getRateIndex(X)) = 0.0;
+        T(getRateIndex(Y),getRateIndex(Y)) = 0.0;
+        T(getRateIndex(Z),getRateIndex(Z)) = 0.0;
+        P() = T * P() * T;
+    }
+    system_status_ |= STATE_RATE_XY | STATE_RATE_Z;
+}
+
+void State::positionSet() {
+    if (getPositionIndex() >= 0) {
+        Matrix_<Dimension,Dimension> T(Matrix_<Dimension,Dimension>::Identity(getDimension(),getDimension()));
+        T(getPositionIndex(X),getPositionIndex(X)) = 0.0;
+        T(getPositionIndex(Y),getPositionIndex(Y)) = 0.0;
+        T(getPositionIndex(Z),getPositionIndex(Z)) = 0.0;
+        P() = T * P() * T;
+    }
+    system_status_ |= STATE_POSITION_XY | STATE_POSITION_Z;
+}
+
+void State::velocitySet() {
+    if (getVelocityIndex() >= 0) {
+        Matrix_<Dimension,Dimension> T(Matrix_<Dimension,Dimension>::Identity(getDimension(),getDimension()));
+        T(getVelocityIndex(X),getVelocityIndex(X)) = 0.0;
+        T(getVelocityIndex(Y),getVelocityIndex(Y)) = 0.0;
+        T(getVelocityIndex(Z),getVelocityIndex(Z)) = 0.0;
+        P() = T * P() * T;
+    }
+    system_status_ |= STATE_VELOCITY_XY | STATE_VELOCITY_Z;
+}
+
+void State::accelerationSet() {
+    if (getAccelerationIndex() >= 0) {
+        Matrix_<Dimension,Dimension> T(Matrix_<Dimension,Dimension>::Identity(getDimension(),getDimension()));
+        T(getAccelerationIndex(X),getAccelerationIndex(X)) = 0.0;
+        T(getAccelerationIndex(Y),getAccelerationIndex(Y)) = 0.0;
+        T(getAccelerationIndex(Z),getAccelerationIndex(Z)) = 0.0;
+        P() = T * P() * T;
+    }
+}
+
+template <>
+typename SubState_<Dynamic>::ConstVectorSegment SubState_<Dynamic>::getVector() const { return state_.getVector().segment(index_,dimension_); }
+
+template <>
+typename SubState_<Dynamic>::ConstCovarianceBlock SubState_<Dynamic>::getCovariance() const { return state_.getCovariance().block(index_,index_,dimension_,dimension_); }
+
+template <>
+typename SubState_<Dynamic>::VectorSegment SubState_<Dynamic>::x() { return state_.x().segment(index_,dimension_); }
+
+template <>
+typename SubState_<Dynamic>::CovarianceBlock SubState_<Dynamic>::P() { return state_.P().block(index_,index_,dimension_,dimension_); }
+
+template <>
+typename SubState_<Dynamic>::CrossVarianceBlock SubState_<Dynamic>::P01() { return state_.P().block(index_,index_,dimension_,dimension_); }
+
+template class SubState_<Dynamic>;
 
 } // namespace hector_pose_estimation

@@ -71,13 +71,13 @@ void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state)
   // Update the body z velocity towards 0
 #ifdef VELOCITY_IN_BODY_FRAME
   if (state.getVelocityIndex() >= 0) {
-    x_dot(State::VELOCITY_Z) = -gain_ * v.z();
+    x_dot(state.getVelocityIndex(Z)) = -gain_ * v.z();
   }
 
 #else
   if (state.getVelocityIndex() >= 0) {
     // v_z_body = R.row(2).dot(v)
-    x_dot(State::VELOCITY_Z) = -gain_ * R(2,2) * R.row(2).dot(v);
+    x_dot(state.getVelocityIndex(Z)) = -gain_ * R(2,2) * R.row(2).dot(v);
   }
 #endif // VELOCITY_IN_BODY_FRAME
 }
@@ -91,19 +91,19 @@ void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, b
 
 #ifdef VELOCITY_IN_BODY_FRAME
   if (state.getVelocityIndex() >= 0) {
-    A(State::VELOCITY_Z,State::VELOCITY_Z) = -gain_;
+    A(state.getVelocityIndex(Z),state.getVelocityIndex(Z)) = -gain_;
   }
 
 #else
   if (state.getVelocityIndex() >= 0) {
-    A.block<1,3>(State::VELOCITY_Z,State::VELOCITY_X) = -gain_ * R(2,2) * R.row(2);
+    A.block<1,3>(state.getVelocityIndex(Z),state.getVelocityIndex(X)) = -gain_ * R(2,2) * R.row(2);
 
     if (state.getOrientationIndex() >= 0) {
       dr3_dq_ <<  2*q.y(),  2*q.z(),  2*q.w(), 2*q.x(),
                  -2*q.x(), -2*q.w(),  2*q.z(), 2*q.y(),
                   2*q.w(), -2*q.x(), -2*q.y(), 2*q.z();
 
-      A.block<1,4>(State::VELOCITY_Z,state.getOrientationIndex()) = -gain_ * ((dr3_dq_.row(2) * R.row(2).dot(v)) + R(2,2) * (v.transpose() * dr3_dq_));
+      A.block<1,4>(state.getVelocityIndex(Z),state.getOrientationIndex()) = -gain_ * ((dr3_dq_.row(2) * R.row(2).dot(v)) + R(2,2) * (v.transpose() * dr3_dq_));
     }
   }
 #endif // VELOCITY_IN_BODY_FRAME

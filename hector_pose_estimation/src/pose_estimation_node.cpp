@@ -38,8 +38,8 @@
 
 namespace hector_pose_estimation {
 
-PoseEstimationNode::PoseEstimationNode(const SystemPtr& system)
-  : pose_estimation_(new PoseEstimation(system))
+PoseEstimationNode::PoseEstimationNode(const SystemPtr& system, const StatePtr& state)
+  : pose_estimation_(new PoseEstimation(system, state))
   , private_nh_("~")
   , transform_listener_(0)
 {
@@ -79,10 +79,12 @@ bool PoseEstimationNode::init() {
   }
 
   imu_subscriber_        = getNodeHandle().subscribe("raw_imu", 10, &PoseEstimationNode::imuCallback, this);
+  ahrs_subscriber_       = getNodeHandle().subscribe("ahrs", 10, &PoseEstimationNode::ahrsCallback, this);
+  rollpitch_subscriber_  = getNodeHandle().subscribe("rollpitch", 10, &PoseEstimationNode::rollpitchCallback, this);
 #if defined(USE_HECTOR_UAV_MSGS)
   baro_subscriber_       = getNodeHandle().subscribe("altimeter", 10, &PoseEstimationNode::baroCallback, this);
 #else
-  height_subscriber_       = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNode::heightCallback, this);
+  height_subscriber_     = getNodeHandle().subscribe("pressure_height", 10, &PoseEstimationNode::heightCallback, this);
 #endif
   magnetic_subscriber_   = getNodeHandle().subscribe("magnetic", 10, &PoseEstimationNode::magneticCallback, this);
 
@@ -127,6 +129,20 @@ void PoseEstimationNode::cleanup() {
 void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
   pose_estimation_->setInput(ImuInput(*imu));
   pose_estimation_->update(imu->header.stamp);
+  publish();
+}
+
+void PoseEstimationNode::ahrsCallback(const sensor_msgs::ImuConstPtr& ahrs) {
+  pose_estimation_->state().setOrientation(Quaternion(ahrs->orientation.w, ahrs->orientation.x, ahrs->orientation.y, ahrs->orientation.z));
+  pose_estimation_->setInput(ImuInput(*ahrs));
+  pose_estimation_->update(ahrs->header.stamp);
+  publish();
+}
+
+void PoseEstimationNode::rollpitchCallback(const sensor_msgs::ImuConstPtr& attitude) {
+  pose_estimation_->state().setRollPitch(Quaternion(attitude->orientation.w, attitude->orientation.x, attitude->orientation.y, attitude->orientation.z));
+  pose_estimation_->setInput(ImuInput(*attitude));
+  pose_estimation_->update(attitude->header.stamp);
   publish();
 }
 

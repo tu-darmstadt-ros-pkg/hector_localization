@@ -52,7 +52,7 @@ void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
   if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
+    C(0,state.getPositionIndex(Z)) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
   }
 }
 

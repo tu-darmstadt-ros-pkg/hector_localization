@@ -52,43 +52,16 @@
 
 namespace hector_pose_estimation {
 
+enum VectorIndex {
+  X = 0,
+  Y = 1,
+  Z = 2,
+  W = 3
+};
+
 class State {
 public:
-  enum VectorIndex {
-    X = 0,
-    Y = 1,
-    Z = 2,
-    W = 3
-  };
-
-  enum StateIndex {
-    QUATERNION_X = 0,
-    QUATERNION_Y,
-    QUATERNION_Z,
-    QUATERNION_W,
-#ifdef USE_RATE_SYSTEM_MODEL
-    RATE_X, // body frame
-    RATE_Y, // body frame
-    RATE_Z, // body frame
-#endif // USE_RATE_SYSTEM_MODEL
-    POSITION_X,
-    POSITION_Y,
-    POSITION_Z,
-    VELOCITY_X,
-    VELOCITY_Y,
-    VELOCITY_Z,
-    Dimension,
-
-#ifndef USE_RATE_SYSTEM_MODEL
-    RATE_X = -1,
-    RATE_Y = -1,
-    RATE_Z = -1,
-#endif // USE_RATE_SYSTEM_MODEL
-    ACCELERATION_X = -1,
-    ACCELERATION_Y = -1,
-    ACCELERATION_Z = -1
-  };
-
+  enum { Dimension = Dynamic };
   typedef ColumnVector Vector;
   typedef SymmetricMatrix Covariance;
   typedef VectorBlock<Vector,Dimension> VectorSegment;
@@ -112,12 +85,7 @@ public:
   typedef Matrix_<3,3> RotationMatrix;
 
 public:
-  State();
-  State(const Vector &vector, const Covariance& covariance);
   virtual ~State();
-
-  static IndexType getDimension0() { return Dimension; }
-  virtual IndexType getDimension() const { return vector_.rows(); }
 
   virtual void reset();
   virtual void updated();
@@ -134,8 +102,8 @@ public:
 
   virtual Vector& x() { return vector_; }
   virtual Covariance& P() { return covariance_; }
-  virtual VectorSegment x0() { return vector_.segment<Dimension>(0); }
-  virtual CovarianceBlock P0() { return covariance_.block<Dimension,Dimension>(0, 0); }
+  virtual VectorSegment x0() { return vector_.segment(0, base_dimension_); }
+  virtual CovarianceBlock P0() { return covariance_.block(0, 0, base_dimension_, base_dimension_); }
 
   virtual SystemStatus getSystemStatus() const { return system_status_; }
   virtual SystemStatus getMeasurementStatus() const { return measurement_status_; }
@@ -165,17 +133,24 @@ public:
 
   double getYaw() const;
 
+  void setOrientation(const Quaternion& orientation);
   template <typename Derived> void setOrientation(const Eigen::MatrixBase<Derived>& orientation);
+  void setRollPitch(const Quaternion& orientation);
+  void setRollPitch(ScalarType roll, ScalarType pitch);
+  void setYaw(const Quaternion& orientation);
+  void setYaw(ScalarType yaw);
   template <typename Derived> void setRate(const Eigen::MatrixBase<Derived>& rate);
   template <typename Derived> void setPosition(const Eigen::MatrixBase<Derived>& position);
   template <typename Derived> void setVelocity(const Eigen::MatrixBase<Derived>& velocity);
   template <typename Derived> void setAcceleration(const Eigen::MatrixBase<Derived>& acceleration);
 
-  virtual IndexType getOrientationIndex() const { return QUATERNION_X; }
-  virtual IndexType getRateIndex() const { return RATE_X; }
-  virtual IndexType getPositionIndex() const { return POSITION_X; }
-  virtual IndexType getVelocityIndex() const { return VELOCITY_X; }
-  virtual IndexType getAccelerationIndex() const { return ACCELERATION_X; }
+  virtual IndexType getBaseDimension() const { return base_dimension_; }
+  virtual IndexType getDimension() const { return vector_.rows(); }
+  virtual IndexType getOrientationIndex(IndexType offset = 0) const { return orientation_index_ + offset; }
+  virtual IndexType getRateIndex(IndexType offset = 0) const { return rate_index_ + offset; }
+  virtual IndexType getPositionIndex(IndexType offset = 0) const { return position_index_ + offset; }
+  virtual IndexType getVelocityIndex(IndexType offset = 0) const { return velocity_index_ + offset; }
+  virtual IndexType getAccelerationIndex(IndexType offset = 0) const { return acceleration_index_ + offset; }
 
   const SubStates& getSubStates() const { return substates_; }
   template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const Model *model) const;
@@ -185,7 +160,18 @@ public:
   const ros::Time& getTimestamp() const { return timestamp_; }
   void setTimestamp(const ros::Time& timestamp) { timestamp_ = timestamp; }
 
-private:
+protected:
+  State(IndexType base_dimension);
+
+  void orientationSet();
+  void rollpitchSet();
+  void yawSet();
+  void rateSet();
+  void positionSet();
+  void velocitySet();
+  void accelerationSet();
+
+protected:
   Vector vector_;
   Covariance covariance_;
 
@@ -198,6 +184,13 @@ private:
   Vector fake_velocity_;
   Vector fake_acceleration_;
 
+  const IndexType base_dimension_;
+  IndexType orientation_index_;
+  IndexType rate_index_;
+  IndexType position_index_;
+  IndexType velocity_index_;
+  IndexType acceleration_index_;
+
   std::vector<SystemStatusCallback> status_callbacks_;
 
   SubStates substates_;
@@ -209,34 +202,60 @@ private:
   ros::Time timestamp_;
 };
 
+class FullState : public State
+{
+public:
+    FullState();
+    virtual ~FullState() {}
+};
+
+class OrientationOnlyState : public State
+{
+public:
+    OrientationOnlyState();
+    virtual ~OrientationOnlyState() {}
+};
+
+class PositionVelocityState : public State
+{
+public:
+    PositionVelocityState();
+    virtual ~PositionVelocityState() {}
+};
+
 template <typename Derived>
 void State::setOrientation(const Eigen::MatrixBase<Derived>& orientation) {
   eigen_assert(orientation.rows() == 4 && orientation.cols() == 1);
-  fake_orientation_ = orientation;
+  this->orientation() = orientation;
+  orientationSet();
 }
 
 template <typename Derived>
 void State::setRate(const Eigen::MatrixBase<Derived>& rate) {
   eigen_assert(rate.rows() == 3 && rate.cols() == 1);
-  fake_rate_ = rate;
+  this->rate() = rate;
+  rateSet();
 }
 
 template <typename Derived>
 void State::setPosition(const Eigen::MatrixBase<Derived>& position) {
   eigen_assert(position.rows() == 3 && position.cols() == 1);
-  fake_position_ = position;
+  this->position() = position;
+  positionSet();
 }
 
 template <typename Derived>
 void State::setVelocity(const Eigen::MatrixBase<Derived>& velocity) {
   eigen_assert(velocity.rows() == 3 && velocity.cols() == 1);
-  fake_velocity_ = velocity;
+  this->velocity() = velocity;
+  velocitySet();
 }
 
 template <typename Derived>
 void State::setAcceleration(const Eigen::MatrixBase<Derived>& acceleration) {
   eigen_assert(acceleration.rows() == 3 && acceleration.cols() == 1);
-  fake_acceleration_ = acceleration;
+  this->acceleration() = acceleration;
+  accelerationSet();
 }
 
 } // namespace hector_pose_estimation

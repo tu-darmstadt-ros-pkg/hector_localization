@@ -136,8 +136,8 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
     // update PositionXY
     if (information(0,0) > 0.0 || information(1,1) > 0.0) {
       // fetch observation matrix H and current state x
-      PositionXYModel::MeasurementMatrix H;
-      PositionXYModel::MeasurementVector x;
+      PositionXYModel::MeasurementMatrix H(position_xy_model_.getDimension(), filter()->state().getBaseDimension());
+      PositionXYModel::MeasurementVector x(position_xy_model_.getDimension());
       position_xy_model_.getStateJacobian(H, filter()->state(), true);
       position_xy_model_.getExpectedValue(x, filter()->state());
 
@@ -166,8 +166,8 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
     // update PositionZ
     if (information(2,2) > 0.0) {
       // fetch observation matrix H and current state x
-      PositionZModel::MeasurementMatrix H;
-      PositionZModel::MeasurementVector x;
+      PositionZModel::MeasurementMatrix H(position_z_model_.getDimension(), filter()->state().getBaseDimension());
+      PositionZModel::MeasurementVector x(position_z_model_.getDimension());
       position_z_model_.getStateJacobian(H, filter()->state(), true);
       position_z_model_.getExpectedValue(x, filter()->state());
 
@@ -196,12 +196,12 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
     // update Yaw
     if (information(5,5) > 0.0) {
       // fetch observation matrix H and current state x
-      YawModel::MeasurementMatrix H;
-      YawModel::MeasurementVector x;
+      YawModel::MeasurementMatrix H(yaw_model_.getDimension(), filter()->state().getBaseDimension());
+      YawModel::MeasurementVector x(yaw_model_.getDimension());
       yaw_model_.getStateJacobian(H, filter()->state(), true);
       yaw_model_.getExpectedValue(x, filter()->state());
 
-      YawModel::MeasurementVector y(update_euler(0));
+      YawModel::MeasurementVector y(update_euler.segment<1>(0));
       YawModel::NoiseVariance Iy(information.block<1,1>(5,5));
 
       // invert Iy if information is a covariance matrix
@@ -263,12 +263,12 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
     }
 
     // fetch observation matrix H and current state x
-    TwistModel::MeasurementMatrix H;
-    TwistModel::MeasurementVector x;
+    TwistModel::MeasurementMatrix H(twist_model_.getDimension(), filter()->state().getBaseDimension());
+    TwistModel::MeasurementVector x(twist_model_.getDimension());
     twist_model_.getStateJacobian(H, filter()->state(), true);
     twist_model_.getExpectedValue(x, filter()->state());
 
-    TwistModel::MeasurementVector y;
+    TwistModel::MeasurementVector y(twist_model_.getDimension());
     TwistModel::NoiseVariance Iy(information);
     y.segment<3>(0) = update_linear;
     y.segment<3>(3) = update_angular;
@@ -348,7 +348,7 @@ double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const M
   NoiseVariance H_Px_HT(H * state.P0() * H.transpose());
 
   if (H_Px_HT.determinant() <= 0) {
-    ROS_WARN_STREAM("Ignoring poseupdate for " << text << " as the a-priori state covariance is zero!");
+    ROS_DEBUG_STREAM("Ignoring poseupdate for " << text << " as the a-priori state covariance is zero!");
     return 0.0;
   }
   NoiseVariance Ix(H_Px_HT.inverse().eval());
@@ -389,7 +389,7 @@ double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const M
 
   // S_1 is equivalent to S^(-1) = (H*P*H^T + R)^(-1) in the standard Kalman gain
   NoiseVariance S_1(Ix - Ix * (Ix * alpha + Iy * beta).inverse() * Ix);
-  Matrix_<State::Covariance::ColsAtCompileTime, MeasurementMatrix::RowsAtCompileTime> P_HT((H * state.P().template topRows<State::Dimension>()).transpose());
+  Matrix_<State::Covariance::ColsAtCompileTime, MeasurementMatrix::RowsAtCompileTime> P_HT((H * state.P().topRows(state.getBaseDimension())).transpose());
   ROS_DEBUG_STREAM_NAMED("poseupdate", "P*HT = [" << (P_HT) << "]");
 
   double innovation = S_1.determinant();
@@ -409,8 +409,8 @@ void PositionXYModel::getExpectedValue(MeasurementVector &y_pred, const State &s
 void PositionXYModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
   if (init) {
     if (state.getPositionIndex() >= 0) {
-      C(0,State::POSITION_X)   = 1.0;
-      C(1,State::POSITION_Y)   = 1.0;
+      C(0,state.getPositionIndex(X))   = 1.0;
+      C(1,state.getPositionIndex(Y))   = 1.0;
     }
   }
 }
@@ -425,7 +425,7 @@ void PositionZModel::getExpectedValue(MeasurementVector &y_pred, const State &st
 
 void PositionZModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
   if (init && state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z)   = 1.0;
+    C(0,state.getPositionIndex(Z))   = 1.0;
   }
 }
 
@@ -445,10 +445,10 @@ void YawModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool i
     const double t2 = 2*(q.x()*q.y() + q.w()*q.z());
     const double t3 = 1.0 / (t1*t1 + t2*t2);
 
-    C(0,State::QUATERNION_W) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
-    C(0,State::QUATERNION_X) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
-    C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
-    C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
+    C(0,state.getOrientationIndex(W)) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
+    C(0,state.getOrientationIndex(X)) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
+    C(0,state.getOrientationIndex(Y)) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
+    C(0,state.getOrientationIndex(Z)) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
   }
 }
 
@@ -488,15 +488,15 @@ void TwistModel::getExpectedValue(MeasurementVector &y_pred, const State &state)
 
 void TwistModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
   if (init && state.getVelocityIndex() >= 0) {
-    C(0,State::VELOCITY_X) = 1.0;
-    C(1,State::VELOCITY_Y) = 1.0;
-    C(2,State::VELOCITY_Z) = 1.0;
+    C(0,state.getVelocityIndex(X)) = 1.0;
+    C(1,state.getVelocityIndex(Y)) = 1.0;
+    C(2,state.getVelocityIndex(Z)) = 1.0;
   }
 
   if (init && state.getRateIndex() >= 0) {
-    C(3,State::RATE_X) = 1.0;
-    C(4,State::RATE_Y) = 1.0;
-    C(5,State::RATE_Z) = 1.0;
+    C(3,state.getRateIndex(X)) = 1.0;
+    C(4,state.getRateIndex(Y)) = 1.0;
+    C(5,state.getRateIndex(Z)) = 1.0;
   }
 }
 

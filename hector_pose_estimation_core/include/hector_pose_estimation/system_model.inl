@@ -45,16 +45,26 @@ template <class ConcreteModel, int _SubDimension>
 struct TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::internal {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  IndexType dimension_;
   StateVector x_dot;
   SystemMatrix A;
   CrossSystemMatrix A01;
   InputMatrix B;
   NoiseVariance Q;
+
+  internal(const State &state)
+    : dimension_(IsSubSystem::value ? SubDimension : state.getBaseDimension())
+    , x_dot(dimension_)
+    , A(dimension_, dimension_)
+    , A01(state.getBaseDimension(), SubDimension)
+    , B(InputDimension, dimension_)
+    , Q(dimension_)
+  {}
 };
 
 template <class ConcreteModel, int _SubDimension>
 TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::TimeContinuousSystemModel_()
-  : internal_(new internal)
+  : internal_(0)
 {}
 
 template <class ConcreteModel, int _SubDimension>
@@ -65,30 +75,34 @@ TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::~TimeContinuousSystemM
 
 template <class ConcreteModel, int _SubDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::getExpectedValue(StateVectorSegment& x_pred, const State& state, double dt) {
+  if (!internal_) internal_ = new internal(state);
   getDerivative(internal_->x_dot, state);
   x_pred = this->sub(state).getVector() + dt * internal_->x_dot;
 }
 
 template <class ConcreteModel, int _SubDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::getStateJacobian(SystemMatrixBlock& A, const State& state, double dt, bool init) {
+  if (!internal_) internal_ = new internal(state);
   if (init) internal_->A.setZero();
   getStateJacobian(internal_->A, state, init);
-  A = SystemMatrix::Identity() + dt * internal_->A;
+  A = SystemMatrix::Identity(A.rows(), A.cols()) + dt * internal_->A;
 }
 
 template <class ConcreteModel, int _SubDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::getStateJacobian(SystemMatrixBlock& A1, CrossSystemMatrixBlock& A01, const State& state, double dt, bool init) {
+  if (!internal_) internal_ = new internal(state);
   if (init) {
     internal_->A.setZero();
     internal_->A01.setZero();
   }
   getStateJacobian(internal_->A, internal_->A01, state, init);
-  A1 = SystemMatrix::Identity() + dt * internal_->A;
+  A1 = SystemMatrix::Identity(A1.rows(), A1.cols()) + dt * internal_->A;
   A01 = dt * internal_->A01;
 }
 
 template <class ConcreteModel, int _SubDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::getInputJacobian(InputMatrixBlock& B, const State& state, double dt, bool init) {
+  if (!internal_) internal_ = new internal(state);
   if (init) internal_->B.setZero();
   getInputJacobian(internal_->B, state, init);
   B = dt * internal_->B;
@@ -96,6 +110,7 @@ void TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::getInputJacobian(
 
 template <class ConcreteModel, int _SubDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _SubDimension>::getSystemNoise(NoiseVarianceBlock& Q, const State& state, double dt, bool init) {
+  if (!internal_) internal_ = new internal(state);
   if (init) internal_->Q.setZero();
   getSystemNoise(internal_->Q, state, init);
   Q = dt * internal_->Q;

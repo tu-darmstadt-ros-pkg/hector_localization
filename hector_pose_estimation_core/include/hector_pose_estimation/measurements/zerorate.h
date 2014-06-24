@@ -52,7 +52,7 @@ public:
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
   virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init);
 
-  virtual const MeasurementVector* getFixedMeasurementVector();
+  const MeasurementVector* getFixedMeasurementVector() const;
 
 protected:
   double stddev_;

@@ -35,7 +35,6 @@ namespace hector_pose_estimation {
 template class Measurement_<GravityModel>;
 
 GravityModel::GravityModel()
-  : gravity_(0.0)
 {
   parameters().add("stddev", stddev_, 10.0);
 }
@@ -69,18 +68,18 @@ void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bo
   State::ConstOrientationType q(state.getOrientation());
 
   if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
+    C(0,state.getOrientationIndex(W)) =  gravity_.z()*2*q.y();
+    C(0,state.getOrientationIndex(X)) = -gravity_.z()*2*q.z();
+    C(0,state.getOrientationIndex(Y)) =  gravity_.z()*2*q.w();
+    C(0,state.getOrientationIndex(Z)) = -gravity_.z()*2*q.x();
+    C(1,state.getOrientationIndex(W)) = -gravity_.z()*2*q.x();
+    C(1,state.getOrientationIndex(X)) = -gravity_.z()*2*q.w();
+    C(1,state.getOrientationIndex(Y)) = -gravity_.z()*2*q.z();
+    C(1,state.getOrientationIndex(Z)) = -gravity_.z()*2*q.y();
+    C(2,state.getOrientationIndex(W)) = -gravity_.z()*2*q.w();
+    C(2,state.getOrientationIndex(X)) =  gravity_.z()*2*q.x();
+    C(2,state.getOrientationIndex(Y)) =  gravity_.z()*2*q.y();
+    C(2,state.getOrientationIndex(Z)) = -gravity_.z()*2*q.z();
   }
 }
 
