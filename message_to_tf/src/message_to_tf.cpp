@@ -92,10 +92,12 @@ void sendTransform(geometry_msgs::Pose const &pose, const std_msgs::Header& head
   }
 
   // base_link transform (roll, pitch)
-  tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
-  tf.setOrigin(position);
-  tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, yaw));
-  //addTransform(transforms, tf);
+  if (g_publish_roll_pitch) {
+    tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
+    tf.setOrigin(position);
+    tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, yaw));
+    addTransform(transforms, tf);
+  }
 
   g_transform_broadcaster->sendTransform(transforms);
 
@@ -143,7 +145,7 @@ void imuCallback(sensor_msgs::Imu const &imu) {
   tf::Matrix3x3(orientation).getEulerYPR(yaw, pitch, roll);
 
   // base_link transform (roll, pitch)
-  if (g_publish_roll_pitch){
+  if (g_publish_roll_pitch) {
     tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
     tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, 0.0));
     addTransform(transforms, tf);
