@@ -1,6 +1,6 @@
 <package>
   <name>hector_pose_estimation</name>
-  <version>0.1.2</version>
+  <version>0.1.3</version>
   <description>
     hector_pose_estimation provides the hector_pose_estimation node and the hector_pose_estimation nodelet.
   </description>

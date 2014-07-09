@@ -2,6 +2,9 @@
 Changelog for package world_magnetic_model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.3 (2014-07-09)
+------------------
+
 0.1.2 (2014-06-02)
 ------------------
 * fixed "format not a string literal and no format arguments" security error

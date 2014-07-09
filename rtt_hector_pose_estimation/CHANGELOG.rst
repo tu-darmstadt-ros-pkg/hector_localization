@@ -2,6 +2,13 @@
 Changelog for package rtt_hector_pose_estimation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.3 (2014-07-09)
+------------------
+* 0.1.3
+* rtt_hector_pose_estimation: added missing rtt_std_msgs dependency
+* rtt_hector_pose_estimation: updated CMakeLists.txt for Orocos Toolchain 2.7
+* Contributors: Johannes Meyer
+
 0.1.2 (2014-06-02)
 ------------------
 
