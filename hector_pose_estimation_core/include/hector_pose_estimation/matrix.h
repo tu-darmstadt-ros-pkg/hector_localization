@@ -40,6 +40,7 @@ namespace hector_pose_estimation {
   using Eigen::Dynamic;
   using Eigen::Lower;
   using Eigen::Upper;
+  using Eigen::DenseBase;
 
   typedef double ScalarType;
   typedef Eigen::DenseIndex IndexType;
