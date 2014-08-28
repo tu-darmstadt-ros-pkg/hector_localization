@@ -97,7 +97,13 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
     // convert incoming update information to Eigen
     Eigen::Vector3d update_pose(update.pose->pose.pose.position.x, update.pose->pose.pose.position.y, update.pose->pose.pose.position.z);
     Eigen::Quaterniond update_orientation(update.pose->pose.pose.orientation.w, update.pose->pose.pose.orientation.x, update.pose->pose.pose.orientation.y, update.pose->pose.pose.orientation.z);
-    Eigen::Vector3d update_euler(update_orientation.toRotationMatrix().eulerAngles(2,1,0));
+    Eigen::Vector3d update_euler;
+    {
+        const Eigen::Quaterniond &q = update_orientation;
+        /* roll  = */ update_euler(2) = atan2(2*(q.y()*q.z() + q.w()*q.x()), q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
+        /* pitch = */ update_euler(1) = -asin(2*(q.x()*q.z() - q.w()*q.y()));
+        /* yaw   = */ update_euler(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
+    }
 
     // information is the information matrix if interpret_covariance_as_information_matrix_ is true and a covariance matrix otherwise
     // zero elements are counted as zero information in any case
