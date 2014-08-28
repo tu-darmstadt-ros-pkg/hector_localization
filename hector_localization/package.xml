@@ -23,7 +23,6 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <!-- Dependencies needed after this package is compiled. -->
-  <!-- <run_depend>world_magnetic_model</run_depend> -->
   <run_depend>message_to_tf</run_depend>
   <!-- <run_depend>rtt_hector_pose_estimation</run_depend> -->
   <run_depend>hector_pose_estimation</run_depend>
