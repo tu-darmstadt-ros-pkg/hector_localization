@@ -2,6 +2,12 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.4 (2014-08-28)
+------------------
+* calculate euler angles directly in pose update without Eigen
+  Eigen's eulerAngles() returns wrong yaw angles in Trusty for some reason.
+* Contributors: Johannes Meyer
+
 0.1.3 (2014-07-09)
 ------------------
 
