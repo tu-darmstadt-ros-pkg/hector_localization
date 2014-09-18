@@ -335,7 +335,7 @@ void PoseEstimation::getState(nav_msgs::Odometry& msg, bool with_covariances) {
   msg.child_frame_id = base_frame_;
 
   // rotate body vectors to nav frame
-  State::RotationMatrix R = state().getRotationMatrix().transpose();
+  State::RotationMatrix R = state().getRotationMatrix();
   Vector3 rate_nav = R * Vector3(msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z);
   msg.twist.twist.angular.x = rate_nav.x();
   msg.twist.twist.angular.y = rate_nav.y();
