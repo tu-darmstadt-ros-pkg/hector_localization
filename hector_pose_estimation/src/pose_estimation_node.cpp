@@ -166,8 +166,8 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
     gps_pose.header.seq = gps->header.seq;
     gps_pose.header.stamp = gps->header.stamp;
     GPSModel::MeasurementVector y = boost::static_pointer_cast<GPS>(pose_estimation_->getMeasurement("gps"))->getVector(update, pose_estimation_->state());
-    gps_pose.pose.position.x = y(1);
-    gps_pose.pose.position.y = y(2);
+    gps_pose.pose.position.x = y(0);
+    gps_pose.pose.position.y = y(1);
     gps_pose.pose.position.z = gps->altitude - pose_estimation_->globalReference()->position().altitude;
     double track = atan2(gps_velocity->vector.y, gps_velocity->vector.x);
     gps_pose.pose.orientation.w = cos(track/2);
