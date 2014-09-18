@@ -93,7 +93,6 @@ protected:
 protected:
   PoseEstimation *pose_estimation_;
 
-private:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
 
