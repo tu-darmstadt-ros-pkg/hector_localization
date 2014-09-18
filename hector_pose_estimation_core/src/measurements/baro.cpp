@@ -65,6 +65,13 @@ BaroUpdate::BaroUpdate() : qnh_(0) {}
 BaroUpdate::BaroUpdate(double pressure) : qnh_(0) { *this = pressure; }
 BaroUpdate::BaroUpdate(double pressure, double qnh) : qnh_(qnh) { *this = pressure; }
 
+Baro::Baro(const std::string &name)
+  : Measurement_<BaroModel>(name)
+  , HeightBaroCommon(this)
+{
+  parameters().add("auto_elevation", auto_elevation_);
+}
+
 void Baro::onReset()
 {
   HeightBaroCommon::onReset();

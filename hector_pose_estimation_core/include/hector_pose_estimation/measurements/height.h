@@ -63,7 +63,7 @@ public:
   virtual void onReset();
   double resetElevation(const State &state, boost::function<double()> altitude_func);
 
-private:
+protected:
   bool auto_elevation_;
   bool elevation_initialized_;
 };
@@ -71,7 +71,7 @@ private:
 class Height : public Measurement_<HeightModel>, HeightBaroCommon
 {
 public:
-  Height(const std::string& name = "height") : Measurement_<HeightModel>(name), HeightBaroCommon(this) {}
+  Height(const std::string& name = "height");
   virtual ~Height() {}
 
   void setElevation(double elevation) { getModel()->setElevation(elevation); }

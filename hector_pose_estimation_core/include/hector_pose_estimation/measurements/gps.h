@@ -78,8 +78,8 @@ public:
   virtual bool prepareUpdate(State &state, const GPSUpdate &update);
 
 private:
+  bool auto_reference_;
   GlobalReferencePtr reference_;
-  GPSUpdate last_;
   GPSModel::MeasurementVector y_;
 };
 

@@ -81,7 +81,7 @@ extern template class Measurement_<BaroModel>;
 class Baro : public Measurement_<BaroModel>, HeightBaroCommon
 {
 public:
-  Baro(const std::string& name = "baro") : Measurement_<BaroModel>(name), HeightBaroCommon(this) {}
+  Baro(const std::string& name = "baro");
   virtual ~Baro() {}
 
   void setElevation(double elevation) { getModel()->setElevation(elevation); }

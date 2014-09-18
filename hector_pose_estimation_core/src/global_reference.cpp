@@ -55,10 +55,7 @@ void GlobalReference::reset()
 {
   position_ = Position();
   heading_ = Heading();
-
-  has_position_ = false;
-  has_heading_ = false;
-  has_altitude_ = false;
+  radius_ = Radius();
 
   updated();
 }
@@ -68,35 +65,38 @@ ParameterList& GlobalReference::parameters() {
 }
 
 void GlobalReference::updated() {
-  // check if a non-default reference has been set
-  if (position_.latitude  != Position().latitude)  has_position_ = true;
-  if (position_.longitude != Position().longitude) has_position_ = true;
-  if (position_.altitude  != Position().altitude)  has_altitude_ = true;
-  if (heading_.value      != Heading().value)      has_heading_  = true;
-
   // WGS84 constants
   static const double equatorial_radius = 6378137.0;
   static const double flattening = 1.0/298.257223563;
   static const double excentrity2 = 2*flattening - flattening*flattening;
 
   // calculate earth radii
-  double temp = 1.0 / (1.0 - excentrity2 * sin(position_.latitude) * sin(position_.latitude));
-  double prime_vertical_radius = equatorial_radius * sqrt(temp);
-  radius_.north = prime_vertical_radius * (1 - excentrity2) * temp;
-  radius_.east  = prime_vertical_radius * cos(position_.latitude);
+  if (hasPosition()) {
+    double temp = 1.0 / (1.0 - excentrity2 * sin(position_.latitude) * sin(position_.latitude));
+    double prime_vertical_radius = equatorial_radius * sqrt(temp);
+    radius_.north = prime_vertical_radius * (1 - excentrity2) * temp;
+    radius_.east  = prime_vertical_radius * cos(position_.latitude);
+  }
 
   // calculate sin and cos of the heading reference
-  sincos(heading_.value, &heading_.sin, &heading_.cos);
+  if (hasHeading()) {
+    sincos(heading_.value, &heading_.sin, &heading_.cos);
+  }
 }
 
 void GlobalReference::fromWGS84(double latitude, double longitude, double &x, double &y) {
+  if (!hasPosition()) {
+    x = 0.0;
+    y = 0.0;
+    return;
+  }
   double north = radius_.north * (latitude  - position_.latitude);
   double east  = radius_.east  * (longitude - position_.longitude);
   fromNorthEast(north, east, x, y);
 }
 
 void GlobalReference::toWGS84(double x, double y, double &latitude, double &longitude) {
-  if (radius_.north == 0.0 || radius_.east == 0.0) {
+  if (!hasPosition()) {
     latitude  = 0.0;
     longitude = 0.0;
     return;
@@ -109,11 +109,21 @@ void GlobalReference::toWGS84(double x, double y, double &latitude, double &long
 }
 
 void GlobalReference::fromNorthEast(double north, double east, double &x, double &y) {
+  if (!hasHeading()) {
+    x = 0.0;
+    y = 0.0;
+    return;
+  }
   x = north * heading_.cos + east * heading_.sin;
   y = north * heading_.sin - east * heading_.cos;
 }
 
 void GlobalReference::toNorthEast(double x, double y, double &north, double &east) {
+  if (!hasHeading()) {
+    north = 0.0;
+    east = 0.0;
+    return;
+  }
   north = x * heading_.cos + y * heading_.sin;
   east  = x * heading_.sin - y * heading_.cos;
 }
@@ -121,7 +131,6 @@ void GlobalReference::toNorthEast(double x, double y, double &north, double &eas
 GlobalReference& GlobalReference::setPosition(double latitude, double longitude, bool quiet /* = false */) {
   position_.latitude = latitude;
   position_.longitude = longitude;
-  has_position_ = true;
   updated();
   if (!quiet) ROS_INFO("Set new reference position to %f deg N / %f deg E", this->position().latitude * 180.0/M_PI, this->position().longitude * 180.0/M_PI);
   return *this;
@@ -129,7 +138,6 @@ GlobalReference& GlobalReference::setPosition(double latitude, double longitude,
 
 GlobalReference& GlobalReference::setHeading(double heading, bool quiet /* = false */) {
   heading_.value = heading;
-  has_heading_ = true;
   updated();
   if (!quiet) ROS_INFO("Set new reference heading to %.1f degress", this->heading() * 180.0 / M_PI);
   return *this;
@@ -137,7 +145,6 @@ GlobalReference& GlobalReference::setHeading(double heading, bool quiet /* = fal
 
 GlobalReference& GlobalReference::setAltitude(double altitude, bool quiet /* = false */) {
   position_.altitude = altitude;
-  has_altitude_ = true;
   updated();
   if (!quiet) ROS_INFO("Set new reference altitude to %.2f m", this->position().altitude);
   return *this;

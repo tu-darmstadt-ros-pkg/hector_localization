@@ -116,8 +116,10 @@ void GPSModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool i
 
 GPS::GPS(const std::string &name)
   : Measurement_<GPSModel>(name)
+  , auto_reference_(true)
   , y_(4)
 {
+  parameters().add("auto_reference", auto_reference_);
 }
 
 GPS::~GPS()
@@ -136,7 +138,6 @@ GPSModel::MeasurementVector const& GPS::getVector(const GPSUpdate &update, const
   reference_->fromWGS84(update.latitude, update.longitude, y_(0), y_(1));
   reference_->fromNorthEast(update.velocity_north, update.velocity_east, y_(2), y_(3));
 
-  last_ = update;
   return y_;
 }
 
@@ -147,7 +148,11 @@ bool GPS::prepareUpdate(State &state, const Update &update) {
   // find new reference position
   if (reference_ != GlobalReference::Instance()) {
     reference_ = GlobalReference::Instance();
-    reference_->setCurrentPosition(state, update.latitude, update.longitude);
+    if (!auto_reference_ && !reference_->hasPosition()) {
+      ROS_ERROR("Cannot use GPS measurements if no reference latitude/longitude is set and %s/auto_reference parameter is false.", name_.c_str());
+      return false;
+    }
+    if (auto_reference_) reference_->setCurrentPosition(state, update.latitude, update.longitude);
   }
 
   return true;

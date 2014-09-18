@@ -32,6 +32,8 @@
 #include <hector_pose_estimation/types.h>
 #include <hector_pose_estimation/parameters.h>
 
+#include <limits>
+
 namespace hector_pose_estimation {
 
   class PoseEstimation;
@@ -39,14 +41,14 @@ namespace hector_pose_estimation {
   class GlobalReference {
   public:
     struct Position {
-      Position() : latitude(0.0), longitude(0.0), altitude(0.0) {}
+      Position() : latitude(std::numeric_limits<double>::quiet_NaN()), longitude(std::numeric_limits<double>::quiet_NaN()), altitude(std::numeric_limits<double>::quiet_NaN()) {}
       double latitude;
       double longitude;
       double altitude;
     };
 
     struct Heading {
-      Heading() : value(0.0), cos(1.0), sin(0.0) {}
+      Heading() : value(std::numeric_limits<double>::quiet_NaN()), cos(1.0), sin(0.0) {}
       double value;
       double cos;
       double sin;
@@ -54,7 +56,7 @@ namespace hector_pose_estimation {
     };
 
     struct Radius {
-      Radius() : north(0.0), east(0.0) {}
+      Radius() : north(std::numeric_limits<double>::quiet_NaN()), east(std::numeric_limits<double>::quiet_NaN()) {}
       double north;
       double east;
     };
@@ -71,14 +73,16 @@ namespace hector_pose_estimation {
     GlobalReference& setCurrentHeading(const State& state, double heading);
     GlobalReference& setCurrentAltitude(const State& state, double altitude);
 
-    bool hasPosition() const { return has_position_; }
-    bool hasHeading() const  { return has_heading_; }
-    bool hasAltitude() const { return has_altitude_; }
+    bool hasPosition() const { return !std::isnan(position_.latitude) && !std::isnan(position_.longitude); }
+    bool hasHeading() const  { return !std::isnan(heading_.value); }
+    bool hasAltitude() const { return !std::isnan(position_.altitude); }
 
     void fromWGS84(double latitude, double longitude, double &x, double &y);
     void toWGS84(double x, double y, double &latitude, double &longitude);
     void fromNorthEast(double north, double east, double &x, double &y);
     void toNorthEast(double x, double y, double &north, double &east);
+    void fromAltitude(double altitude, double &z);
+    void toAltitude(double z, double &altitude);
 
     ParameterList& parameters();
 
@@ -93,10 +97,6 @@ namespace hector_pose_estimation {
     Position position_;
     Heading heading_;
     Radius radius_;
-
-    bool has_position_;
-    bool has_heading_;
-    bool has_altitude_;
 
     ParameterList parameters_;
   };

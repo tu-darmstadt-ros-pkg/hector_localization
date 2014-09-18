@@ -68,10 +68,9 @@ void HeightModel::getStateJacobian(MeasurementMatrix& C, const State& state, boo
 }
 
 HeightBaroCommon::HeightBaroCommon(Measurement* parent)
+  : auto_elevation_(true)
+  , elevation_initialized_(false)
 {
-  auto_elevation_ = true;
-  elevation_initialized_ = false;
-  parent->parameters().add("auto_elevation", auto_elevation_);
 }
 
 HeightBaroCommon::~HeightBaroCommon() {}
@@ -82,11 +81,18 @@ void HeightBaroCommon::onReset() {
 
 double HeightBaroCommon::resetElevation(const State &state, boost::function<double()> altitude_func) {
   if (!elevation_initialized_) {
-    GlobalReference::Instance()->setCurrentAltitude(state, altitude_func());
+    if (auto_elevation_) GlobalReference::Instance()->setCurrentAltitude(state, altitude_func());
     elevation_initialized_ = true;
   }
 
-  return  GlobalReference::Instance()->position().altitude;
+  return GlobalReference::Instance()->position().altitude;
+}
+
+Height::Height(const std::string &name)
+  : Measurement_<HeightModel>(name)
+  , HeightBaroCommon(this)
+{
+  parameters().add("auto_elevation", auto_elevation_);
 }
 
 void Height::onReset() {
