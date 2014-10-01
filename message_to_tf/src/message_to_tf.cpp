@@ -143,22 +143,24 @@ void imuCallback(sensor_msgs::Imu const &imu) {
   tf::quaternionMsgToTF(imu.orientation, orientation);
   tfScalar yaw, pitch, roll;
   tf::Matrix3x3(orientation).getEulerYPR(yaw, pitch, roll);
+  tf::Quaternion rollpitch = tf::createQuaternionFromRPY(roll, pitch, 0.0);
 
   // base_link transform (roll, pitch)
   if (g_publish_roll_pitch) {
     tf.child_frame_id_ = tf::resolve(g_tf_prefix, child_frame_id);
-    tf.setRotation(tf::createQuaternionFromRPY(roll, pitch, 0.0));
+    tf.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+    tf.setRotation(rollpitch);
     addTransform(transforms, tf);
   }
 
-  g_transform_broadcaster->sendTransform(transforms);
+  if (!transforms.empty()) g_transform_broadcaster->sendTransform(transforms);
 
   // publish pose message
   if (g_pose_publisher) {
     geometry_msgs::PoseStamped pose_stamped;
     pose_stamped.header.stamp = imu.header.stamp;
     pose_stamped.header.frame_id = g_stabilized_frame_id;
-    tf::quaternionTFToMsg(tf.getRotation(), pose_stamped.pose.orientation);
+    tf::quaternionTFToMsg(rollpitch, pose_stamped.pose.orientation);
     g_pose_publisher.publish(pose_stamped);
   }
 }
