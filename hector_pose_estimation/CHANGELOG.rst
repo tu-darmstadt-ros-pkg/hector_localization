@@ -2,6 +2,12 @@
 Changelog for package hector_pose_estimation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.5 (2014-10-02)
+------------------
+* hector_pose_estimation: make private variables protected to allow access from specialized pose_estimation classes
+* hector_pose_estimation: fixed wrong indicies bug in GPS pose publisher
+* Contributors: Johannes Meyer
+
 0.1.4 (2014-08-28)
 ------------------
 

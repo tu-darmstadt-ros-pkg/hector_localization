@@ -2,6 +2,19 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.5 (2014-10-02)
+------------------
+* fixed rate conversion to nav frame for the state message
+* initialize reference values to NaN instead of 0.0 and added measurement/auto_* parameters consitently
+  Added parameters:
+  - gps/auto_reference
+  - height/auto_elevation
+  - baro/auto_elevation
+  Already existed before:
+  - magnetic/auto_heading
+  All auto_* parameters are true by default.
+* Contributors: Johannes Meyer
+
 0.1.4 (2014-08-28)
 ------------------
 * calculate euler angles directly in pose update without Eigen

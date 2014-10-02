@@ -2,6 +2,9 @@
 Changelog for package hector_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.5 (2014-10-02)
+------------------
+
 0.1.4 (2014-08-28)
 ------------------
 * Removed package world_magnetic_model as it is currently not used by hector_pose_estimation
