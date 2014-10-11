@@ -32,7 +32,7 @@
 #include <Eigen/Geometry>
 #include <stdexcept>
 
-#define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
+// #define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
 #define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION 1e-5
 #define FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
 
@@ -261,7 +261,7 @@ namespace hector_pose_estimation {
       eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
 #endif
 #if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
-      this->template triangularView<Eigen::Lower>() = this->transpose();
+      this->Base::operator=((*this + this->transpose()) / 2);
 #endif
       return *this;
     }
