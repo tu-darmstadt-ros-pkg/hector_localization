@@ -45,7 +45,7 @@
 #include <sensor_msgs/NavSatFix.h>
 
 // Use system model with angular rates.
-// #define USE_RATE_SYSTEM_MODEL
+#define USE_RATE_SYSTEM_MODEL
 
 // #define VELOCITY_IN_BODY_FRAME
 #define VELOCITY_IN_WORLD_FRAME
@@ -77,7 +77,8 @@ public:
     VELOCITY_X,
     VELOCITY_Y,
     VELOCITY_Z,
-    Dimension,
+    VectorDimension,
+    CovarianceDimension = VectorDimension - 1,
 
 #ifndef USE_RATE_SYSTEM_MODEL
     RATE_X = -1,
@@ -91,10 +92,10 @@ public:
 
   typedef ColumnVector Vector;
   typedef SymmetricMatrix Covariance;
-  typedef VectorBlock<Vector,Dimension> VectorSegment;
-  typedef Block<Covariance::Base,Dimension,Dimension> CovarianceBlock;
-  typedef VectorBlock<const Vector,Dimension> ConstVectorSegment;
-  typedef Block<const Covariance::Base,Dimension,Dimension> ConstCovarianceBlock;
+  typedef VectorBlock<Vector,VectorDimension> VectorSegment;
+  typedef Block<Covariance::Base,CovarianceDimension,CovarianceDimension> CovarianceBlock;
+  typedef VectorBlock<const Vector,VectorDimension> ConstVectorSegment;
+  typedef Block<const Covariance::Base,CovarianceDimension,CovarianceDimension> ConstCovarianceBlock;
 
   typedef VectorBlock<Vector,4> OrientationType;
   typedef VectorBlock<const Vector,4> ConstOrientationType;
@@ -116,8 +117,10 @@ public:
   State(const Vector &vector, const Covariance& covariance);
   virtual ~State();
 
-  static IndexType getDimension0() { return Dimension; }
-  virtual IndexType getDimension() const { return vector_.rows(); }
+  static IndexType getVectorDimension0() { return VectorDimension; }
+  static IndexType getDimension0() { return CovarianceDimension; }
+  virtual IndexType getVectorDimension() const { return vector_.rows(); }
+  virtual IndexType getDimension() const { return covariance_.rows(); }
 
   virtual void reset();
   virtual void updated();
@@ -134,8 +137,8 @@ public:
 
   virtual Vector& x() { return vector_; }
   virtual Covariance& P() { return covariance_; }
-  virtual VectorSegment x0() { return vector_.segment<Dimension>(0); }
-  virtual CovarianceBlock P0() { return covariance_.block<Dimension,Dimension>(0, 0); }
+  virtual VectorSegment x0() { return vector_.segment<VectorDimension>(0); }
+  virtual CovarianceBlock P0() { return covariance_.block<CovarianceDimension,CovarianceDimension>(0, 0); }
 
   virtual SystemStatus getSystemStatus() const { return system_status_; }
   virtual SystemStatus getMeasurementStatus() const { return measurement_status_; }
@@ -149,14 +152,14 @@ public:
   typedef boost::function<bool(SystemStatus&)> SystemStatusCallback;
   virtual void addSystemStatusCallback(const SystemStatusCallback& callback);
 
-  virtual OrientationType orientation()                 { return (getOrientationIndex() >= 0) ? vector_.segment<4>(getOrientationIndex()) : fake_orientation_.segment<4>(0); }
-  virtual ConstOrientationType getOrientation() const   { return (getOrientationIndex() >= 0) ? vector_.segment<4>(getOrientationIndex()) : fake_orientation_.segment<4>(0); }
-  virtual RateType rate()                               { return (getRateIndex() >= 0) ? vector_.segment<3>(getRateIndex()) : fake_rate_.segment<3>(0); }
-  virtual ConstRateType getRate() const                 { return (getRateIndex() >= 0) ? vector_.segment<3>(getRateIndex()) : fake_rate_.segment<3>(0); }
-  virtual PositionType position()                       { return (getPositionIndex() >= 0) ? vector_.segment<3>(getPositionIndex()) : fake_position_.segment<3>(0); }
-  virtual ConstPositionType getPosition() const         { return (getPositionIndex() >= 0) ? vector_.segment<3>(getPositionIndex()) : fake_position_.segment<3>(0); }
-  virtual VelocityType velocity()                       { return (getVelocityIndex() >= 0) ? vector_.segment<3>(getVelocityIndex()) : fake_velocity_.segment<3>(0); }
-  virtual ConstVelocityType getVelocity() const         { return (getVelocityIndex() >= 0) ? vector_.segment<3>(getVelocityIndex()) : fake_velocity_.segment<3>(0); }
+  virtual OrientationType orientation()                 { return (getOrientationIndex() >= 0)  ? vector_.segment<4>(getOrientationIndex())  : fake_orientation_.segment<4>(0); }
+  virtual ConstOrientationType getOrientation() const   { return (getOrientationIndex() >= 0)  ? vector_.segment<4>(getOrientationIndex())  : fake_orientation_.segment<4>(0); }
+  virtual RateType rate()                               { return (getRateIndex() >= 0)         ? vector_.segment<3>(getRateIndex())         : fake_rate_.segment<3>(0); }
+  virtual ConstRateType getRate() const                 { return (getRateIndex() >= 0)         ? vector_.segment<3>(getRateIndex())         : fake_rate_.segment<3>(0); }
+  virtual PositionType position()                       { return (getPositionIndex() >= 0)     ? vector_.segment<3>(getPositionIndex())     : fake_position_.segment<3>(0); }
+  virtual ConstPositionType getPosition() const         { return (getPositionIndex() >= 0)     ? vector_.segment<3>(getPositionIndex())     : fake_position_.segment<3>(0); }
+  virtual VelocityType velocity()                       { return (getVelocityIndex() >= 0)     ? vector_.segment<3>(getVelocityIndex())     : fake_velocity_.segment<3>(0); }
+  virtual ConstVelocityType getVelocity() const         { return (getVelocityIndex() >= 0)     ? vector_.segment<3>(getVelocityIndex())     : fake_velocity_.segment<3>(0); }
   virtual AccelerationType acceleration()               { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
   virtual ConstAccelerationType getAcceleration() const { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
 

@@ -56,9 +56,9 @@ public:
     PredictorImpl_(EKF *filter, Model *model)
       : Base(filter, model)
       , filter_(filter)
-      , x_pred(filter_->x_pred.segment<State::Dimension>(0))
-      , A(filter_->A.block<State::Dimension,State::Dimension>(0,0))
-      , Q(filter->Q.block<State::Dimension,State::Dimension>(0,0))
+      , x_pred(filter_->x_pred.segment<State::VectorDimension>(0))
+      , A(filter_->A.block<State::CovarianceDimension,State::CovarianceDimension>(0,0))
+      , Q(filter->Q.block<State::CovarianceDimension,State::CovarianceDimension>(0,0))
     {}
     virtual ~PredictorImpl_() {}
 
@@ -85,10 +85,10 @@ public:
     PredictorImpl_(EKF *filter, Model *model)
       : Base(filter, model)
       , filter_(filter)
-      , x_pred(filter_->x_pred.segment<ConcreteModel::Dimension>(model->getStateIndex(state())))
-      , A11(filter_->A.block<ConcreteModel::Dimension,ConcreteModel::Dimension>(model->getStateIndex(state()), model->getStateIndex(state())))
-      , A01(filter_->A.block<State::Dimension,ConcreteModel::Dimension>(0, model->getStateIndex(state())))
-      , Q1(filter->Q.block<ConcreteModel::Dimension,ConcreteModel::Dimension>(model->getStateIndex(state()), model->getStateIndex(state())))
+      , x_pred(filter_->x_pred.segment<ConcreteModel::VectorDimension>(model->getVectorIndex(state())))
+      , A11(filter_->A.block<ConcreteModel::CovarianceDimension,ConcreteModel::CovarianceDimension>(model->getCovarianceIndex(state()), model->getCovarianceIndex(state())))
+      , A01(filter_->A.block<State::CovarianceDimension,ConcreteModel::CovarianceDimension>(0, model->getCovarianceIndex(state())))
+      , Q1(filter->Q.block<ConcreteModel::CovarianceDimension,ConcreteModel::CovarianceDimension>(model->getCovarianceIndex(state()), model->getCovarianceIndex(state())))
     {}
     virtual ~PredictorImpl_() {}
 

@@ -39,8 +39,10 @@ public:
   SubState(State& state) : state_(state) {}
   virtual ~SubState() {}
 
+  virtual int getVectorDimension() const = 0;
   virtual int getDimension() const = 0;
-  virtual int getIndex() const = 0;
+  virtual int getVectorIndex() const = 0;
+  virtual int getCovarianceIndex() const = 0;
 
   virtual void reset() {}
   virtual void updated() {}
@@ -53,42 +55,47 @@ protected:
 
 template <int _Dimension> class SubState::initializer {
 public:
-  enum { Dimension = _Dimension };
-  initializer(State& state) : index_(state.getDimension()) {
-    IndexType newDimension = index_ + Dimension;
-    state.x().conservativeResize(newDimension);
-    state.P().conservativeResize(newDimension);
+  enum { VectorDimension = _Dimension };
+  enum { CovarianceDimension = _Dimension };
+  initializer(State& state) : index_(state.getVector().rows()), covariance_index_(state.getCovariance().rows()) {
+    state.x().conservativeResize(index_ + VectorDimension);
+    state.P().conservativeResize(covariance_index_ + CovarianceDimension);
   }
 protected:
   const IndexType index_;
+  const IndexType covariance_index_;
 };
 
 template <> class SubState::initializer<0> {
 public:
-  enum { Dimension = State::Dimension };
-  initializer(State&) : index_(0) {}
+  enum { VectorDimension = State::VectorDimension };
+  enum { CovarianceDimension = State::CovarianceDimension };
+  initializer(State&) : index_(0), covariance_index_(0) {}
 protected:
   const IndexType index_;
+  const IndexType covariance_index_;
 };
 
 template <int _Dimension>
 class SubState_ : public SubState, public SubState::initializer<_Dimension>
 {
 public:
-  enum { Dimension = SubState::initializer<_Dimension>::Dimension };
-  typedef ColumnVector_<Dimension> Vector;
+  enum { VectorDimension = SubState::initializer<_Dimension>::VectorDimension };
+  enum { CovarianceDimension = SubState::initializer<_Dimension>::CovarianceDimension };
+  typedef ColumnVector_<VectorDimension> Vector;
 
-  typedef VectorBlock<State::Vector,Dimension> VectorSegment;
-  typedef Block<State::Covariance::Base,Dimension,Dimension> CovarianceBlock;
-  typedef Block<State::Covariance::Base,State::Dimension,Dimension> CrossVarianceBlock;
+  typedef VectorBlock<State::Vector,VectorDimension> VectorSegment;
+  typedef Block<State::Covariance::Base,CovarianceDimension,CovarianceDimension> CovarianceBlock;
+  typedef Block<State::Covariance::Base,State::CovarianceDimension,CovarianceDimension> CrossVarianceBlock;
 
-  typedef VectorBlock<const State::Vector,Dimension> ConstVectorSegment;
-  typedef Block<const State::Covariance::Base,Dimension,Dimension> ConstCovarianceBlock;
-  typedef Block<const State::Covariance::Base,State::Dimension,Dimension> ConstCrossVarianceBlock;
+  typedef VectorBlock<const State::Vector,VectorDimension> ConstVectorSegment;
+  typedef Block<const State::Covariance::Base,CovarianceDimension,CovarianceDimension> ConstCovarianceBlock;
+  typedef Block<const State::Covariance::Base,State::VectorDimension,CovarianceDimension> ConstCrossVarianceBlock;
 
   typedef boost::shared_ptr<SubState_<_Dimension> > Ptr;
 
   using SubState::initializer<_Dimension>::index_;
+  using SubState::initializer<_Dimension>::covariance_index_;
 
 public:
   SubState_(State& state)
@@ -101,16 +108,18 @@ public:
   }
   virtual ~SubState_() {}
 
-  int getDimension() const { return Dimension; }
-  int getIndex() const { return index_; }
+  int getVectorDimension() const { return VectorDimension; }
+  int getDimension() const { return CovarianceDimension; }
+  int getVectorIndex() const { return index_; }
+  int getCovarianceIndex() const { return covariance_index_; }
 
-  ConstVectorSegment getVector() const { return state_.getVector().segment<Dimension>(index_); }
-  ConstCovarianceBlock getCovariance() const { return state_.getCovariance().block<Dimension,Dimension>(index_,index_); }
-  template <int Size> VectorBlock<const typename Vector::Base, Size> getSegment(IndexType start) const { return state_.getVector().segment<Dimension>(index_ + start); }
+  ConstVectorSegment getVector() const { return state_.getVector().segment<VectorDimension>(index_); }
+  ConstCovarianceBlock getCovariance() const { return state_.getCovariance().block<CovarianceDimension,CovarianceDimension>(covariance_index_,covariance_index_); }
+  template <int Size> VectorBlock<const typename Vector::Base, Size> getSegment(IndexType start) const { return state_.getVector().segment<VectorDimension>(index_ + start); }
 
-  VectorSegment x() { return state_.x().segment<Dimension>(index_); }
-  CovarianceBlock P() { return state_.P().block<Dimension,Dimension>(index_,index_); }
-  CrossVarianceBlock P01() { return state_.P().block<State::Dimension,Dimension>(0,index_); }
+  VectorSegment x() { return state_.x().segment<VectorDimension>(index_); }
+  CovarianceBlock P() { return state_.P().block<CovarianceDimension,CovarianceDimension>(covariance_index_,covariance_index_); }
+  CrossVarianceBlock P01() { return state_.P().block<State::CovarianceDimension,CovarianceDimension>(0,covariance_index_); }
 };
 
 extern template class SubState_<0>;

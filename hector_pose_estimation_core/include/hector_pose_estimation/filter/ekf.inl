@@ -90,7 +90,7 @@ bool EKF::CorrectorImpl_<ConcreteModel, Enabled>::correct(const typename Concret
 
   // S = state().P0().quadratic(C) + R;
   S  = C * state().P0().template selfadjointView<Upper>() * C.transpose() + R;
-  CP = C * state().P().template topRows<State::Dimension>();
+  CP = C * state().P().template topRows<State::CovarianceDimension>();
   K = CP.transpose() * S.inverse();
   state().P() -= K * CP;
 
@@ -125,7 +125,7 @@ bool EKF::CorrectorImpl_<ConcreteModel, typename boost::enable_if< typename Conc
   S =   C0 * (state().P0().template selfadjointView<Upper>() * C0.transpose() + sub().P01() * C1.transpose())
       + C1 * (sub().P01().transpose() * C0.transpose()                        + sub().P().template selfadjointView<Upper>() * C1.transpose())
       + R;
-  CP = C0 * state().P().template topRows<State::Dimension>() + C1 * state().P().template middleRows<ConcreteModel::SubDimension>(sub().getIndex());
+  CP = C0 * state().P().template topRows<State::CovarianceDimension>() + C1 * state().P().template middleRows<ConcreteModel::SubDimension>(sub().getCovarianceIndex());
   K = CP.transpose() * S.inverse();
   state().P() -= K * CP;
 

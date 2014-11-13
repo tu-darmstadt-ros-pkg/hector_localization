@@ -39,9 +39,11 @@ class SystemModel : public Model {
 public:
   virtual ~SystemModel() {}
 
+  virtual int getVectorDimension() const = 0;
   virtual int getDimension() const = 0;
   virtual bool isSubSystem() const { return false; }
-  virtual IndexType getStateIndex(const State&) const { return 0; }
+  virtual IndexType getVectorIndex(const State&) const { return 0; }
+  virtual IndexType getCovarianceIndex(const State&) const { return 0; }
 
   enum SystemTypeEnum { UNKNOWN_SYSTEM_TYPE, TIME_DISCRETE, TIME_CONTINUOUS };
   virtual SystemTypeEnum getSystemType() const { return UNKNOWN_SYSTEM_TYPE; }
@@ -65,7 +67,8 @@ public:
   virtual ~SubSystemModel_() {}
 
   virtual bool isSubSystem() const { return true; }
-  virtual IndexType getStateIndex(const State& state) const { return state.getSubState<SubDimension>(this)->getIndex(); }
+  virtual IndexType getVectorIndex(const State& state) const { return state.getSubState<SubDimension>(this)->getVectorIndex(); }
+  virtual IndexType getCovarianceIndex(const State& state) const { return state.getSubState<SubDimension>(this)->getCovarianceIndex(); }
 };
 
 template <>
@@ -76,9 +79,10 @@ namespace traits {
   template <int _SubDimension>
   struct SystemModel {
     typedef SubState_<_SubDimension> StateType;
-    enum { BaseDimension = State::Dimension };
+    enum { BaseDimension = State::CovarianceDimension };
     enum { SubDimension = _SubDimension };
-    enum { Dimension = StateType::Dimension };
+    enum { VectorDimension = StateType::VectorDimension };
+    enum { CovarianceDimension = StateType::CovarianceDimension };
 
     typedef typename StateType::Vector StateVector;
     typedef typename StateType::VectorSegment StateVectorSegment;
@@ -86,13 +90,13 @@ namespace traits {
     typedef typename StateType::ConstVectorSegment ConstStateVectorSegment;
     typedef typename StateType::ConstCovarianceBlock ConstStateCovarianceBlock;
 
-    typedef SymmetricMatrix_<Dimension> NoiseVariance;
-    typedef Block<typename State::Covariance::Base,Dimension,Dimension> NoiseVarianceBlock;
-    typedef Block<const typename State::Covariance::Base,Dimension,Dimension> ConstNoiseVarianceBlock;
+    typedef SymmetricMatrix_<CovarianceDimension> NoiseVariance;
+    typedef Block<typename State::Covariance::Base,CovarianceDimension,CovarianceDimension> NoiseVarianceBlock;
+    typedef Block<const typename State::Covariance::Base,CovarianceDimension,CovarianceDimension> ConstNoiseVarianceBlock;
 
-    typedef Matrix_<Dimension,Dimension> SystemMatrix;
-    typedef Block<Matrix,Dimension,Dimension> SystemMatrixBlock;
-    typedef Block<const Matrix,Dimension,Dimension> ConstSystemMatrixBlock;
+    typedef Matrix_<CovarianceDimension,CovarianceDimension> SystemMatrix;
+    typedef Block<Matrix,CovarianceDimension,CovarianceDimension> SystemMatrixBlock;
+    typedef Block<const Matrix,CovarianceDimension,CovarianceDimension> ConstSystemMatrixBlock;
 
     typedef boost::integral_constant<bool,(_SubDimension > 0)> IsSubSystem;
     typedef SubState_<SubDimension> SubState;
@@ -107,7 +111,8 @@ namespace traits {
     typedef typename trait::StateType StateType; \
     enum { BaseDimension = trait::BaseDimension }; \
     enum { SubDimension = trait::SubDimension }; \
-    enum { Dimension = trait::Dimension }; \
+    enum { VectorDimension = trait::VectorDimension }; \
+    enum { CovarianceDimension = trait::CovarianceDimension }; \
     \
     typedef typename trait::StateVector               StateVector; \
     typedef typename trait::StateVectorSegment        StateVectorSegment; \
@@ -127,8 +132,8 @@ namespace traits {
     typedef typename traits::Input<Derived>::Type   InputType; \
     typedef typename traits::Input<Derived>::Vector InputVector; \
     typedef Matrix_<Dynamic,InputDimension>         InputMatrix; \
-    typedef Block<typename InputMatrix::Base,Dimension,InputDimension>       InputMatrixBlock; \
-    typedef Block<const typename InputMatrix::Base,Dimension,InputDimension> ConstInputMatrixBlock; \
+    typedef Block<typename InputMatrix::Base,CovarianceDimension,InputDimension>       InputMatrixBlock; \
+    typedef Block<const typename InputMatrix::Base,CovarianceDimension,InputDimension> ConstInputMatrixBlock; \
     \
     typedef typename trait::IsSubSystem IsSubSystem; \
     typedef typename trait::SubState                    SubState; \
@@ -145,7 +150,8 @@ public:
   SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
   virtual ~SystemModel_() {}
 
-  int getDimension() const { return trait::Dimension; }
+  int getVectorDimension() const { return trait::VectorDimension; }
+  int getDimension() const { return trait::CovarianceDimension; }
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_DISCRETE; }
 
   virtual void getPrior(State &state);

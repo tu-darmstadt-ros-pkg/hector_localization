@@ -55,9 +55,11 @@ namespace traits {
 
   template <int _Dimension, int _SubDimension>
   struct MeasurementModel {
-    enum { StateDimension = State::Dimension };
+    enum { VectorDimension = State::VectorDimension };
+    enum { CovarianceDimension = State::CovarianceDimension };
+
     typedef typename State::Vector StateVector;
-//    typedef SymmetricMatrix_<StateDimension> StateVariance;
+//    typedef SymmetricMatrix_<CovarianceDimension> StateVariance;
     typedef typename State::VectorSegment StateVectorSegment;
     typedef typename State::CovarianceBlock StateCovarianceBlock;
     typedef typename State::ConstVectorSegment ConstStateVectorSegment;
@@ -66,7 +68,7 @@ namespace traits {
     enum { MeasurementDimension = _Dimension };
     typedef ColumnVector_<MeasurementDimension> MeasurementVector;
     typedef SymmetricMatrix_<MeasurementDimension> NoiseVariance;
-    typedef Matrix_<MeasurementDimension,StateDimension> MeasurementMatrix;
+    typedef Matrix_<MeasurementDimension,CovarianceDimension> MeasurementMatrix;
     typedef Matrix_<State::Covariance::RowsAtCompileTime,MeasurementDimension> GainMatrix;
 
     enum { SubDimension = _SubDimension };
@@ -85,7 +87,9 @@ namespace traits {
   #define MEASUREMENT_MODEL_TRAIT(_Dimension, _SubDimension) \
     typedef typename traits::MeasurementModel<_Dimension, _SubDimension> trait; \
     \
-    enum { StateDimension = trait::StateDimension }; \
+    enum { VectorDimension = trait::VectorDimension }; \
+    enum { CovarianceDimension = trait::CovarianceDimension }; \
+    \
     typedef typename trait::StateVector StateVector; \
     typedef typename trait::StateVectorSegment StateVectorSegment; \
     typedef typename trait::StateCovarianceBlock StateCovarianceBlock; \

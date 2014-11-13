@@ -395,7 +395,7 @@ double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const M
 
   // S_1 is equivalent to S^(-1) = (H*P*H^T + R)^(-1) in the standard Kalman gain
   NoiseVariance S_1(Ix - Ix * (Ix * alpha + Iy * beta).inverse() * Ix);
-  Matrix_<State::Covariance::ColsAtCompileTime, MeasurementMatrix::RowsAtCompileTime> P_HT((H * state.P().template topRows<State::Dimension>()).transpose());
+  Matrix_<State::Covariance::ColsAtCompileTime, MeasurementMatrix::RowsAtCompileTime> P_HT((H * state.P().template topRows<State::CovarianceDimension>()).transpose());
   ROS_DEBUG_STREAM_NAMED("poseupdate", "P*HT = [" << (P_HT) << "]");
 
   double innovation = S_1.determinant();

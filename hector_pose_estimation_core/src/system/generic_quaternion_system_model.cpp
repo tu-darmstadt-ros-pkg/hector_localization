@@ -197,8 +197,9 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
 
   //--> Set A-Matrix
   //----------------------------------------------------------
-  if (state.getOrientationIndex() >= 0) {
-    A(State::QUATERNION_W,State::QUATERNION_X) = (-0.5*rate.x());
+  const IndexType ORIENTATION = state.getOrientationIndex();
+  if (ORIENTATION >= 0) {
+    A(ORIENTATION + State::W,State::QUATERNION_X) = (-0.5*rate.x());
     A(State::QUATERNION_W,State::QUATERNION_Y) = (-0.5*rate.y());
     A(State::QUATERNION_W,State::QUATERNION_Z) = (-0.5*rate.z());
     A(State::QUATERNION_X,State::QUATERNION_W) = ( 0.5*rate.x());

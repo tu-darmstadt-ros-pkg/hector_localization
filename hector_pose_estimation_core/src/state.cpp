@@ -32,8 +32,8 @@
 namespace hector_pose_estimation {
 
 State::State()
-  : vector_(Dimension)
-  , covariance_(Dimension)
+  : vector_(VectorDimension)
+  , covariance_(CovarianceDimension)
   , base_(new SubState_<0>(*this))
 {
   reset();
@@ -53,11 +53,6 @@ State::~State()
 
 void State::reset()
 {
-  // reset state
-  vector_.setZero();
-  covariance_.setZero();
-  orientation().w() = 1.0;
-
   // reset status flags
   system_status_ = 0;
   measurement_status_ = 0;
@@ -73,6 +68,11 @@ void State::reset()
   fake_velocity_ << 0.0, 0.0, 0.0;
   fake_acceleration_.resize(3,1);
   fake_acceleration_ << 0.0, 0.0, 0.0;
+
+  // reset state
+  vector_.setZero();
+  covariance_.setZero();
+  orientation().w() = 1.0;
 }
 
 bool State::valid() const {
