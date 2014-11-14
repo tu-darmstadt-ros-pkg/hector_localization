@@ -54,18 +54,12 @@ namespace hector_pose_estimation {
 
 class State {
 public:
-  enum VectorIndex {
-    X = 0,
-    Y = 1,
-    Z = 2,
-    W = 3
-  };
-
   enum StateIndex {
     QUATERNION_X = 0,
     QUATERNION_Y,
     QUATERNION_Z,
     QUATERNION_W,
+
 #ifdef USE_RATE_SYSTEM_MODEL
     RATE_X, // body frame
     RATE_Y, // body frame
@@ -152,16 +146,16 @@ public:
   typedef boost::function<bool(SystemStatus&)> SystemStatusCallback;
   virtual void addSystemStatusCallback(const SystemStatusCallback& callback);
 
-  virtual OrientationType orientation()                 { return (getOrientationIndex() >= 0)  ? vector_.segment<4>(getOrientationIndex())  : fake_orientation_.segment<4>(0); }
-  virtual ConstOrientationType getOrientation() const   { return (getOrientationIndex() >= 0)  ? vector_.segment<4>(getOrientationIndex())  : fake_orientation_.segment<4>(0); }
-  virtual RateType rate()                               { return (getRateIndex() >= 0)         ? vector_.segment<3>(getRateIndex())         : fake_rate_.segment<3>(0); }
-  virtual ConstRateType getRate() const                 { return (getRateIndex() >= 0)         ? vector_.segment<3>(getRateIndex())         : fake_rate_.segment<3>(0); }
-  virtual PositionType position()                       { return (getPositionIndex() >= 0)     ? vector_.segment<3>(getPositionIndex())     : fake_position_.segment<3>(0); }
-  virtual ConstPositionType getPosition() const         { return (getPositionIndex() >= 0)     ? vector_.segment<3>(getPositionIndex())     : fake_position_.segment<3>(0); }
-  virtual VelocityType velocity()                       { return (getVelocityIndex() >= 0)     ? vector_.segment<3>(getVelocityIndex())     : fake_velocity_.segment<3>(0); }
-  virtual ConstVelocityType getVelocity() const         { return (getVelocityIndex() >= 0)     ? vector_.segment<3>(getVelocityIndex())     : fake_velocity_.segment<3>(0); }
-  virtual AccelerationType acceleration()               { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
-  virtual ConstAccelerationType getAcceleration() const { return (getAccelerationIndex() >= 0) ? vector_.segment<3>(getAccelerationIndex()) : fake_acceleration_.segment<3>(0); }
+  virtual OrientationType orientation()                 { return (getOrientationVectorIndex() >= 0)  ? vector_.segment<4>(getOrientationVectorIndex())  : fake_orientation_.segment<4>(0); }
+  virtual ConstOrientationType getOrientation() const   { return (getOrientationVectorIndex() >= 0)  ? vector_.segment<4>(getOrientationVectorIndex())  : fake_orientation_.segment<4>(0); }
+  virtual RateType rate()                               { return (getRateVectorIndex() >= 0)         ? vector_.segment<3>(getRateVectorIndex())         : fake_rate_.segment<3>(0); }
+  virtual ConstRateType getRate() const                 { return (getRateVectorIndex() >= 0)         ? vector_.segment<3>(getRateVectorIndex())         : fake_rate_.segment<3>(0); }
+  virtual PositionType position()                       { return (getPositionVectorIndex() >= 0)     ? vector_.segment<3>(getPositionVectorIndex())     : fake_position_.segment<3>(0); }
+  virtual ConstPositionType getPosition() const         { return (getPositionVectorIndex() >= 0)     ? vector_.segment<3>(getPositionVectorIndex())     : fake_position_.segment<3>(0); }
+  virtual VelocityType velocity()                       { return (getVelocityVectorIndex() >= 0)     ? vector_.segment<3>(getVelocityVectorIndex())     : fake_velocity_.segment<3>(0); }
+  virtual ConstVelocityType getVelocity() const         { return (getVelocityVectorIndex() >= 0)     ? vector_.segment<3>(getVelocityVectorIndex())     : fake_velocity_.segment<3>(0); }
+  virtual AccelerationType acceleration()               { return (getAccelerationVectorIndex() >= 0) ? vector_.segment<3>(getAccelerationVectorIndex()) : fake_acceleration_.segment<3>(0); }
+  virtual ConstAccelerationType getAcceleration() const { return (getAccelerationVectorIndex() >= 0) ? vector_.segment<3>(getAccelerationVectorIndex()) : fake_acceleration_.segment<3>(0); }
 
   RotationMatrix getRotationMatrix() const;
   void getRotationMatrix(RotationMatrix &R) const;
@@ -174,11 +168,17 @@ public:
   template <typename Derived> void setVelocity(const Eigen::MatrixBase<Derived>& velocity);
   template <typename Derived> void setAcceleration(const Eigen::MatrixBase<Derived>& acceleration);
 
-  virtual IndexType getOrientationIndex() const { return QUATERNION_X; }
-  virtual IndexType getRateIndex() const { return RATE_X; }
-  virtual IndexType getPositionIndex() const { return POSITION_X; }
-  virtual IndexType getVelocityIndex() const { return VELOCITY_X; }
-  virtual IndexType getAccelerationIndex() const { return ACCELERATION_X; }
+  virtual IndexType getOrientationVectorIndex() const { return QUATERNION_X; }
+  virtual IndexType getRateVectorIndex() const { return RATE_X; }
+  virtual IndexType getPositionVectorIndex() const { return POSITION_X; }
+  virtual IndexType getVelocityVectorIndex() const { return VELOCITY_X; }
+  virtual IndexType getAccelerationVectorIndex() const { return ACCELERATION_X; }
+
+  virtual IndexType getOrientationCovarianceIndex() const { return QUATERNION_X; }
+  virtual IndexType getRateCovarianceIndex() const { return RATE_X - 1; }
+  virtual IndexType getPositionCovarianceIndex() const { return POSITION_X - 1; }
+  virtual IndexType getVelocityCovarianceIndex() const { return VELOCITY_X - 1; }
+  virtual IndexType getAccelerationCovarianceIndex() const { return ACCELERATION_X - 1; }
 
   const SubStates& getSubStates() const { return substates_; }
   template <int SubDimension> boost::shared_ptr<SubState_<SubDimension> > getSubState(const Model *model) const;

@@ -75,38 +75,38 @@ void RateModel::getStateJacobian(MeasurementMatrix &C0, SubMeasurementMatrix &C1
 //  const State::RateType& rate = state.getRate();
 
 //  if (state.getOrientationIndex() >= 0) {
-//    C(0,State::QUATERNION_W) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-//    C(0,State::QUATERNION_X) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-//    C(0,State::QUATERNION_Y) = -2.0*q.y() * rate.x() + 2.0*q.x() * rate.y() - 2.0*q.w() * rate.z();
-//    C(0,State::QUATERNION_Z) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-//    C(1,State::QUATERNION_W) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-//    C(1,State::QUATERNION_X) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-//    C(1,State::QUATERNION_Y) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-//    C(1,State::QUATERNION_Z) = -2.0*q.w() * rate.x() - 2.0*q.z() * rate.y() + 2.0*q.y() * rate.z();
-//    C(2,State::QUATERNION_W) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-//    C(2,State::QUATERNION_X) =  2.0*q.z() * rate.x() - 2.0*q.w() * rate.y() - 2.0*q.x() * rate.z();
-//    C(2,State::QUATERNION_Y) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-//    C(2,State::QUATERNION_Z) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(0,state.getOrientationCovarianceIndex() + W) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
+//    C(0,state.getOrientationCovarianceIndex() + X) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(0,state.getOrientationCovarianceIndex() + Y) = -2.0*q.y() * rate.x() + 2.0*q.x() * rate.y() - 2.0*q.w() * rate.z();
+//    C(0,state.getOrientationCovarianceIndex() + Z) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
+//    C(1,state.getOrientationCovarianceIndex() + W) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
+//    C(1,state.getOrientationCovarianceIndex() + X) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
+//    C(1,state.getOrientationCovarianceIndex() + Y) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
+//    C(1,state.getOrientationCovarianceIndex() + Z) = -2.0*q.w() * rate.x() - 2.0*q.z() * rate.y() + 2.0*q.y() * rate.z();
+//    C(2,state.getOrientationCovarianceIndex() + W) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
+//    C(2,state.getOrientationCovarianceIndex() + X) =  2.0*q.z() * rate.x() - 2.0*q.w() * rate.y() - 2.0*q.x() * rate.z();
+//    C(2,state.getOrientationCovarianceIndex() + Y) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
+//    C(2,state.getOrientationCovarianceIndex() + Z) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
 //  }
 
 //  if (state.getRateIndex() >= 0) {
-//    C(0,State::RATE_X) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());
-//    C(0,State::RATE_Y) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
-//    C(0,State::RATE_Z) = (2.0*q.x()*q.z()-2.0*q.w()*q.y());
-//    C(1,State::RATE_X) = (2.0*q.x()*q.y()-2.0*q.w()*q.z());
-//    C(1,State::RATE_Y) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
-//    C(1,State::RATE_Z) = (2.0*q.y()*q.z()+2.0*q.w()*q.x());
-//    C(2,State::RATE_X) = (2.0*q.x()*q.z()+2.0*q.w()*q.y());
-//    C(2,State::RATE_Y) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
-//    C(2,State::RATE_Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
+//    C(0,state.getRateCovarianceIndex() + X) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());
+//    C(0,state.getRateCovarianceIndex() + Y) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
+//    C(0,state.getRateCovarianceIndex() + Z) = (2.0*q.x()*q.z()-2.0*q.w()*q.y());
+//    C(1,state.getRateCovarianceIndex() + X) = (2.0*q.x()*q.y()-2.0*q.w()*q.z());
+//    C(1,state.getRateCovarianceIndex() + Y) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
+//    C(1,state.getRateCovarianceIndex() + Z) = (2.0*q.y()*q.z()+2.0*q.w()*q.x());
+//    C(2,state.getRateCovarianceIndex() + X) = (2.0*q.x()*q.z()+2.0*q.w()*q.y());
+//    C(2,state.getRateCovarianceIndex() + Y) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
+//    C(2,state.getRateCovarianceIndex() + Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
 //  }
 
   if (!init) return;
 
-  if (state.getRateIndex() >= 0) {
-   C0(0,State::RATE_X) = 1.0;
-   C0(1,State::RATE_Y) = 1.0;
-   C0(2,State::RATE_Z) = 1.0;
+  if (state.getRateCovarianceIndex() >= 0) {
+   C0(0,state.getRateCovarianceIndex() + X) = 1.0;
+   C0(1,state.getRateCovarianceIndex() + Y) = 1.0;
+   C0(2,state.getRateCovarianceIndex() + Z) = 1.0;
   }
 
   if (gyro_drift_) {

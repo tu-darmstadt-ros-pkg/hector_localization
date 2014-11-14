@@ -70,14 +70,14 @@ void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state)
 
   // Update the body z velocity towards 0
 #ifdef VELOCITY_IN_BODY_FRAME
-  if (state.getVelocityIndex() >= 0) {
-    x_dot(State::VELOCITY_Z) = -gain_ * v.z();
+  if (state.getVelocityCovarianceIndex() >= 0) {
+    x_dot(state.getVelocityCovarianceIndex() + Z) = -gain_ * v.z();
   }
 
 #else
-  if (state.getVelocityIndex() >= 0) {
+  if (state.getVelocityCovarianceIndex() >= 0) {
     // v_z_body = R.row(2).dot(v)
-    x_dot(State::VELOCITY_Z) = -gain_ * R(2,2) * R.row(2).dot(v);
+    x_dot(state.getVelocityCovarianceIndex() + Z) = -gain_ * R(2,2) * R.row(2).dot(v);
   }
 #endif // VELOCITY_IN_BODY_FRAME
 }
@@ -91,19 +91,19 @@ void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, b
 
 #ifdef VELOCITY_IN_BODY_FRAME
   if (state.getVelocityIndex() >= 0) {
-    A(State::VELOCITY_Z,State::VELOCITY_Z) = -gain_;
+    A(state.getVelocityCovarianceIndex() + Z,state.getVelocityCovarianceIndex() + Z) = -gain_;
   }
 
 #else
-  if (state.getVelocityIndex() >= 0) {
-    A.block<1,3>(State::VELOCITY_Z,State::VELOCITY_X) = -gain_ * R(2,2) * R.row(2);
+  if (state.getVelocityCovarianceIndex() >= 0) {
+    A.block<1,3>(state.getVelocityCovarianceIndex() + Z,state.getVelocityCovarianceIndex() + X) = -gain_ * R(2,2) * R.row(2);
 
-    if (state.getOrientationIndex() >= 0) {
+    if (state.getOrientationCovarianceIndex() >= 0) {
       dr3_dq_ <<  2*q.y(),  2*q.z(),  2*q.w(), 2*q.x(),
                  -2*q.x(), -2*q.w(),  2*q.z(), 2*q.y(),
                   2*q.w(), -2*q.x(), -2*q.y(), 2*q.z();
 
-      A.block<1,4>(State::VELOCITY_Z,state.getOrientationIndex()) = -gain_ * ((dr3_dq_.row(2) * R.row(2).dot(v)) + R(2,2) * (v.transpose() * dr3_dq_));
+      A.block<1,4>(state.getVelocityCovarianceIndex() + Z,state.getOrientationCovarianceIndex()) = -gain_ * ((dr3_dq_.row(2) * R.row(2).dot(v)) + R(2,2) * (v.transpose() * dr3_dq_));
     }
   }
 #endif // VELOCITY_IN_BODY_FRAME

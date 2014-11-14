@@ -37,6 +37,13 @@
 
 namespace hector_pose_estimation {
 
+  enum VectorIndex {
+    X = 0,
+    Y = 1,
+    Z = 2,
+    W = 3
+  };
+
   enum {
     STATUS_ALIGNMENT = 0x1,
     STATUS_DEGRADED = 0x2,

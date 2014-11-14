@@ -73,43 +73,43 @@ void GPSModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 
 void GPSModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool init)
 {
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_X) = 1.0;
-    C(1,State::POSITION_Y) = 1.0;
+  if (state.getPositionCovarianceIndex() >= 0) {
+    C(0,state.getPositionCovarianceIndex() + X) = 1.0;
+    C(1,state.getPositionCovarianceIndex() + Y) = 1.0;
   }
 
 #ifdef VELOCITY_IN_BODY_FRAME
   State::ConstOrientationType q(state.getOrientation());
   State::ConstVelocityType v(state.getVelocity());
 
-  if (state.getOrientationIndex() >= 0) {
-    C(2,State::QUATERNION_W) = -2.0*q.z()*v.y()+2.0*q.y()*v.z()+2.0*q.w()*v.x();
-    C(2,State::QUATERNION_X) =  2.0*q.y()*v.y()+2.0*q.z()*v.z()+2.0*q.x()*v.x();
-    C(2,State::QUATERNION_Y) = -2.0*q.y()*v.x()+2.0*q.x()*v.y()+2.0*q.w()*v.z();
-    C(2,State::QUATERNION_Z) = -2.0*q.z()*v.x()-2.0*q.w()*v.y()+2.0*q.x()*v.z();
+  if (state.getOrientationCovarianceIndex() >= 0) {
+    C(2,state.getOrientationCovarianceIndex() + W) = -2.0*q.z()*v.y()+2.0*q.y()*v.z()+2.0*q.w()*v.x();
+    C(2,state.getOrientationCovarianceIndex() + X) =  2.0*q.y()*v.y()+2.0*q.z()*v.z()+2.0*q.x()*v.x();
+    C(2,state.getOrientationCovarianceIndex() + Y) = -2.0*q.y()*v.x()+2.0*q.x()*v.y()+2.0*q.w()*v.z();
+    C(2,state.getOrientationCovarianceIndex() + Z) = -2.0*q.z()*v.x()-2.0*q.w()*v.y()+2.0*q.x()*v.z();
 
-    C(3,State::QUATERNION_W) =  2.0*q.z()*v.x()-2.0*q.x()*v.z()+2.0*q.w()*v.y();
-    C(3,State::QUATERNION_X) =  2.0*q.y()*v.x()-2.0*q.x()*v.y()-2.0*q.w()*v.z();
-    C(3,State::QUATERNION_Y) =  2.0*q.x()*v.x()+2.0*q.z()*v.z()+2.0*q.y()*v.y();
-    C(3,State::QUATERNION_Z) =  2.0*q.w()*v.x()-2.0*q.z()*v.y()+2.0*q.y()*v.z();
+    C(3,state.getOrientationCovarianceIndex() + W) =  2.0*q.z()*v.x()-2.0*q.x()*v.z()+2.0*q.w()*v.y();
+    C(3,state.getOrientationCovarianceIndex() + X) =  2.0*q.y()*v.x()-2.0*q.x()*v.y()-2.0*q.w()*v.z();
+    C(3,state.getOrientationCovarianceIndex() + Y) =  2.0*q.x()*v.x()+2.0*q.z()*v.z()+2.0*q.y()*v.y();
+    C(3,state.getOrientationCovarianceIndex() + Z) =  2.0*q.w()*v.x()-2.0*q.z()*v.y()+2.0*q.y()*v.z();
   }
 
-  if (state.getVelocityIndex() >= 0) {
-    C(2,State::VELOCITY_X)   =  R(0,0);
-    C(2,State::VELOCITY_Y)   =  R(0,1);
-    C(2,State::VELOCITY_Z)   =  R(0,2);
+  if (state.getVelocityCovarianceIndex() >= 0) {
+    C(2,state.getVelocityCovarianceIndex() + X)   =  R(0,0);
+    C(2,state.getVelocityCovarianceIndex() + Y)   =  R(0,1);
+    C(2,state.getVelocityCovarianceIndex() + Z)   =  R(0,2);
 
-    C(3,State::VELOCITY_X)   =  R(1,0);
-    C(3,State::VELOCITY_Y)   =  R(1,1);
-    C(3,State::VELOCITY_Z)   =  R(1,2);
+    C(3,state.getVelocityCovarianceIndex() + X)   =  R(1,0);
+    C(3,state.getVelocityCovarianceIndex() + Y)   =  R(1,1);
+    C(3,state.getVelocityCovarianceIndex() + Z)   =  R(1,2);
   }
 
 #else
   if (!init) return; // C is time-constant
 
-  if (state.getVelocityIndex() >= 0) {
-    C(2,State::VELOCITY_X) = 1.0;
-    C(3,State::VELOCITY_Y) = 1.0;
+  if (state.getVelocityCovarianceIndex() >= 0) {
+    C(2,state.getVelocityCovarianceIndex() + X) = 1.0;
+    C(3,state.getVelocityCovarianceIndex() + Y) = 1.0;
   }
 #endif
 }

@@ -45,7 +45,7 @@ bool ZeroRateModel::init(PoseEstimation &estimator, State &state)
 {
   gyro_drift_ = state.addSubState<3>(this, "gyro");
 
-  if (!gyro_drift_ && state.getRateIndex() < 0) {
+  if (!gyro_drift_ && state.getRateVectorIndex() < 0) {
     ROS_WARN_NAMED("zerorate", "Updating with zero rate is a no-op, as the state does not contain rates and gyro drift estimation is disabled.");
     // return false;
   }
@@ -64,15 +64,15 @@ void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& sta
 {
   y_pred(0) = state.getRate().z();
 
-  if (state.getRateIndex() < 0 && gyro_drift_) {
+  if (state.getRateVectorIndex() < 0 && gyro_drift_) {
     y_pred(0) += gyro_drift_->getVector().z();
   }
 }
 
 void ZeroRateModel::getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool)
 {
-  if (state.getRateIndex() >= 0) {
-    C0(0, State::RATE_Z) = 1.0;
+  if (state.getRateCovarianceIndex() >= 0) {
+    C0(0, state.getRateCovarianceIndex() + Z) = 1.0;
   } else if (gyro_drift_) {
     C1(0, GyroModel::BIAS_GYRO_Z) = 1.0;
   }

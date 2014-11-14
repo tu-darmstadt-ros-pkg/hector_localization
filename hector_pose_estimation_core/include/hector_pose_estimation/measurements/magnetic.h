@@ -68,6 +68,8 @@ extern template class Measurement_<MagneticModel>;
 class Magnetic : public Measurement_<MagneticModel>
 {
 public:
+  using Measurement_<MagneticModel>::Update;
+
   Magnetic(const std::string& name = "height");
   virtual ~Magnetic() {}
 

@@ -68,19 +68,19 @@ void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bo
 {
   State::ConstOrientationType q(state.getOrientation());
 
-  if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
+  if (state.getOrientationCovarianceIndex() >= 0) {
+    C(0,state.getOrientationCovarianceIndex() + W) =  gravity_.z()*2*q.y();
+    C(0,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.z();
+    C(0,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.w();
+    C(0,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.x();
+    C(1,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.x();
+    C(1,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.w();
+    C(1,state.getOrientationCovarianceIndex() + Y) = -gravity_.z()*2*q.z();
+    C(1,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.y();
+    C(2,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.w();
+    C(2,state.getOrientationCovarianceIndex() + X) =  gravity_.z()*2*q.x();
+    C(2,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.y();
+    C(2,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.z();
   }
 }
 

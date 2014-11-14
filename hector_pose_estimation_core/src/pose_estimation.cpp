@@ -364,34 +364,36 @@ void PoseEstimation::getState(nav_msgs::Odometry& msg, bool with_covariances) {
     Eigen::Map< Eigen::Matrix<geometry_msgs::TwistWithCovariance::_covariance_type::value_type,6,6> > twist_covariance_msg(msg.twist.covariance.data());
 
     // position covariance
-    if (state().getPositionIndex() >= 0) {
-      pose_covariance_msg.block<3,3>(0,0) = covariance.block<3,3>(state().getPositionIndex(), state().getPositionIndex());
+    if (state().getPositionCovarianceIndex() >= 0) {
+      pose_covariance_msg.block<3,3>(0,0) = covariance.block<3,3>(state().getPositionCovarianceIndex(), state().getPositionCovarianceIndex());
     }
 
     // rotation covariance (world-fixed)
-    if (state().getOrientationIndex() >= 0) {
-      pose_covariance_msg.block<3,3>(3,3) = quat_to_angular_rate * covariance.block<4,4>(state().getOrientationIndex(), state().getOrientationIndex()) * quat_to_angular_rate.transpose();
+    if (state().getOrientationCovarianceIndex() >= 0) {
+      // pose_covariance_msg.block<3,3>(3,3) = quat_to_angular_rate * covariance.block<4,4>(state().getOrientationCovarianceIndex(), state().getOrientationCovarianceIndex()) * quat_to_angular_rate.transpose();
+      pose_covariance_msg.block<3,3>(3,3) = covariance.block<3,3>(state().getOrientationCovarianceIndex(), state().getOrientationCovarianceIndex());
     }
 
     // position/orientation cross variance
-    if (state().getPositionIndex() >= 0 && state().getOrientationIndex() >= 0) {
-      pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,4>(state().getPositionIndex(), state().getOrientationIndex()) * quat_to_angular_rate.transpose();
+    if (state().getPositionCovarianceIndex() >= 0 && state().getOrientationCovarianceIndex() >= 0) {
+      // pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,4>(state().getPositionCovarianceIndex(), state().getOrientationCovarianceIndex()) * quat_to_angular_rate.transpose();
+      pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,3>(state().getPositionCovarianceIndex(), state().getOrientationCovarianceIndex());
       pose_covariance_msg.block<3,3>(3,0) = pose_covariance_msg.block<3,3>(0,3).transpose();
     }
 
     // velocity covariance
-    if (state().getVelocityIndex() >= 0) {
-      twist_covariance_msg.block<3,3>(0,0) = covariance.block<3,3>(state().getVelocityIndex(), state().getVelocityIndex());
+    if (state().getVelocityCovarianceIndex() >= 0) {
+      twist_covariance_msg.block<3,3>(0,0) = covariance.block<3,3>(state().getVelocityCovarianceIndex(), state().getVelocityCovarianceIndex());
     }
 
     // angular rate covariance
-    if (state().getRateIndex() >= 0) {
-      twist_covariance_msg.block<3,3>(3,3) = covariance.block<3,3>(state().getRateIndex(), state().getRateIndex());
+    if (state().getRateCovarianceIndex() >= 0) {
+      twist_covariance_msg.block<3,3>(3,3) = covariance.block<3,3>(state().getRateCovarianceIndex(), state().getRateCovarianceIndex());
     }
 
     // cross velocity/angular_rate variance
-    if (state().getVelocityIndex() >= 0 && state().getRateIndex() >= 0) {
-      pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,3>(state().getVelocityIndex(), state().getRateIndex());
+    if (state().getVelocityCovarianceIndex() >= 0 && state().getRateCovarianceIndex() >= 0) {
+      pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,3>(state().getVelocityCovarianceIndex(), state().getRateCovarianceIndex());
       pose_covariance_msg.block<3,3>(3,0) = pose_covariance_msg.block<3,3>(0,3).transpose();
     }
   }
@@ -574,7 +576,7 @@ void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
 }
 
 void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
-  if (state().getRateIndex() >= 0) {
+  if (state().getRateCovarianceIndex() >= 0) {
     State::ConstRateType rate(state().getRate());
     vector.x    = rate.x();
     vector.y    = rate.y();
@@ -605,12 +607,7 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
 void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
   getHeader(vector.header);
   getRate(vector.vector);
-
-  if (state().getRateIndex() >= 0) {
-    vector.header.frame_id = base_frame_;
-  } else {
-    vector.header.frame_id = base_frame_;
-  }
+  vector.header.frame_id = base_frame_;
 }
 
 void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration) {

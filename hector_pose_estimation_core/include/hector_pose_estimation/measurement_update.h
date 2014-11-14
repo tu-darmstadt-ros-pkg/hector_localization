@@ -65,6 +65,11 @@ public:
   {
     *this = y;
   }
+  Update_(double x, double y, double z)
+    : has_variance_(false)
+  {
+    y_ = Vector(x, y, z);
+  }
   template <typename OtherDerived> Update_(const Eigen::MatrixBase<OtherDerived>& other)
     : y_(other)
     , has_variance_(false)
@@ -88,7 +93,7 @@ protected:
 
 namespace traits {
 
-template <class ConcreteModel> struct Update { typedef Update_<ConcreteModel> type; };
+  template <class ConcreteModel> struct Update { typedef Update_<ConcreteModel> type; };
 
   template <class ConcreteModel, class Enable = void>
   class UpdateInspector {

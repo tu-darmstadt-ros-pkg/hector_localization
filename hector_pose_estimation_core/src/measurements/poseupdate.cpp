@@ -414,9 +414,9 @@ void PositionXYModel::getExpectedValue(MeasurementVector &y_pred, const State &s
 
 void PositionXYModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
   if (init) {
-    if (state.getPositionIndex() >= 0) {
-      C(0,State::POSITION_X)   = 1.0;
-      C(1,State::POSITION_Y)   = 1.0;
+    if (state.getPositionCovarianceIndex() >= 0) {
+      C(0,state.getPositionCovarianceIndex() + X)   = 1.0;
+      C(1,state.getPositionCovarianceIndex() + Y)   = 1.0;
     }
   }
 }
@@ -430,8 +430,8 @@ void PositionZModel::getExpectedValue(MeasurementVector &y_pred, const State &st
 }
 
 void PositionZModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
-  if (init && state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z)   = 1.0;
+  if (init && state.getPositionCovarianceIndex() >= 0) {
+    C(0,state.getPositionCovarianceIndex() + Z)   = 1.0;
   }
 }
 
@@ -446,15 +446,15 @@ void YawModel::getExpectedValue(MeasurementVector &y_pred, const State &state) {
 
 void YawModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
   State::ConstOrientationType q(state.getOrientation());
-  if (init && state.getOrientationIndex() >= 0) {
+  if (init && state.getOrientationCovarianceIndex() >= 0) {
     const double t1 = q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z();
     const double t2 = 2*(q.x()*q.y() + q.w()*q.z());
     const double t3 = 1.0 / (t1*t1 + t2*t2);
 
-    C(0,State::QUATERNION_W) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
-    C(0,State::QUATERNION_X) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
-    C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
-    C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
+    C(0,state.getOrientationCovarianceIndex() + W) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
+    C(0,state.getOrientationCovarianceIndex() + X) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
+    C(0,state.getOrientationCovarianceIndex() + Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
+    C(0,state.getOrientationCovarianceIndex() + Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
   }
 }
 
@@ -463,8 +463,8 @@ void YawModel::updateState(State &state, const ColumnVector &diff) const {
 
   Eigen::MatrixXd S(state.getDimension(), state.getDimension()); S.setIdentity();
 
-  if (state.getOrientationIndex() >= 0) {
-    S.block(state.getOrientationIndex(), state.getOrientationIndex(), 4, 4) <<
+  if (state.getOrientationCovarianceIndex() >= 0) {
+    S.block(state.getOrientationCovarianceIndex(), state.getOrientationCovarianceIndex(), 4, 4) <<
       /* QUATERNION_X: */  rotation.w(), -rotation.z(),  rotation.y(), rotation.x(),
       /* QUATERNION_Y: */  rotation.z(),  rotation.w(), -rotation.x(), rotation.y(),
       /* QUATERNION_Z: */ -rotation.y(),  rotation.x(),  rotation.w(), rotation.z(),
@@ -472,13 +472,13 @@ void YawModel::updateState(State &state, const ColumnVector &diff) const {
   }
 
 #ifdef VELOCITY_IN_WORLD_FRAME
-  if (state.getVelocityIndex() >= 0) {
-    S.block(state.getVelocityIndex(), state.getVelocityIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
+  if (state.getVelocityCovarianceIndex() >= 0) {
+    S.block(state.getVelocityCovarianceIndex(), state.getVelocityCovarianceIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
   }
 #endif // VELOCITY_IN_WORLD_FRAME
 
-  if (state.getRateIndex() >= 0) {
-    S.block(state.getRateIndex(), state.getRateIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
+  if (state.getRateCovarianceIndex() >= 0) {
+    S.block(state.getRateCovarianceIndex(), state.getRateCovarianceIndex(), 3, 3) = rotation.toRotationMatrix().transpose();
   }
 
   ROS_DEBUG_STREAM_NAMED("poseupdate", "Jump yaw by " << (diff(0) * 180.0/M_PI) << " degrees. rotation = [" << rotation.coeffs().transpose() << "], S = [" << S << "].");
@@ -493,16 +493,16 @@ void TwistModel::getExpectedValue(MeasurementVector &y_pred, const State &state)
 }
 
 void TwistModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init) {
-  if (init && state.getVelocityIndex() >= 0) {
-    C(0,State::VELOCITY_X) = 1.0;
-    C(1,State::VELOCITY_Y) = 1.0;
-    C(2,State::VELOCITY_Z) = 1.0;
+  if (init && state.getVelocityCovarianceIndex() >= 0) {
+    C(0,state.getVelocityCovarianceIndex() + X) = 1.0;
+    C(1,state.getVelocityCovarianceIndex() + Y) = 1.0;
+    C(2,state.getVelocityCovarianceIndex() + Z) = 1.0;
   }
 
-  if (init && state.getRateIndex() >= 0) {
-    C(3,State::RATE_X) = 1.0;
-    C(4,State::RATE_Y) = 1.0;
-    C(5,State::RATE_Z) = 1.0;
+  if (init && state.getRateCovarianceIndex() >= 0) {
+    C(3,state.getRateCovarianceIndex() + X) = 1.0;
+    C(4,state.getRateCovarianceIndex() + Y) = 1.0;
+    C(5,state.getRateCovarianceIndex() + Z) = 1.0;
   }
 }
 
