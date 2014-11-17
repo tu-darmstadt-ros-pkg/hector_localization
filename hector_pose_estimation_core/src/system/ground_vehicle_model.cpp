@@ -76,8 +76,8 @@ void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state)
 
 #else
   if (state.getVelocityIndex() >= 0) {
-    // v_z_body = R.row(2).dot(v)
-    x_dot(State::VELOCITY_Z) = -gain_ * R(2,2) * R.row(2).dot(v);
+    // v_z_body = R.col(2).dot(v)
+    x_dot(State::VELOCITY_Z) = -gain_ * R(2,2) * R.col(2).dot(v);
   }
 #endif // VELOCITY_IN_BODY_FRAME
 }
@@ -96,14 +96,14 @@ void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, b
 
 #else
   if (state.getVelocityIndex() >= 0) {
-    A.block<1,3>(State::VELOCITY_Z,State::VELOCITY_X) = -gain_ * R(2,2) * R.row(2);
+    A.block<1,3>(State::VELOCITY_Z,State::VELOCITY_X) = -gain_ * R(2,2) * R.col(2);
 
     if (state.getOrientationIndex() >= 0) {
-      dr3_dq_ <<  2*q.y(),  2*q.z(),  2*q.w(), 2*q.x(),
-                 -2*q.x(), -2*q.w(),  2*q.z(), 2*q.y(),
-                  2*q.w(), -2*q.x(), -2*q.y(), 2*q.z();
+      dR3_dq_ <<  2*q.z(),  2*q.w(),  2*q.x(), 2*q.y(),
+                 -2*q.w(),  2*q.z(),  2*q.y(),-2*q.x(),
+                 -2*q.x(), -2*q.y(),  2*q.z(), 2*q.w();
 
-      A.block<1,4>(State::VELOCITY_Z,state.getOrientationIndex()) = -gain_ * ((dr3_dq_.row(2) * R.row(2).dot(v)) + R(2,2) * (v.transpose() * dr3_dq_));
+      A.block<1,4>(State::VELOCITY_Z,state.getOrientationIndex()) = -gain_ * ((dR3_dq_.row(2) * R.col(2).dot(v)) + R(2,2) * (v.transpose() * dR3_dq_));
     }
   }
 #endif // VELOCITY_IN_BODY_FRAME
@@ -112,8 +112,10 @@ void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, b
 SystemStatus GroundVehicleModel::getStatusFlags(const State& state)
 {
   SystemStatus flags = GenericQuaternionSystemModel::getStatusFlags(state);
-  flags |= STATE_VELOCITY_Z;
-  flags |= STATE_POSITION_Z;
+  if (flags & STATE_VELOCITY_XY) {
+    flags |= STATE_VELOCITY_Z;
+    flags |= STATE_POSITION_Z;
+  }
   return flags;
 }
 
