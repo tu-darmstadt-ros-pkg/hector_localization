@@ -162,7 +162,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Position Update: ");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = [" << x.transpose() << "], H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = [" << y.transpose() << "], Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_xy", max_position_xy_error_, boost::bind(&PositionXYModel::updateState, position_xy_model_, _1, _2));
+      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_xy", max_position_xy_error_, boost::bind(&PositionXYModel::updateState, &position_xy_model_, _1, _2));
       position_xy_model_.getExpectedValue(x, filter()->state());
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = [" << x << "], Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
@@ -192,7 +192,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       ROS_DEBUG_STREAM_NAMED("poseupdate", "Height Update: ");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      x = " << x(0) << ", H = [ " << H << " ], Px = [" <<  (H * filter()->state().P0() * H.transpose()) << "], Ix = [ " << (H * filter()->state().P0() * H.transpose()).inverse() << "]");
       ROS_DEBUG_STREAM_NAMED("poseupdate", "      y = " << y(0) << ", Iy = [ " << Iy << " ]");
-      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_z", max_position_z_error_, boost::bind(&PositionZModel::updateState, position_z_model_, _1, _2));
+      double innovation = updateInternal(filter()->state(), Iy, y - x, H, "position_z", max_position_z_error_, boost::bind(&PositionZModel::updateState, &position_z_model_, _1, _2));
       position_z_model_.getExpectedValue(x, filter()->state());
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) << ", Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
@@ -226,7 +226,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       YawModel::MeasurementVector error(y - x);
       error(0) = error(0) - 2.0*M_PI * round(error(0) / (2.0*M_PI));
 
-      double innovation = updateInternal(filter()->state(), Iy, error, H, "yaw", max_yaw_error_, boost::bind(&YawModel::updateState, yaw_model_, _1, _2));
+      double innovation = updateInternal(filter()->state(), Iy, error, H, "yaw", max_yaw_error_, boost::bind(&YawModel::updateState, &yaw_model_, _1, _2));
       yaw_model_.getExpectedValue(x, filter()->state());
       ROS_DEBUG_STREAM_NAMED("poseupdate", " ==> xy = " << x(0) * 180.0/M_PI << "°, Pxy = [ " << (H * filter()->state().P0() * H.transpose()) << " ], innovation = " << innovation);
 
