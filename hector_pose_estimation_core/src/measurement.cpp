@@ -109,6 +109,7 @@ bool Measurement::update(const MeasurementUpdate &update)
   if (!filter() || !active(filter()->state())) return false;
 
   if (!updateImpl(update)) return false;
+  filter()->state().updated();
 
   timer_ = 0.0;
   if (getModel()) status_flags_ = getModel()->getStatusFlags();

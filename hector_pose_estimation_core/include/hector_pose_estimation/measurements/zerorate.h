@@ -35,13 +35,10 @@ namespace hector_pose_estimation {
 
 class GyroModel;
 
-class ZeroRateModel : public MeasurementModel_<ZeroRateModel,1,3> {
+class ZeroRateModel : public MeasurementModel_<ZeroRateModel,1> {
 public:
   ZeroRateModel();
   virtual ~ZeroRateModel();
-
-  SubState& sub(State& state) const { return *gyro_drift_; }
-  const SubState& sub(const State& state) const { return *gyro_drift_; }
 
   virtual bool init(PoseEstimation &estimator, State &state);
 
@@ -50,13 +47,13 @@ public:
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
   virtual const MeasurementVector* getFixedMeasurementVector();
 
 protected:
   double stddev_;
-  SubStatePtr gyro_drift_;
+  SubState_<3>::Ptr gyro_bias_;
 };
 
 typedef Measurement_<ZeroRateModel> ZeroRate;

@@ -35,7 +35,7 @@ namespace hector_pose_estimation {
 template class Measurement_<GravityModel>;
 
 GravityModel::GravityModel()
-  : gravity_(0.0)
+  : gravity_(MeasurementVector::Zero())
 {
   parameters().add("stddev", stddev_, 10.0);
 }
@@ -56,31 +56,33 @@ void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init
 
 void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  State::ConstOrientationType q(state.getOrientation());
-
-  // y = q * [0 0 1] * q';
-  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
-  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
-  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
+  const State::RotationMatrix &R = state.R();
+  y_pred = -R.row(2).transpose() * gravity_.z();
 }
 
 void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  State::ConstOrientationType q(state.getOrientation());
+  const State::RotationMatrix &R = state.R();
+  if (state.orientation()) {
+//    C(0,state.getOrientationCovarianceIndex() + W) =  gravity_.z()*2*q.y();
+//    C(0,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.z();
+//    C(0,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.w();
+//    C(0,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.x();
+//    C(1,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.x();
+//    C(1,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.w();
+//    C(1,state.getOrientationCovarianceIndex() + Y) = -gravity_.z()*2*q.z();
+//    C(1,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.y();
+//    C(2,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.w();
+//    C(2,state.getOrientationCovarianceIndex() + X) =  gravity_.z()*2*q.x();
+//    C(2,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.y();
+//    C(2,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.z();
 
-  if (state.getOrientationCovarianceIndex() >= 0) {
-    C(0,state.getOrientationCovarianceIndex() + W) =  gravity_.z()*2*q.y();
-    C(0,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.z();
-    C(0,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.w();
-    C(0,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.x();
-    C(1,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.x();
-    C(1,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.w();
-    C(1,state.getOrientationCovarianceIndex() + Y) = -gravity_.z()*2*q.z();
-    C(1,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.y();
-    C(2,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.w();
-    C(2,state.getOrientationCovarianceIndex() + X) =  gravity_.z()*2*q.x();
-    C(2,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.y();
-    C(2,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.z();
+     state.orientation()->cols(C)(X,X) = -gravity_.z() * R(1,0);
+     state.orientation()->cols(C)(X,Y) =  gravity_.z() * R(0,0);
+     state.orientation()->cols(C)(Y,X) = -gravity_.z() * R(1,1);
+     state.orientation()->cols(C)(Y,Y) =  gravity_.z() * R(0,1);
+     state.orientation()->cols(C)(Z,X) = -gravity_.z() * R(1,2);
+     state.orientation()->cols(C)(Z,Y) =  gravity_.z() * R(0,2);
   }
 }
 

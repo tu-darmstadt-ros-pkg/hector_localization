@@ -62,8 +62,8 @@ void HeightModel::getStateJacobian(MeasurementMatrix& C, const State& state, boo
 {
   if (!init) return; // C is time-constant
 
-  if (state.getPositionCovarianceIndex() >= 0) {
-    C(0,state.getPositionCovarianceIndex() + Z) = 1.0;
+  if (state.position()) {
+    state.position()->cols(C)(0,Z) = 1.0;
   }
 }
 

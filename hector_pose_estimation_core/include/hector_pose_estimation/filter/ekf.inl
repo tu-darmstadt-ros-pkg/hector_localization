@@ -38,14 +38,14 @@ namespace hector_pose_estimation {
 namespace filter {
 
 template <class ConcreteModel, typename Enabled>
-bool EKF::PredictorImpl_<ConcreteModel, Enabled>::predict(double dt) {
-  this->model_->getExpectedValue(x_pred, state(), dt);
-  this->model_->getStateJacobian(A, state(), dt, this->init_);
-  this->model_->getSystemNoise(Q, state(), dt, this->init_);
+bool EKF::Predictor_<ConcreteModel, Enabled>::predict(const Inputs& inputs, double dt) {
+  this->model_->getExpectedDiff(x_diff, state(), inputs, dt);
+  this->model_->getStateJacobian(A, state(), inputs, dt, this->init_);
+  this->model_->getSystemNoise(Q, state(), inputs, dt, this->init_);
 
-  ROS_DEBUG_STREAM("f(x)      = [" << x_pred.transpose() << "]");
-  ROS_DEBUG_STREAM("Q         = [" << Q  << "]");
-  ROS_DEBUG_STREAM("A = df/dx = [" << A << "]");
+  ROS_DEBUG_STREAM("dt * f(x)      = [" << x_diff.transpose() << "]");
+  ROS_DEBUG_STREAM("dt * Q         = [" << std::endl << Q  << "]");
+  ROS_DEBUG_STREAM("A = dt * df/dx = [" << std::endl << A << "]");
 
 //  state().P0() = A * state().P() * A.transpose() + Q;
 //  state().x0() = x_pred;
@@ -54,90 +54,37 @@ bool EKF::PredictorImpl_<ConcreteModel, Enabled>::predict(double dt) {
   return true;
 }
 
-template <class ConcreteModel>
-bool EKF::PredictorImpl_<ConcreteModel, typename boost::enable_if< typename ConcreteModel::IsSubSystem >::type>::predict(double dt) {
-  this->model_->getExpectedValue(x_pred, state(), dt);
-  this->model_->getStateJacobian(A11, A01, state(), dt, this->init_);
-  this->model_->getSystemNoise(Q1, state(), dt, this->init_);
-
-  ROS_DEBUG_STREAM("f(x)          = [" << x_pred.transpose() << "]");
-  ROS_DEBUG_STREAM("Q1            = [" << Q1 << "]");
-  ROS_DEBUG_STREAM("A01 = df0/dx1 = [" << A01 << "]");
-  ROS_DEBUG_STREAM("A11 = df1/dx1 = [" << A11 << "]");
-
-//  // Attention: do not reorder the following lines as each statement overwrites inputs of previous ones
-//  state().P() += (A * sub().P01() + A01 * sub().P()) * A01.transpose() + A01 * sub().P01().transpose() * A.transpose();
-//  sub().P01()  = (A * sub().P01() + A01 * sub().P()) * A11.transpose();
-//  sub().P()    = A11 * sub().P() * A11.transpose() + Q1;
-//  sub().x()    = x_pred;
-
-  this->init_ = false;
-  return true;
-}
-
 template <class ConcreteModel, typename Enabled>
-bool EKF::CorrectorImpl_<ConcreteModel, Enabled>::correct(const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
+bool EKF::Corrector_<ConcreteModel, Enabled>::correct(const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
   this->model_->getExpectedValue(y_pred, state());
   this->model_->getStateJacobian(C, state(), this->init_);
 
   ROS_DEBUG_STREAM("x_prior   = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM("P_prior   = [" << state().getCovariance() << "]");
+  ROS_DEBUG_STREAM("P_prior   = [" << std::endl << state().getCovariance() << "]");
   ROS_DEBUG_STREAM("y         = [" << y.transpose() << "]");
-  ROS_DEBUG_STREAM("R         = [" << R << "]");
+  ROS_DEBUG_STREAM("R         = [" << std::endl << R << "]");
 
   ROS_DEBUG_STREAM("h(x)      = [" << y_pred.transpose() << "]");
-  ROS_DEBUG_STREAM("C = dh/dx = [" << C << "]");
+  ROS_DEBUG_STREAM("C = dh/dx = [" << std::endl << C << "]");
 
   // S = state().P0().quadratic(C) + R;
-  S  = C * state().P0().template selfadjointView<Upper>() * C.transpose() + R;
-  CP = C * state().P().template topRows<State::CovarianceDimension>();
+  S  = C * state().P() * C.transpose() + R;
+  CP = C * state().P();
   K = CP.transpose() * S.inverse();
   state().P() -= K * CP;
 
   error = y - y_pred;
   this->model_->limitError(error);
-  state().x() += K * error;
+  update = K * error;
 
-  ROS_DEBUG_STREAM("S             = [" << S << "]");
-  ROS_DEBUG_STREAM("K             = [" << K << "]");
+  state().update(update);
+
+  ROS_DEBUG_STREAM("S             = [" << std::endl << S << "]");
+  ROS_DEBUG_STREAM("K             = [" << std::endl << K << "]");
+  ROS_DEBUG_STREAM("error         = [" << error.transpose() << "]");
 
   ROS_DEBUG_STREAM("x_post    = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM("P_post    = [" << state().getCovariance() << "]");
-
-  this->init_ = false;
-  return true;
-}
-
-template <class ConcreteModel>
-bool EKF::CorrectorImpl_<ConcreteModel, typename boost::enable_if< typename ConcreteModel::HasSubSystem >::type>::correct(const typename ConcreteModel::MeasurementVector &y, const typename ConcreteModel::NoiseVariance &R) {
-  this->model_->getExpectedValue(y_pred, state());
-  this->model_->getStateJacobian(C0, C1, state(), this->init_);
-
-  ROS_DEBUG_STREAM("x_prior       = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM("P_prior       = [" << state().getCovariance() << "]");
-  ROS_DEBUG_STREAM("y             = [" << y.transpose() << "]");
-  ROS_DEBUG_STREAM("R             = [" << R << "]");
-
-  ROS_DEBUG_STREAM("h(x_0,x_i)    = [" << y_pred.transpose() << "]");
-  ROS_DEBUG_STREAM("C_0 = dh/dx_0 = [" << C0 << "]");
-  ROS_DEBUG_STREAM("C_i = dh/dx_i = [" << C1 << "]");
-
-  S =   C0 * (state().P0().template selfadjointView<Upper>() * C0.transpose() + sub().P01() * C1.transpose())
-      + C1 * (sub().P01().transpose() * C0.transpose()                        + sub().P().template selfadjointView<Upper>() * C1.transpose())
-      + R;
-  CP = C0 * state().P().template topRows<State::CovarianceDimension>() + C1 * state().P().template middleRows<ConcreteModel::SubDimension>(sub().getCovarianceIndex());
-  K = CP.transpose() * S.inverse();
-  state().P() -= K * CP;
-
-  error = y - y_pred;
-  this->model_->limitError(error);
-  state().x() += K * error;
-
-  ROS_DEBUG_STREAM("S             = [" << S << "]");
-  ROS_DEBUG_STREAM("K             = [" << K << "]");
-
-  ROS_DEBUG_STREAM("x_post        = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM("P_post        = [" << state().getCovariance() << "]");
+  ROS_DEBUG_STREAM("P_post    = [" << std::endl << state().getCovariance() << "]");
 
   this->init_ = false;
   return true;

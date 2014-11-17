@@ -47,6 +47,11 @@ GroundVehicleModel::GroundVehicleModel()
   parameters().add("base_height", base_height_);
   parameters().add("min_height", min_height_);
   parameters().add("max_height", max_height_);
+
+  // derivative of the 3rd column of the rotation matrix
+  dR3 <<  0.0, 1.0, 0.0,
+         -1.0, 0.0, 0.0,
+          0.0, 0.0, 0.0;
 }
 
 GroundVehicleModel::~GroundVehicleModel()
@@ -56,77 +61,62 @@ GroundVehicleModel::~GroundVehicleModel()
 void GroundVehicleModel::getPrior(State &state)
 {
   GenericQuaternionSystemModel::getPrior(state);
-  state.position().z() = base_height_;
+  if (state.position()) state.position()->vector().z() = base_height_;
 }
 
-void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state)
+void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state, const Inputs& inputs)
 {
   // forward to GenericQuaternionSystemModel
-  GenericQuaternionSystemModel::getDerivative(x_dot, state);
+  GenericQuaternionSystemModel::getDerivative(x_dot, state, inputs);
 
-  // State::ConstOrientationType q(state.getOrientation());
+  const State::RotationMatrix &R = state.R();
   State::ConstVelocityType v(state.getVelocity());
-  // State::ConstPositionType p(state.getPosition());
 
   // Update the body z velocity towards 0
-#ifdef VELOCITY_IN_BODY_FRAME
-  if (state.getVelocityCovarianceIndex() >= 0) {
-    x_dot(state.getVelocityCovarianceIndex() + Z) = -gain_ * v.z();
+  if (state.velocity()) {
+    // v_z_body = R.col(2).dot(v)
+    state.velocity()->segment(x_dot) += -gain_ * R.col(2) * (R.col(2).dot(v));
   }
-
-#else
-  if (state.getVelocityCovarianceIndex() >= 0) {
-    // v_z_body = R.row(2).dot(v)
-    x_dot(state.getVelocityCovarianceIndex() + Z) = -gain_ * R(2,2) * R.row(2).dot(v);
-  }
-#endif // VELOCITY_IN_BODY_FRAME
 }
 
-void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, bool init)
+void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs)
 {
-  GenericQuaternionSystemModel::getStateJacobian(A, state, init);
+  GenericQuaternionSystemModel::getStateJacobian(A, state, inputs);
 
-  State::ConstOrientationType q(state.getOrientation());
+  const State::RotationMatrix &R = state.R();
   State::ConstVelocityType v(state.getVelocity());
 
-#ifdef VELOCITY_IN_BODY_FRAME
-  if (state.getVelocityIndex() >= 0) {
-    A(state.getVelocityCovarianceIndex() + Z,state.getVelocityCovarianceIndex() + Z) = -gain_;
-  }
+  if (state.velocity()) {
+    state.velocity()->block(A) += -gain_ * R.col(2) * R.col(2).transpose();
 
-#else
-  if (state.getVelocityCovarianceIndex() >= 0) {
-    A.block<1,3>(state.getVelocityCovarianceIndex() + Z,state.getVelocityCovarianceIndex() + X) = -gain_ * R(2,2) * R.row(2);
-
-    if (state.getOrientationCovarianceIndex() >= 0) {
-      dr3_dq_ <<  2*q.y(),  2*q.z(),  2*q.w(), 2*q.x(),
-                 -2*q.x(), -2*q.w(),  2*q.z(), 2*q.y(),
-                  2*q.w(), -2*q.x(), -2*q.y(), 2*q.z();
-
-      A.block<1,4>(state.getVelocityCovarianceIndex() + Z,state.getOrientationCovarianceIndex()) = -gain_ * ((dr3_dq_.row(2) * R.row(2).dot(v)) + R(2,2) * (v.transpose() * dr3_dq_));
+    if (state.orientation()) {
+      state.velocity()->block(A, *state.orientation()) += -gain_ * (dR3 * (R.col(2).dot(v)) + R.col(2) * (v.transpose() * dR3));
     }
   }
-#endif // VELOCITY_IN_BODY_FRAME
 }
 
 SystemStatus GroundVehicleModel::getStatusFlags(const State& state)
 {
   SystemStatus flags = GenericQuaternionSystemModel::getStatusFlags(state);
-  flags |= STATE_VELOCITY_Z;
-  flags |= STATE_POSITION_Z;
+  if (flags & STATE_VELOCITY_XY) {
+    flags |= STATE_VELOCITY_Z;
+    flags |= STATE_POSITION_Z;
+  }
   return flags;
 }
 
 bool GroundVehicleModel::limitState(State& state)
 {
   bool result = GenericQuaternionSystemModel::limitState(state);
-  if (state.position().z() < min_height_) {
-    state.position().z() = min_height_;
-    result = false;
-  }
-  if (state.position().z() > max_height_) {
-    state.position().z() = max_height_;
-    result = false;
+  if (state.position()) {
+    if (state.position()->vector().z() < min_height_) {
+      state.position()->vector().z() = min_height_;
+      result = false;
+    }
+    if (state.position()->vector().z() > max_height_) {
+      state.position()->vector().z() = max_height_;
+      result = false;
+    }
   }
   return result;
 }

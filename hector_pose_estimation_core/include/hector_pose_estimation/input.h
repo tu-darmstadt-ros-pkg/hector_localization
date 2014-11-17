@@ -58,6 +58,8 @@ public:
   typedef ColumnVector_<Dimension> Vector;
   typedef SymmetricMatrix_<Dimension> Variance;
 
+  typedef boost::shared_ptr< Input_<_Dimension> > Ptr;
+
   Input_() { u_.setZero(); }
   template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u) : u_(u) {}
   template <typename Derived> Input_(const Eigen::MatrixBase<Derived>& u, const Variance& Q) : u_(u), variance_(new Variance(Q)) {}
@@ -98,7 +100,7 @@ public:
     return u_;
   }
 
-  virtual Vector &operator=(double u) { u_ = u; return u_; }
+  virtual Vector &operator=(double u) { u_.setConstant(u); return u_; }
 
 protected:
   Vector u_;

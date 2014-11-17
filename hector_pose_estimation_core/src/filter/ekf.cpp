@@ -27,6 +27,9 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/filter/ekf.h>
+#include <hector_pose_estimation/system.h>
+
+#include <boost/pointer_cast.hpp>
 
 namespace hector_pose_estimation {
 namespace filter {
@@ -39,28 +42,45 @@ EKF::~EKF()
 
 bool EKF::init(PoseEstimation &estimator)
 {
-  x_pred.resize(state_.getDimension());
-  x_pred.setZero();
-  A.resize(state_.getDimension(), state_.getDimension());
+  x_diff.resize(state_.getVectorDimension());
+  x_diff.setZero();
+  A.resize(state_.getCovarianceDimension(), state_.getCovarianceDimension());
   A.setZero();
-  Q.resize(state_.getDimension());
+  Q.resize(state_.getCovarianceDimension());
   Q.setZero();
   return true;
 }
 
-bool EKF::doPredict(double dt) {
+bool EKF::preparePredict(const Inputs& inputs, double dt)
+{
+  x_diff.setZero();
+  A.setIdentity();
+  Q.setZero();
+  return Filter::preparePredict(inputs, dt);
+}
+
+bool EKF::predict(const SystemPtr& system, const Inputs& inputs, double dt)
+{
+  if (!Filter::predict(system, inputs, dt)) return false;
+  EKF::Predictor *predictor = boost::dynamic_pointer_cast<EKF::Predictor>(system->predictor());
+  x_diff += predictor->x_diff;
+  A += predictor->A;
+  Q += predictor->Q;
+}
+
+bool EKF::doPredict(const Inputs& inputs, double dt) {
   ROS_DEBUG("EKF prediction (dt = %f):", dt);
 
-  ROS_DEBUG_STREAM("A      = [" << A << "]");
-  ROS_DEBUG_STREAM("Q      = [" << Q << "]");
+  ROS_DEBUG_STREAM("A      = [" << std::endl << A << "]");
+  ROS_DEBUG_STREAM("Q      = [" << std::endl << Q << "]");
 
-  state().P() = A * state().P().selfadjointView<Upper>() * A.transpose() + Q;
-  state().x() = x_pred;
+  state().P() = A * state().P() * A.transpose() + Q;
+  state().update(x_diff);
 
   ROS_DEBUG_STREAM("x_pred = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM("P_pred = [" << state().getCovariance() << "]");
+  ROS_DEBUG_STREAM("P_pred = [" << std::endl << state().getCovariance() << "]");
 
-  Filter::doPredict(dt);
+  Filter::doPredict(inputs, dt);
   return true;
 }
 

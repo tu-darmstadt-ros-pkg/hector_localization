@@ -53,10 +53,10 @@ public:
   virtual void setName(const std::string& name) { name_ = name; }
 
   virtual SystemModel *getModel() const { return 0; }
-  virtual int getDimension() const = 0;
 
-  virtual Filter *filter() const { return filter_; }
-  virtual void setFilter(Filter *filter) { filter_ = filter; }
+  virtual Filter *filter() const = 0;
+  virtual Filter::Predictor *predictor() const = 0;
+  virtual void setFilter(Filter *filter) = 0;
 
   virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
@@ -70,22 +70,20 @@ public:
 
   virtual void getPrior(State &state) const;
 
-  virtual bool update(double dt);
+  virtual bool update(const Inputs& inputs, double dt);
 
   virtual void updated();
   virtual bool limitState(State& state);
 
 protected:
-  virtual bool updateImpl(double dt) = 0;
-  virtual bool prepareUpdate(State &state, double dt) { return getModel()->prepareUpdate(state, dt); }
-  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
+  virtual bool updateImpl(const Inputs& inputs, double dt) = 0;
+  virtual bool prepareUpdate(State &state, const Inputs& inputs, double dt) { return getModel()->prepareUpdate(state, inputs, dt); }
+  virtual void afterUpdate(State &state, const Inputs& inputs) { getModel()->afterUpdate(state, inputs); }
 
 protected:
   std::string name_;
   ParameterList parameters_;
   SystemStatus status_flags_;
-
-  Filter *filter_;
 };
 
 template <class ConcreteModel>
@@ -113,14 +111,13 @@ public:
   virtual ~System_() {}
 
   virtual Model *getModel() const { return model_.get(); }
-  virtual int getDimension() const { return model_->getDimension(); }
 
   virtual Filter *filter() const { return predictor_ ? predictor_->base() : 0; }
-  virtual const boost::shared_ptr< Filter::Predictor_<Model> >& predictor() const { return predictor_; }
+  virtual Filter::Predictor_<Model> *predictor() const { return predictor_.get(); }
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
-  virtual bool updateImpl(double dt);
+  virtual bool updateImpl(const Inputs& inputs, double dt);
 
 private:
   boost::shared_ptr<Model> model_;

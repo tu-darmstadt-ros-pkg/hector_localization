@@ -6,7 +6,7 @@ project(hector_pose_estimation_core)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs tf cmake_modules)
 
-find_package(Eigen REQUIRED)
+find_package(Eigen 3.2 REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 

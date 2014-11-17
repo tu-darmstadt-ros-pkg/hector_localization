@@ -185,17 +185,17 @@ void PoseEstimation::update(double dt)
 
   // filter rate measurement first
   boost::shared_ptr<ImuInput> imu = boost::dynamic_pointer_cast<ImuInput>(getInput("imu"));
-  state().setRate(imu->getRate());
-  state().setAcceleration(imu->getAcceleration());
+  if (imu) {
+    state().setRate(imu->getRate());
+    state().setAcceleration(imu->getAcceleration() + state().R().row(2).transpose() * gravity_);
 
-#ifdef USE_RATE_SYSTEM_MODEL
-  if (imu && rate_update_) {
-    rate_update_->update(Rate::Update(imu->getRate()));
+    if (rate_update_) {
+      rate_update_->update(Rate::Update(imu->getRate()));
+    }
   }
-#endif // USE_RATE_SYSTEM_MODEL
 
   // time update step
-  filter_->predict(systems_, dt);
+  filter_->predict(systems_, inputs_, dt);
 
   // pseudo measurement updates (if required)
   gravity_update_->update(Gravity::Update(imu->getAcceleration()));
@@ -335,65 +335,45 @@ void PoseEstimation::getState(nav_msgs::Odometry& msg, bool with_covariances) {
   msg.child_frame_id = base_frame_;
 
   // rotate body vectors to nav frame
-  State::RotationMatrix R = state().getRotationMatrix();
-  Vector3 rate_nav = R * Vector3(msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z);
+  Vector3 rate_nav = state().R() * Vector3(msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z);
   msg.twist.twist.angular.x = rate_nav.x();
   msg.twist.twist.angular.y = rate_nav.y();
   msg.twist.twist.angular.z = rate_nav.z();
 
-#ifdef VELOCITY_IN_BODY_FRAME
-  Vector3 velocity_nav = R * Vector3(msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z);
-  msg.twist.twist.linear.x = velocity_nav.x();
-  msg.twist.twist.linear.y = velocity_nav.y();
-  msg.twist.twist.linear.z = velocity_nav.z();
-#endif // VELOCITY_IN_BODY_FRAME
-
   // fill covariances
   if (with_covariances) {
-    State::ConstOrientationType q(state().getOrientation());
-
-    // The quat_to_angular_rate matrix transforms the orientation uncertainty from quaternions to an angular uncertainty (given in world-fixed coordinates)
-    Eigen::Matrix<ScalarType,3,4> quat_to_angular_rate;
-    quat_to_angular_rate << -q.x(),  q.w(), -q.z(),  q.y(),
-                            -q.y(),  q.z(),  q.w(), -q.x(),
-                            -q.z(), -q.y(),  q.x(),  q.w();
-    quat_to_angular_rate *= 2.0;
-
-    State::Covariance covariance(state().getCovariance());
     Eigen::Map< Eigen::Matrix<geometry_msgs::PoseWithCovariance::_covariance_type::value_type,6,6> >  pose_covariance_msg(msg.pose.covariance.data());
     Eigen::Map< Eigen::Matrix<geometry_msgs::TwistWithCovariance::_covariance_type::value_type,6,6> > twist_covariance_msg(msg.twist.covariance.data());
 
     // position covariance
-    if (state().getPositionCovarianceIndex() >= 0) {
-      pose_covariance_msg.block<3,3>(0,0) = covariance.block<3,3>(state().getPositionCovarianceIndex(), state().getPositionCovarianceIndex());
+    if (state().position()) {
+      pose_covariance_msg.block<3,3>(0,0) = state().position()->getCovariance();
     }
 
     // rotation covariance (world-fixed)
-    if (state().getOrientationCovarianceIndex() >= 0) {
-      // pose_covariance_msg.block<3,3>(3,3) = quat_to_angular_rate * covariance.block<4,4>(state().getOrientationCovarianceIndex(), state().getOrientationCovarianceIndex()) * quat_to_angular_rate.transpose();
-      pose_covariance_msg.block<3,3>(3,3) = covariance.block<3,3>(state().getOrientationCovarianceIndex(), state().getOrientationCovarianceIndex());
+    if (state().orientation()) {
+      pose_covariance_msg.block<3,3>(3,3) = state().orientation()->getCovariance();
     }
 
     // position/orientation cross variance
-    if (state().getPositionCovarianceIndex() >= 0 && state().getOrientationCovarianceIndex() >= 0) {
-      // pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,4>(state().getPositionCovarianceIndex(), state().getOrientationCovarianceIndex()) * quat_to_angular_rate.transpose();
-      pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,3>(state().getPositionCovarianceIndex(), state().getOrientationCovarianceIndex());
+    if (state().position() && state().orientation()) {
+      pose_covariance_msg.block<3,3>(0,3) = state().orientation()->getCrossVariance(*state().position());
       pose_covariance_msg.block<3,3>(3,0) = pose_covariance_msg.block<3,3>(0,3).transpose();
     }
 
     // velocity covariance
-    if (state().getVelocityCovarianceIndex() >= 0) {
-      twist_covariance_msg.block<3,3>(0,0) = covariance.block<3,3>(state().getVelocityCovarianceIndex(), state().getVelocityCovarianceIndex());
+    if (state().velocity()) {
+      twist_covariance_msg.block<3,3>(0,0) = state().velocity()->getCovariance();
     }
 
     // angular rate covariance
-    if (state().getRateCovarianceIndex() >= 0) {
-      twist_covariance_msg.block<3,3>(3,3) = covariance.block<3,3>(state().getRateCovarianceIndex(), state().getRateCovarianceIndex());
+    if (state().rate()) {
+      twist_covariance_msg.block<3,3>(3,3) = state().rate()->getCovariance();
     }
 
     // cross velocity/angular_rate variance
-    if (state().getVelocityCovarianceIndex() >= 0 && state().getRateCovarianceIndex() >= 0) {
-      pose_covariance_msg.block<3,3>(0,3) = covariance.block<3,3>(state().getVelocityCovarianceIndex(), state().getRateCovarianceIndex());
+    if (state().velocity() && state().rate()) {
+      pose_covariance_msg.block<3,3>(0,3) = state().velocity()->getCrossVariance(*state().rate());
       pose_covariance_msg.block<3,3>(3,0) = pose_covariance_msg.block<3,3>(0,3).transpose();
     }
   }
@@ -541,11 +521,7 @@ void PoseEstimation::getVelocity(tf::Vector3& vector) {
 void PoseEstimation::getVelocity(tf::Stamped<tf::Vector3>& vector) {
   getVelocity(static_cast<tf::Vector3 &>(vector));
   vector.stamp_ = getTimestamp();
-#ifdef VELOCITY_IN_BODY_FRAME
-  vector.frame_id_ = base_frame_;
-#else
   vector.frame_id_ = nav_frame_;
-#endif
 }
 
 void PoseEstimation::getVelocity(geometry_msgs::Vector3& vector) {
@@ -557,9 +533,6 @@ void PoseEstimation::getVelocity(geometry_msgs::Vector3& vector) {
 
 void PoseEstimation::getVelocity(geometry_msgs::Vector3Stamped& vector) {
   getHeader(vector.header);
-#ifdef VELOCITY_IN_BODY_FRAME
-  vector.header.frame_id = base_frame_;
-#endif
   getVelocity(vector.vector);
 }
 
@@ -576,7 +549,7 @@ void PoseEstimation::getRate(tf::Stamped<tf::Vector3>& vector) {
 }
 
 void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
-  if (state().getRateCovarianceIndex() >= 0) {
+  if (state().rate()) {
     State::ConstRateType rate(state().getRate());
     vector.x    = rate.x();
     vector.y    = rate.y();
@@ -611,7 +584,6 @@ void PoseEstimation::getRate(geometry_msgs::Vector3Stamped& vector) {
 }
 
 void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_msgs::Vector3& linear_acceleration) {
-  boost::shared_ptr<const ImuInput>  input     = boost::dynamic_pointer_cast<const ImuInput>(getInput("imu"));
   boost::shared_ptr<const Accelerometer> accel = boost::dynamic_pointer_cast<const Accelerometer>(getSystem("accelerometer"));
   boost::shared_ptr<const Gyro> gyro           = boost::dynamic_pointer_cast<const Gyro>(getSystem("gyro"));
 

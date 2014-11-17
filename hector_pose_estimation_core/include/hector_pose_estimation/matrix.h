@@ -73,7 +73,8 @@ namespace hector_pose_estimation {
     typedef Eigen::Map<const Base> ConstMap;
 
     ColumnVector_() { this->setZero(); }
-    ColumnVector_(Scalar value) { this->setConstant(value); }
+    explicit ColumnVector_(Index rows) : Base(rows) { this->setZero(); }
+//    explicit ColumnVector_(Scalar value) { this->setConstant(value); }
     ColumnVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,Rows,1>(x, y, z) {}
     template <typename OtherDerived> ColumnVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
@@ -94,7 +95,8 @@ namespace hector_pose_estimation {
     typedef Eigen::Map<const Base> ConstMap;
 
     RowVector_() { this->setZero(); }
-    RowVector_(Scalar value) { this->setConstant(value); }
+    explicit RowVector_(Index cols) : Base(cols) { this->setZero(); }
+//    explicit RowVector_(Scalar value) { this->setConstant(value); }
     RowVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,1,Cols>(x, y, z) {}
     template <typename OtherDerived> RowVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
@@ -115,122 +117,13 @@ namespace hector_pose_estimation {
     typedef Eigen::Map<const Base> ConstMap;
 
     Matrix_() { this->setZero(); }
-    Matrix_(Scalar value) { this->setConstant(value); }
+    explicit Matrix_(Index rows, Index cols) : Base(rows, cols) { this->setZero(); }
+//    explicit Matrix_(Scalar value) { this->setConstant(value); }
     template <typename OtherDerived> Matrix_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
-
-  protected:
-    explicit Matrix_(Index rows, Index cols) : Base(rows, cols) {}
   };
   typedef Matrix_<3,3> Matrix3;
-
-//  namespace internal {
-//    template <int RowsCols>
-//    class SymmetricMatrixStorage {
-//    public:
-//      EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(RowsCols != Dynamic)
-//      typedef typename Matrix_<RowsCols,RowsCols>::Base Base;
-//      typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
-//      typedef typename Eigen::internal::traits<Base>::Index Index;
-
-//      SymmetricMatrixStorage() {}
-//      template <typename OtherDerived> SymmetricMatrixStorage(const Eigen::MatrixBase<OtherDerived>& other) : storage_(other) {}
-
-//    protected:
-//      explicit SymmetricMatrixStorage(Index dim) : storage_(dim) {}
-//      Matrix_<RowsCols,RowsCols> storage_;
-//    };
-//  }
-
-//  template <int RowsCols>
-//  class SymmetricMatrix_ : public internal::SymmetricMatrixStorage<RowsCols>, public Eigen::SelfAdjointView<typename internal::SymmetricMatrixStorage<RowsCols>::Base,Upper> {
-//  public:
-//    typedef internal::SymmetricMatrixStorage<RowsCols> Storage;
-//    typedef typename Storage::Base Base;
-//    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointViewType;
-////    typedef SelfAdjointViewType Base;
-//    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
-//    typedef typename Eigen::internal::traits<Base>::Index Index;
-//    using Storage::storage_;
-
-//    // Constructors
-//    SymmetricMatrix_() : SelfAdjointViewType(storage_) {}
-//    SymmetricMatrix_(Scalar value) : SelfAdjointViewType(storage_) { this->setConstant(value); }
-//    template <int OtherRowsCols> SymmetricMatrix_(const SymmetricMatrix_<OtherRowsCols>& other) : Storage(other), SelfAdjointViewType(storage_) {}
-//    template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other), SelfAdjointViewType(storage_) {}
-
-//    SymmetricMatrix_<RowsCols>& setZero() {
-//      storage_.setZero();
-//      return *this;
-//    }
-
-//    SymmetricMatrix_<RowsCols>& setConstant(Scalar scalar) {
-//      storage_.setConstant(scalar);
-//      return *this;
-//    }
-
-//    template<int BlockRows, int BlockCols>
-//    Block<Base, BlockRows, BlockCols> block(Index startRow, Index startCol) {
-//      eigen_assert(startRow <= startCol);
-//      return storage_.block<BlockRows,BlockCols>(startRow, startCol);
-//    }
-
-//    template<int BlockRows, int BlockCols>
-//    const Block<const Base, BlockRows, BlockCols> block(Index startRow, Index startCol) const {
-//      eigen_assert(startRow <= startCol);
-//      return storage_.block<BlockRows,BlockCols>(startRow, startCol);
-//    }
-
-//    void conservativeResize(Index rows, Index cols) {
-//      storage_.conservativeResize(rows, cols);
-//    }
-
-//    void conservativeResize(Index size) {
-//      storage_.conservativeResize(size, size);
-//    }
-
-//    using SelfAdjointViewType::operator*;
-//    SymmetricMatrix_<RowsCols> operator*(const Scalar& scalar) {
-//      return SymmetricMatrix_<RowsCols>(storage_ * scalar);
-//    }
-
-//    template <int OtherRowsCols> SymmetricMatrix_<RowsCols>& operator=(const SymmetricMatrix_<OtherRowsCols>& other) {
-//      storage_ = other;
-//      return *this;
-//    }
-
-//    template <typename OtherDerived> SymmetricMatrix_<RowsCols>& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
-//      storage_ = other;
-//      return *this;
-//    }
-
-//    template <typename Other> SymmetricMatrix_<RowsCols>& operator+(const Other& other) {
-//      storage_ += other;
-//      return *this;
-//    }
-
-//    template <typename Other> SymmetricMatrix_<RowsCols>& operator-(const Other& other) {
-//      storage_ -= other;
-//      return *this;
-//    }
-
-//    template <typename OtherDerived> SymmetricMatrix_<Derived::RowsAtCompileTime> quadratic(const Eigen::MatrixBase<OtherDerived>& other) {
-//      return other * (*this) * other.transpose();
-//    }
-
-//    SymmetricMatrix_<RowsCols> inverse() const {
-//      return SymmetricMatrix_<RowsCols>(this->toDenseMatrix().inverse());
-//    }
-
-//  protected:
-//    explicit SymmetricMatrix_(Index dim) : Storage(dim), SelfAdjointViewType(storage_) {}
-//  };
-
-//  template <int RowsCols>
-//  std::ostream& operator<<(std::ostream& os, const SymmetricMatrix_<RowsCols>& matrix) {
-//    return os << matrix.storage_;
-//  }
 
   template <int RowsCols>
   class SymmetricMatrix_ : public Matrix_<RowsCols,RowsCols> {
@@ -248,7 +141,8 @@ namespace hector_pose_estimation {
 
     // Constructors
     SymmetricMatrix_() {}
-    SymmetricMatrix_(Scalar value) { this->setConstant(value); }
+    //explicit SymmetricMatrix_(Scalar value) { this->setConstant(value); }
+    explicit SymmetricMatrix_(Index dim) : Storage(dim, dim) { this->setZero(); }
     template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) { symmetric(); }
 
     template <typename OtherDerived> Derived& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
@@ -274,9 +168,6 @@ namespace hector_pose_estimation {
 //      return this->template selfadjointView<Upper>().inverse();
       return this->Storage::inverse().eval();
     }
-
-  protected:
-    explicit SymmetricMatrix_(Index dim) : Storage(dim, dim) {}
   };
   typedef SymmetricMatrix_<3> SymmetricMatrix3;
 
@@ -318,5 +209,53 @@ namespace hector_pose_estimation {
   };
 
 } // namespace hector_pose_estimation
+
+namespace Eigen {
+namespace internal {
+
+#define EIGEN_FORWARD_TRAITS_FOR_TYPE(Base) \
+  typedef typename traits<Base>::Scalar Scalar; \
+  typedef typename traits<Base>::StorageKind StorageKind; \
+  typedef typename traits<Base>::Index Index; \
+  typedef typename traits<Base>::XprKind XprKind; \
+  enum { \
+    RowsAtCompileTime = traits<Base>::RowsAtCompileTime, \
+    ColsAtCompileTime = traits<Base>::ColsAtCompileTime, \
+    MaxRowsAtCompileTime = traits<Base>::MaxRowsAtCompileTime, \
+    MaxColsAtCompileTime = traits<Base>::MaxColsAtCompileTime, \
+    Flags = traits<Base>::Flags, \
+    CoeffReadCost = traits<Base>::CoeffReadCost, \
+    Options = traits<Base>::Options, \
+    InnerStrideAtCompileTime = traits<Base>::InnerStrideAtCompileTime, \
+    OuterStrideAtCompileTime = traits<Base>::OuterStrideAtCompileTime \
+  }
+
+template <int Rows> struct traits< hector_pose_estimation::ColumnVector_<Rows> > {
+  typedef typename hector_pose_estimation::ColumnVector_<Rows>::Base EigenType;
+  EIGEN_FORWARD_TRAITS_FOR_TYPE(EigenType);
+};
+
+template <int Cols> struct traits< hector_pose_estimation::RowVector_<Cols> > {
+  typedef typename hector_pose_estimation::RowVector_<Cols>::Base EigenType;
+  EIGEN_FORWARD_TRAITS_FOR_TYPE(EigenType);
+};
+
+template <int Rows, int Cols> struct traits< hector_pose_estimation::Matrix_<Rows,Cols> > {
+  typedef typename hector_pose_estimation::Matrix_<Rows,Cols>::Base EigenType;
+  EIGEN_FORWARD_TRAITS_FOR_TYPE(EigenType);
+};
+
+template <int RowsCols> struct traits< hector_pose_estimation::SymmetricMatrix_<RowsCols> > {
+  typedef typename hector_pose_estimation::SymmetricMatrix_<RowsCols>::Base EigenType;
+  EIGEN_FORWARD_TRAITS_FOR_TYPE(EigenType);
+};
+
+template <> struct traits< hector_pose_estimation::SymmetricMatrix > {
+  typedef hector_pose_estimation::SymmetricMatrix::Base EigenType;
+  EIGEN_FORWARD_TRAITS_FOR_TYPE(EigenType);
+};
+
+} // namespace internal
+} // namespace Eigen
 
 #endif // HECTOR_POSE_ESTIMATION_MATRIX_H

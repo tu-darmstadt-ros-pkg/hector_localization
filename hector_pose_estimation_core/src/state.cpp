@@ -29,26 +29,46 @@
 #include <hector_pose_estimation/state.h>
 #include <hector_pose_estimation/substate.h>
 
+// Use system model with angular rates.
+#define USE_RATE_SYSTEM_MODEL
+
 namespace hector_pose_estimation {
 
 State::State()
-  : vector_(VectorDimension)
-  , covariance_(CovarianceDimension)
-  , base_(new SubState_<0>(*this))
+  : vector_()
+  , covariance_()
+//  , base_(new SubState_<0,0>(*this))
 {
+  construct();
   reset();
 }
 
 State::State(const Vector &vector, const Covariance& covariance)
-  : vector_(vector)
-  , covariance_(covariance)
-  , base_(new SubState_<0>(*this))
+  : vector_()
+  , covariance_()
+//  , base_(new SubState_<0,0>(*this))
 {
+  construct();
+
+  // set initial state
+  vector_ = vector;
+  covariance_ = covariance;
+
   reset();
 }
 
 State::~State()
 {
+}
+
+void State::construct()
+{
+  orientation_ = addSubState<OrientationStateType::VectorDimension,OrientationStateType::CovarianceDimension>("orientation");
+#ifdef USE_RATE_SYSTEM_MODEL
+  rate_ = addSubState<RateStateType::VectorDimension,RateStateType::CovarianceDimension>("rate");
+#endif
+  position_ = addSubState<PositionStateType::VectorDimension,PositionStateType::CovarianceDimension>("position");
+  velocity_ = addSubState<VelocityStateType::VectorDimension,VelocityStateType::CovarianceDimension>("velocity");
 }
 
 void State::reset()
@@ -72,7 +92,9 @@ void State::reset()
   // reset state
   vector_.setZero();
   covariance_.setZero();
-  orientation().w() = 1.0;
+  if (orientation()) orientation()->vector().w() = 1.0;
+
+  R_valid_ = false;
 }
 
 bool State::valid() const {
@@ -83,13 +105,14 @@ void State::updated()
 {
   normalize();
   P().symmetric();
+  R_valid_ = false;
 }
 
-State::RotationMatrix State::getRotationMatrix() const {
-  RotationMatrix R;
-  getRotationMatrix(R);
-  return R;
-}
+State::ConstOrientationType State::getOrientation() const   { return (orientation()  ? orientation()->getVector()  : fake_orientation_.segment<ConstOrientationType::RowsAtCompileTime>(0)); }
+State::ConstRateType State::getRate() const                 { return (rate()         ? rate()->getVector()         : fake_rate_.segment<ConstRateType::RowsAtCompileTime>(0)); }
+State::ConstPositionType State::getPosition() const         { return (position()     ? position()->getVector()     : fake_position_.segment<ConstPositionType::RowsAtCompileTime>(0)); }
+State::ConstVelocityType State::getVelocity() const         { return (velocity()     ? velocity()->getVector()     : fake_velocity_.segment<ConstVelocityType::RowsAtCompileTime>(0)); }
+State::ConstAccelerationType State::getAcceleration() const { return (acceleration() ? acceleration()->getVector() : fake_acceleration_.segment<ConstAccelerationType::RowsAtCompileTime>(0)); }
 
 void State::getRotationMatrix(RotationMatrix &R) const
 {
@@ -99,10 +122,69 @@ void State::getRotationMatrix(RotationMatrix &R) const
        (2.0*q.x()*q.z()-2.0*q.w()*q.y()),                 (2.0*q.y()*q.z()+2.0*q.w()*q.x()),                 (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
 }
 
+const State::RotationMatrix &State::R() const {
+  if (!R_valid_) {
+    getRotationMatrix(R_);
+    R_valid_ = true;
+  }
+  return R_;
+}
+
 double State::getYaw() const
 {
   ConstOrientationType q(getOrientation());
   return atan2(2*q.x()*q.y() + 2*q.w()*q.z(), q.x()*q.x() + q.w()*q.w() - q.z()*q.z() - q.y()*q.y());
+}
+
+void State::update(const Vector &vector_update)
+{
+  if (orientation()) {
+    // if vector_update has only n - 1 elements, we have to use covariance indices
+    int orientation_index, orientation_size;
+    if (vector_update.size() == getVectorDimension() - 1) {
+      orientation_index = orientation()->getCovarianceIndex();
+      orientation_size  = orientation()->getCovarianceDimension();
+    } else {
+      assert(vector_update.size() == getVectorDimension());
+      orientation_index = orientation()->getVectorIndex();
+      orientation_size  = orientation()->getVectorDimension();
+    }
+
+    // add everything before orientation part
+    if (orientation_index > 0) {
+      int length = orientation_index;
+      x().head(length) += vector_update.head(length);
+    }
+
+    // add everything after orientation part
+    if (orientation_index + orientation_size < vector_update.size()) {
+      int length = vector_update.size() - orientation_index - orientation_size;
+      x().tail(length) += vector_update.tail(length);
+    }
+
+    // update orientation
+    updateOrientation(vector_update.segment<3>(orientation_index));
+
+  } else {
+    // simply add vectors
+    x() += vector_update;
+  }
+}
+
+void State::updateOrientation(const ColumnVector3 &rotation_vector)
+{
+  if (!orientation()) return;
+
+  const double angle = rotation_vector.norm();
+  double sin_angle_2, cos_angle_2;
+  sincos(angle / 2., &sin_angle_2, &cos_angle_2);
+  double sin_angle_norm_2 = 0.5;
+  if (angle > std::numeric_limits<double>::epsilon()) sin_angle_norm_2 = sin_angle_2 / angle;
+
+  Eigen::Map<Eigen::Quaterniond> q(orientation()->vector().data());
+  q = Eigen::Quaterniond(cos_angle_2, sin_angle_norm_2 * rotation_vector.x(), sin_angle_norm_2 * rotation_vector.y(), sin_angle_norm_2 * rotation_vector.z()) * q;
+//  q = q * Eigen::Quaterniond(cos_angle_2, sin_angle_norm_2 * rotation_vector.x(), sin_angle_norm_2 * rotation_vector.y(), sin_angle_norm_2 * rotation_vector.z());
+  R_valid_ = false;
 }
 
 bool State::inSystemStatus(SystemStatus test_status) const {
@@ -149,12 +231,13 @@ void State::addSystemStatusCallback(const SystemStatusCallback& callback) {
   status_callbacks_.push_back(callback);
 }
 
-double State::normalize() {
-  double s = 1.0 / orientation().norm();
-  orientation() = orientation() * s;
-  return s;
+void State::normalize() {
+  if (orientation()) {
+    double s = 1.0 / orientation()->vector().norm();
+    orientation()->vector() = orientation()->vector() * s;
+  }
 }
 
-template class SubState_<0>;
+//template class SubState_<0,0>;
 
 } // namespace hector_pose_estimation

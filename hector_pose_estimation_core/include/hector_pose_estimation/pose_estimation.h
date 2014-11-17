@@ -87,11 +87,11 @@ public:
 //  MeasurementPtr getMeasurement(std::size_t index) const { return measurements_.get(index); }
   MeasurementPtr getMeasurement(const std::string &name) const { return measurements_.get(name); }
 
-  template <class InputType> boost::shared_ptr<InputType> registerInput(const std::string& name = std::string());
   template <class InputType> boost::shared_ptr<InputType> getInputType(const std::string& name) const { return inputs_.getType<InputType>(name); }
 
+  template <class InputType> boost::shared_ptr<InputType> addInput(const std::string& name = std::string());
   InputPtr addInput(const InputPtr& input, const std::string& name = std::string());
-  InputPtr addInput(Input *input) { return addInput(InputPtr(input)); }
+  InputPtr addInput(Input *input, const std::string& name = std::string()) { return addInput(InputPtr(input), name); }
   InputPtr setInput(const Input& input, std::string name = std::string());
 //  InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
   InputPtr getInput(const std::string& name) const { return inputs_.get(name); }
@@ -202,7 +202,7 @@ const MeasurementPtr& PoseEstimation::addMeasurement(ConcreteMeasurementModel *m
 }
 
 template <class InputType>
-boost::shared_ptr<InputType> PoseEstimation::registerInput(const std::string& name) {
+boost::shared_ptr<InputType> PoseEstimation::addInput(const std::string& name) {
   boost::shared_ptr<InputType> input = getInputType<InputType>(name);
   if (input) return input;
 

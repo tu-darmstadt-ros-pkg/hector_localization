@@ -32,12 +32,34 @@
 #include <hector_pose_estimation/system_model.h>
 #include <hector_pose_estimation/system.h>
 
+#include <hector_pose_estimation/system/imu_input.h>
+
 namespace hector_pose_estimation {
 
-class GyroModel : public TimeContinuousSystemModel_<GyroModel, 3>
+class GyroModel;
+namespace traits {
+  template <> struct Input<GyroModel> {
+    enum { Dimension = 3 };
+    typedef ImuInput Type;
+    typedef ColumnVector_<3> Vector;
+    typedef SymmetricMatrix_<3> Variance;
+  };
+}
+
+class AccelerometerModel;
+namespace traits {
+  template <> struct Input<AccelerometerModel> {
+    enum { Dimension = 3 };
+    typedef ImuInput Type;
+    typedef ColumnVector_<3> Vector;
+    typedef SymmetricMatrix_<3> Variance;
+  };
+}
+
+class GyroModel : public TimeContinuousSystemModel_<GyroModel>
 {
 public:
-  enum StateIndex {
+  enum {
     BIAS_GYRO_X = 0,
     BIAS_GYRO_Y,
     BIAS_GYRO_Z
@@ -46,28 +68,27 @@ public:
   GyroModel();
   virtual ~GyroModel();
 
-  SubState& sub(State& state) const { return *drift_; }
-  const SubState& sub(const State& state) const { return *drift_; }
+  bool init(PoseEstimation& estimator, State& state);
 
-  virtual bool init(PoseEstimation& estimator, State& state);
+  using TimeContinuousSystemModel_<GyroModel>::getDerivative;
+  void getDerivative(StateVector& x_dot, const State& State);
+  using TimeContinuousSystemModel_<GyroModel>::getStateJacobian;
+  void getStateJacobian(SystemMatrix& A, const State& state);
+  using TimeContinuousSystemModel_<GyroModel>::getSystemNoise;
+  void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &inputs, bool init);
 
-  using TimeContinuousSystemModel_<GyroModel, 3>::getSystemNoise;
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
-  using TimeContinuousSystemModel_<GyroModel, 3>::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init);
-
-  ConstStateVectorSegment getBias() const { return drift_->getVector(); }
+  SubState_<3>::ConstVectorSegment getBias() const { return bias_->getVector(); }
 
 private:
-  SubStatePtr drift_;
+  SubState_<3>::Ptr bias_;
   double rate_stddev_;
   double rate_drift_;
 };
 
-class AccelerometerModel : public TimeContinuousSystemModel_<AccelerometerModel, 3>
+class AccelerometerModel : public TimeContinuousSystemModel_<AccelerometerModel>
 {
 public:
-  enum StateIndex {
+  enum {
     BIAS_ACCEL_X = 0,
     BIAS_ACCEL_Y,
     BIAS_ACCEL_Z
@@ -76,22 +97,25 @@ public:
   AccelerometerModel();
   virtual ~AccelerometerModel();
 
-  SubState& sub(State& state) const { return *drift_; }
-  const SubState& sub(const State& state) const { return *drift_; }
+  bool init(PoseEstimation& estimator, State& state);
 
-  virtual bool init(PoseEstimation& estimator, State& state);
+  bool prepareUpdate(State &state, double dt);
 
-  using TimeContinuousSystemModel_<AccelerometerModel, 3>::getSystemNoise;
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init);
-  using TimeContinuousSystemModel_<AccelerometerModel, 3>::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init);
+  using TimeContinuousSystemModel_<AccelerometerModel>::getDerivative;
+  void getDerivative(StateVector& x_dot, const State& state);
+  using TimeContinuousSystemModel_<AccelerometerModel>::getStateJacobian;
+  void getStateJacobian(SystemMatrix& A, const State& state);
+  using TimeContinuousSystemModel_<AccelerometerModel>::getSystemNoise;
+  void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &inputs, bool init);
 
-  ConstStateVectorSegment getBias() const { return drift_->getVector(); }
+  SubState_<3>::ConstVectorSegment getBias() const { return bias_->getVector(); }
 
 private:
-  SubStatePtr drift_;
+  SubState_<3>::Ptr bias_;
   double acceleration_stddev_;
   double acceleration_drift_;
+
+  ColumnVector3 bias_nav_;
 };
 
 typedef System_<GyroModel> Gyro;

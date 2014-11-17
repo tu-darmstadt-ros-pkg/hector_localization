@@ -53,29 +53,43 @@ void Filter::reset()
   state_.reset();
 }
 
-bool Filter::predict(const Systems& systems, double dt) {
+bool Filter::preparePredict(const Inputs&, double)
+{
+  return true;
+}
+
+bool Filter::predict(const Systems& systems, const Inputs& inputs, double dt) {
   SystemStatus system_status = 0;
   bool result = true;
 
+  if (!preparePredict(inputs, dt)) return false;
+
+  // Iterate through system models. For an EKF, this will populate the x_diff vector, A and Q matrices.
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
-    result &= predict(system, dt);
+    result &= predict(system, inputs, dt);
     system_status |= system->getStatusFlags();
   }
 
-  // call the filter's global predict method
-  result &= doPredict(dt);
+  // Call the filter's global predict method. This will actually calculate the updated state vector and variance.
+  result &= doPredict(inputs, dt);
 
-  state_.updateSystemStatus(system_status, STATE_MASK);
+  state_.updateSystemStatus(system_status, STATE_MASK | STATE_PSEUDO_MASK);
   return result;
 }
 
-bool Filter::predict(const SystemPtr& system, double dt) {
-  return system->update(dt);
+bool Filter::predict(const SystemPtr& system, const Inputs& inputs, double dt) {
+  return system->update(inputs, dt);
 }
 
-bool Filter::doPredict(double dt) {
-  state_.updated();
+bool Filter::doPredict(const Inputs&, double dt) {
+  // already done in System::update()
+  // state_.updated();
+  return true;
+}
+
+bool Filter::prepareCorrect()
+{
   return true;
 }
 
@@ -83,13 +97,16 @@ bool Filter::correct(const Measurements& measurements) {
   SystemStatus measurement_status = 0;
   bool result = true;
 
+  if (!prepareCorrect()) return false;
+
+  // Iterate through measurement models. This will process the correction step directly.
   for(Measurements::iterator it = measurements.begin(); it != measurements.end(); it++) {
     const MeasurementPtr& measurement = *it;
     result &= correct(measurement);
     measurement_status |= measurement->getStatusFlags();
   }
 
-  // call the filter's global correct method
+  // Call the filter's global correct method. No-op for EKF.
   result &= doCorrect();
 
   state_.setMeasurementStatus(measurement_status);
@@ -101,7 +118,8 @@ bool Filter::correct(const MeasurementPtr& measurement) {
 }
 
 bool Filter::doCorrect() {
-  state_.updated();
+  // already done in Measurement::update()
+  // state_.updated();
   return true;
 }
 

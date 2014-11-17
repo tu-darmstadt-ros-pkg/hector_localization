@@ -60,7 +60,6 @@ protected:
 
   MeasurementVector magnetic_field_north_;
   MeasurementVector magnetic_field_reference_;
-//  mutable Matrix C_full_;
 };
 
 extern template class Measurement_<MagneticModel>;

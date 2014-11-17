@@ -104,8 +104,8 @@ namespace hector_pose_estimation {
   class State;
 
   class SubState;
-  template <int Dimension> class SubState_;
-  typedef SubState_<0> BaseState;
+  template <int VectorDimension, int CovarianceDimension> class SubState_;
+  typedef SubState_<0,0> BaseState;
   typedef boost::shared_ptr<SubState> SubStatePtr;
   typedef boost::weak_ptr<SubState> SubStateWPtr;
 

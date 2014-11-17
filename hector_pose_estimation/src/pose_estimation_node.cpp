@@ -30,6 +30,8 @@
 #include <hector_pose_estimation/ros/parameters.h>
 
 #include <hector_pose_estimation/system/generic_quaternion_system_model.h>
+#include <hector_pose_estimation/system/imu_input.h>
+#include <hector_pose_estimation/system/imu_model.h>
 #include <hector_pose_estimation/measurements/poseupdate.h>
 #include <hector_pose_estimation/measurements/baro.h>
 #include <hector_pose_estimation/measurements/height.h>
@@ -43,7 +45,11 @@ PoseEstimationNode::PoseEstimationNode(const SystemPtr& system)
   , private_nh_("~")
   , transform_listener_(0)
 {
-  if (!system) pose_estimation_->addSystem(System::create(new GenericQuaternionSystemModel));
+  if (!system) pose_estimation_->addSystem(new GenericQuaternionSystemModel);
+
+  pose_estimation_->addInput(new ImuInput, "imu");
+  pose_estimation_->addSystem(new AccelerometerModel, "accelerometer");
+  pose_estimation_->addSystem(new GyroModel, "gyro");
 
   pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
 #if defined(USE_HECTOR_UAV_MSGS)
@@ -138,7 +144,7 @@ void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& 
 #else
 void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
   Height::MeasurementVector update;
-  update = height->point.z;
+  update(0) = height->point.z;
   pose_estimation_->getMeasurement("height")->add(Height::Update(update));
 }
 #endif
