@@ -66,6 +66,7 @@ bool EKF::predict(const SystemPtr& system, const Inputs& inputs, double dt)
   x_diff += predictor->x_diff;
   A += predictor->A;
   Q += predictor->Q;
+  return true;
 }
 
 bool EKF::doPredict(const Inputs& inputs, double dt) {
