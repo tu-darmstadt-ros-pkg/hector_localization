@@ -127,27 +127,27 @@ const MagneticModel::MeasurementVector& Magnetic::getVector(const Magnetic::Upda
   y_ = Measurement_<MagneticModel>::getVector(update, state) + deviation_;
   if (getModel()->hasMagnitude()) return y_;
 
-  double c = 1.0 / y_.norm();
-  if (isinf(c)) {
-    y_ = MeasurementVector(0.0);
+  double norm = y_.norm();
+  if (norm < 1e-5) {
+    y_.setZero();
   } else {
-    y_ = y_ * c;
+    y_ = y_ / norm;
   }
   return y_;
 }
 
-const MagneticModel::NoiseVariance& Magnetic::getVariance(const Magnetic::Update& update, const State& state) {
-  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getVariance(update, state);
+//const MagneticModel::NoiseVariance& Magnetic::getVariance(const Magnetic::Update& update, const State& state) {
+//  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getVariance(update, state);
 
-  R_ = Measurement_<MagneticModel>::getVariance(update, state);
-  double c = 1.0 / Measurement_<MagneticModel>::getVector(update, state).norm();
-  if (isinf(c)) {
-    R_ = NoiseVariance(1.0);
-  } else {
-    R_ =  R_ * (c*c);
-  }
-  return R_;
-}
+//  R_ = Measurement_<MagneticModel>::getVariance(update, state);
+//  double norm = Measurement_<MagneticModel>::getVector(update, state).norm();
+//  if (norm < 1e-5) {
+//    R_ = NoiseVariance(1.0, 1.0, 1.0);
+//  } else {
+//    R_ =  R_ / (norm*norm);
+//  }
+//  return R_;
+//}
 
 bool Magnetic::prepareUpdate(State &state, const Update &update) {
   // reset reference position if Magnetic has not been updated for a while

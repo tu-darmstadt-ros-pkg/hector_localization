@@ -80,7 +80,7 @@ public:
   virtual void onReset();
 
   virtual MeasurementVector const& getVector(const Update &update, const State&);
-  virtual NoiseVariance const& getVariance(const Update &update, const State&);
+//  virtual NoiseVariance const& getVariance(const Update &update, const State&);
 
   virtual bool prepareUpdate(State &state, const Update &update);
 
