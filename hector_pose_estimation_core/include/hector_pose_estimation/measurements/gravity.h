@@ -46,7 +46,7 @@ public:
   virtual void setGravity(double gravity) { gravity_.z() = gravity; }
   virtual double getGravity() const { return gravity_.z(); }
 
-  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_ROLLPITCH); }
+  virtual bool active(const State &state) { return true; } // always update, even during alignment
   virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_ROLLPITCH; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);

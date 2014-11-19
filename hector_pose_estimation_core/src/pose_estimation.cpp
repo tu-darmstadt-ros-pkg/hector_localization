@@ -198,8 +198,12 @@ void PoseEstimation::update(double dt)
   filter_->predict(systems_, inputs_, dt);
 
   // pseudo measurement updates (if required)
-  gravity_update_->update(Gravity::Update(imu->getAcceleration()));
-  zerorate_update_->update(ZeroRate::Update());
+  if (imu && !(getSystemStatus() & STATE_ROLLPITCH)) {
+    gravity_update_->update(Gravity::Update(imu->getAcceleration()));
+  }
+  if (!(getSystemStatus() & STATE_RATE_Z)) {
+    zerorate_update_->update(ZeroRate::Update());
+  }
 
   // measurement updates
   filter_->correct(measurements_);

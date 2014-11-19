@@ -42,7 +42,7 @@ public:
 
   virtual bool init(PoseEstimation &estimator, State &state);
 
-  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_RATE_Z); }
+  virtual bool active(const State &state) { return true; } // always update, even during alignment
   virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_RATE_Z; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
