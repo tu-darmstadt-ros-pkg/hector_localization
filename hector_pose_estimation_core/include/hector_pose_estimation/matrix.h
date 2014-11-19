@@ -185,7 +185,7 @@ namespace hector_pose_estimation {
     // Constructors
     SymmetricMatrix() : SymmetricMatrix_<Dynamic>() {}
     SymmetricMatrix(Index dim) : SymmetricMatrix_<Dynamic>(dim) { this->setZero(); }
-    SymmetricMatrix(Index dim, Scalar value) : SymmetricMatrix_<Dynamic>(dim) { this->setConstant(value); }
+    // SymmetricMatrix(Index dim, Scalar value) : SymmetricMatrix_<Dynamic>(dim) { this->setConstant(value); }
     template <int OtherRowsCols> SymmetricMatrix(const SymmetricMatrix_<OtherRowsCols>& other) : SymmetricMatrix_<Dynamic>(other) {}
     template <typename OtherDerived> SymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : SymmetricMatrix_<Dynamic>(other) {}
 
