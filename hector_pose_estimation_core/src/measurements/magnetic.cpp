@@ -68,7 +68,7 @@ void MagneticModel::getMeasurementNoise(NoiseVariance& R, const State&, bool ini
 void MagneticModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
   const State::RotationMatrix &R = state.R();
-  y_pred = R * magnetic_field_reference_;
+  y_pred = R.transpose() * magnetic_field_reference_;
 }
 
 void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
@@ -104,9 +104,9 @@ void MagneticModel::updateMagneticField()
   double magnitude = magnitude_;
   if (magnitude == 0.0) magnitude = 1.0;
 
-  magnetic_field_north_.x() = magnitude * (cos_inclination * cos_declination);
-  magnetic_field_north_.y() = magnitude * (-sin_declination);
-  magnetic_field_north_.z() = magnitude * (-sin_inclination * cos_declination);
+  magnetic_field_north_.x() = magnitude * (cos_inclination *   cos_declination);
+  magnetic_field_north_.y() = magnitude * (cos_inclination * (-sin_declination));
+  magnetic_field_north_.z() = magnitude * (-sin_inclination);
 }
 
 Magnetic::Magnetic(const std::string &name)
