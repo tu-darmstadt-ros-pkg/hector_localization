@@ -36,13 +36,23 @@ template class Measurement_<RateModel>;
 RateModel::RateModel()
 {
   parameters().add("stddev", stddev_, 10.0 * M_PI/180.0);
+  parameters().add("use_bias", use_bias_, std::string("gyro_bias"));
 }
 
 RateModel::~RateModel() {}
 
-bool RateModel::init(PoseEstimation &estimator, State &state)
+bool RateModel::init(PoseEstimation &estimator, Measurement &measurement, State &state)
 {
-  gyro_bias_ = state.addSubState<3,3>(this, "gyro");
+  if (!use_bias_.empty()) {
+    bias_ = state.getSubState<3,3>(use_bias_);
+    if (!bias_) {
+      ROS_ERROR("Could not find bias substate '%s' during initialization of rate measurement '%s'.", use_bias_.c_str(), measurement.getName().c_str());
+      return false;
+    }
+  } else {
+    bias_.reset();
+  }
+
   return true;
 }
 
@@ -57,8 +67,8 @@ void RateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
   y_pred = state.getRate();
 
-  if (gyro_bias_) {
-    y_pred += gyro_bias_->getVector();
+  if (bias_) {
+    y_pred += bias_->getVector();
   }
 }
 
@@ -70,8 +80,8 @@ void RateModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool 
    state.rate()->cols(C).setIdentity();
   }
 
-  if (gyro_bias_) {
-    gyro_bias_->cols(C).setIdentity();
+  if (bias_) {
+    bias_->cols(C).setIdentity();
   }
 }
 

@@ -39,6 +39,8 @@ class SystemModel : public Model {
 public:
   virtual ~SystemModel() {}
 
+  virtual bool init(PoseEstimation& estimator, System &system, State& state) { return true; }
+
   enum SystemTypeEnum { UNKNOWN_SYSTEM_TYPE, TIME_DISCRETE, TIME_CONTINUOUS };
   virtual SystemTypeEnum getSystemType() const { return UNKNOWN_SYSTEM_TYPE; }
 

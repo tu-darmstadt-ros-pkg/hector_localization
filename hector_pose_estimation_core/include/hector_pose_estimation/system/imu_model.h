@@ -68,7 +68,7 @@ public:
   GyroModel();
   virtual ~GyroModel();
 
-  bool init(PoseEstimation& estimator, State& state);
+  bool init(PoseEstimation& estimator, System &system, State& state);
 
   using TimeContinuousSystemModel_<GyroModel>::getDerivative;
   void getDerivative(StateVector& x_dot, const State& State);
@@ -97,7 +97,7 @@ public:
   AccelerometerModel();
   virtual ~AccelerometerModel();
 
-  bool init(PoseEstimation& estimator, State& state);
+  bool init(PoseEstimation& estimator, System &system, State& state);
 
   bool prepareUpdate(State &state, double dt);
 

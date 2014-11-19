@@ -40,7 +40,7 @@ public:
   ZeroRateModel();
   virtual ~ZeroRateModel();
 
-  virtual bool init(PoseEstimation &estimator, State &state);
+  virtual bool init(PoseEstimation &estimator, Measurement &measurement, State &state);
 
   virtual bool active(const State &state) { return true; } // always update, even during alignment
   virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_RATE_Z; }
@@ -53,7 +53,8 @@ public:
 
 protected:
   double stddev_;
-  SubState_<3>::Ptr gyro_bias_;
+  std::string use_bias_;
+  SubState_<3>::Ptr bias_;
 };
 
 typedef Measurement_<ZeroRateModel> ZeroRate;

@@ -38,7 +38,7 @@ public:
   RateModel();
   virtual ~RateModel();
 
-  virtual bool init(PoseEstimation &estimator, State &state);
+  virtual bool init(PoseEstimation &estimator, Measurement &measurement, State &state);
 
   virtual SystemStatus getStatusFlags() { return STATE_RATE_XY | STATE_RATE_Z; }
 
@@ -48,7 +48,8 @@ public:
 
 protected:
   double stddev_;
-  SubState_<3>::Ptr gyro_bias_;
+  std::string use_bias_;
+  SubState_<3>::Ptr bias_;
 };
 
 typedef Measurement_<RateModel> Rate;

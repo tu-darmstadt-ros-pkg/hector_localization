@@ -50,7 +50,7 @@ Measurement::~Measurement()
 
 bool Measurement::init(PoseEstimation& estimator, State& state)
 {
-  if (getModel() && !getModel()->init(estimator, state)) return false;
+  if (getModel() && !getModel()->init(estimator, *this, state)) return false;
   if (!onInit(estimator)) return false;
   return true;
 }

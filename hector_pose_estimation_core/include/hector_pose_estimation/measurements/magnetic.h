@@ -39,7 +39,7 @@ public:
   MagneticModel();
   virtual ~MagneticModel();
 
-  virtual bool init(PoseEstimation &estimator, State &state);
+  virtual bool init(PoseEstimation &estimator, Measurement &measurement, State &state);
 
   virtual SystemStatus getStatusFlags() { return STATE_YAW; }
 

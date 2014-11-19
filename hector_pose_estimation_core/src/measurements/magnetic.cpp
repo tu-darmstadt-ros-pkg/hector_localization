@@ -46,7 +46,7 @@ MagneticModel::MagneticModel()
 
 MagneticModel::~MagneticModel() {}
 
-bool MagneticModel::init(PoseEstimation &estimator, State &state)
+bool MagneticModel::init(PoseEstimation &estimator, Measurement &measurement, State &state)
 {
   updateMagneticField();
   return true;

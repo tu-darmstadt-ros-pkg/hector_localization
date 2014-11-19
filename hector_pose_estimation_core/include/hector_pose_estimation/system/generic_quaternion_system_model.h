@@ -54,7 +54,7 @@ public:
   GenericQuaternionSystemModel();
   virtual ~GenericQuaternionSystemModel();
 
-  virtual bool init(PoseEstimation& estimator, State& state);
+  virtual bool init(PoseEstimation& estimator, System &system, State& state);
 
   virtual void getPrior(State &state);
 

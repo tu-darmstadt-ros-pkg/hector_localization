@@ -41,7 +41,6 @@ public:
 
   virtual ~Model() {}
 
-  virtual bool init(PoseEstimation& estimator, State& state) { return true; }
   virtual void cleanup() { }
   virtual void reset(State& state) { }
 

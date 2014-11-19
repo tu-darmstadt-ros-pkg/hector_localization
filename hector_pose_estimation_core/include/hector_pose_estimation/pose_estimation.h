@@ -182,7 +182,6 @@ private:
   boost::shared_ptr<Rate> rate_update_;
   boost::shared_ptr<Gravity> gravity_update_;
   boost::shared_ptr<ZeroRate> zerorate_update_;
-//  boost::shared_ptr<Heading> heading_update_;
 };
 
 template <typename ConcreteSystemModel>

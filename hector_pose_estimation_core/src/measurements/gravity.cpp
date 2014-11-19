@@ -38,14 +38,26 @@ GravityModel::GravityModel()
   : gravity_(MeasurementVector::Zero())
 {
   parameters().add("stddev", stddev_, 10.0);
+  parameters().add("use_bias", use_bias_, std::string("accelerometer_bias"));
 }
 
 GravityModel::~GravityModel() {}
 
-bool GravityModel::init(PoseEstimation &estimator, State &state) {
+bool GravityModel::init(PoseEstimation &estimator, Measurement &measurement, State &state) {
+  if (!use_bias_.empty()) {
+    bias_ = state.getSubState<3,3>(use_bias_);
+    if (!bias_) {
+      ROS_ERROR("Could not find bias substate '%s' during initialization of gravity measurement '%s'.", use_bias_.c_str(), measurement.getName().c_str());
+      return false;
+    }
+  } else {
+    bias_.reset();
+  }
+
   setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
   return true;
 }
+
 
 void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
@@ -58,6 +70,9 @@ void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& stat
 {
   const State::RotationMatrix &R = state.R();
   y_pred = -R.row(2).transpose() * gravity_.z();
+  if (bias_) {
+    y_pred += bias_->getVector();
+  }
 }
 
 void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
@@ -84,6 +99,11 @@ void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bo
      state.orientation()->cols(C)(Z,X) = -gravity_.z() * R(1,2);
      state.orientation()->cols(C)(Z,Y) =  gravity_.z() * R(0,2);
   }
+
+//  Bias is not observable if we use gravity only for orientation
+//  if (bias_) {
+//    bias_->cols(C).setIdentity();
+//  }
 }
 
 } // namespace hector_pose_estimation

@@ -53,7 +53,7 @@ GenericQuaternionSystemModel::~GenericQuaternionSystemModel()
 {
 }
 
-bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, State& state)
+bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, System &system, State& state)
 {
 //  gyro_ = System::create(new GyroModel, "gyro");
 //  accelerometer_ = System::create(new AccelerometerModel, "accelerometer");
@@ -62,7 +62,7 @@ bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, State& state)
 //  rate_stddev_ = gyro_->parameters().get("stddev");
 //  acceleration_stddev_ = accelerometer_->parameters().get("stddev");
 
-  imu_ = estimator.addInput<ImuInput>("raw_imu");
+  imu_ = estimator.getInputType<ImuInput>("imu");
 //  estimator.addSystem(gyro_, "gyro");
 //  estimator.addSystem(accelerometer_, "accelerometer");
   return true;

@@ -46,9 +46,9 @@ GyroModel::GyroModel()
 GyroModel::~GyroModel()
 {}
 
-bool GyroModel::init(PoseEstimation& estimator, State& state)
+bool GyroModel::init(PoseEstimation& estimator, System &system, State& state)
 {
-  bias_ = state.addSubState<3,3>(this, "gyro");
+  bias_ = state.addSubState<3,3>(this, system.getName() + "_bias");
   return bias_;
 }
 
@@ -86,9 +86,9 @@ AccelerometerModel::AccelerometerModel()
 AccelerometerModel::~AccelerometerModel()
 {}
 
-bool AccelerometerModel::init(PoseEstimation& estimator, State& state)
+bool AccelerometerModel::init(PoseEstimation& estimator, System &system, State& state)
 {
-  bias_ = state.addSubState<3,3>(this, "accelerometer");
+  bias_ = state.addSubState<3,3>(this, system.getName() + "_bias");
   return bias_;
 }
 

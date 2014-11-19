@@ -95,12 +95,12 @@ bool PoseEstimation::init()
   // create new filter
   filter_.reset(new filter::EKF);
 
-  // initialize measurements (new systems could be added during initialization!)
-  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)
-    if (!(*it)->init(*this, state())) return false;
-
   // initialize systems (new systems could be added during initialization!)
   for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it)
+    if (!(*it)->init(*this, state())) return false;
+
+  // initialize measurements (new systems could be added during initialization!)
+  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); ++it)
     if (!(*it)->init(*this, state())) return false;
 
   // initialize filter

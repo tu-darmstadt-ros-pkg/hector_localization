@@ -39,6 +39,7 @@ class MeasurementModel : public Model {
 public:
   virtual ~MeasurementModel() {}
 
+  virtual bool init(PoseEstimation& estimator, Measurement &measurement, State& state) { return true; }
   virtual int getDimension() const = 0;
 
   virtual SystemStatus getStatusFlags() { return SystemStatus(0); }
