@@ -117,6 +117,7 @@ public:
     virtual ~Corrector_() {}
 
     virtual bool correct(const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
+    virtual typename ConcreteModel::MeasurementVector getResidual() const { return error; }
 
   public:
     typename Model::MeasurementVector y_pred;

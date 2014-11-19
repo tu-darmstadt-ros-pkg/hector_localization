@@ -114,6 +114,8 @@ public:
     virtual bool correct(const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R) = 0;
     virtual void reset() { init_ = true; }
 
+    virtual typename ConcreteModel::MeasurementVector getResidual() const { return typename ConcreteModel::MeasurementVector(); }
+
     template <typename Derived> typename Derived::template Corrector_<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Corrector_<ConcreteModel> *>(this); }
     template <typename Derived> const typename Derived::template Corrector_<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Corrector_<ConcreteModel> *>(this); }
 
