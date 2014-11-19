@@ -51,7 +51,7 @@ public:
   const Ptr& add(const Ptr& p, const key_type& key) {
     list_.push_back(p);
     map_[key] = p;
-    return p;
+    return list_.back();
   }
 
   template <typename Derived> boost::shared_ptr<Derived> add(Derived *p) { return boost::static_pointer_cast<Derived>(add(Ptr(p), p->getName())); }
