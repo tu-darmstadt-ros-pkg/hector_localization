@@ -81,6 +81,13 @@ extern template class Measurement_<BaroModel>;
 class Baro : public Measurement_<BaroModel>, HeightBaroCommon
 {
 public:
+  using Measurement_<BaroModel>::Model;
+  using Measurement_<BaroModel>::Update;
+
+  enum { MeasurementDimension = Measurement_<BaroModel>::MeasurementDimension };
+  using Measurement_<BaroModel>::MeasurementVector;
+  using Measurement_<BaroModel>::NoiseVariance;
+
   Baro(const std::string& name = "baro");
   virtual ~Baro() {}
 

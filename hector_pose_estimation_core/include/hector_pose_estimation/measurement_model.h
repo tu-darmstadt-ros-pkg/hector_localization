@@ -52,7 +52,7 @@ template <class Derived, int _Dimension> class MeasurementModel_;
 
 namespace traits {
 
-  template <int _Dimension>
+  template <class Derived, int _Dimension = Derived::MeasurementDimension>
   struct MeasurementModel {
     enum { MeasurementDimension = _Dimension };
     typedef ColumnVector_<MeasurementDimension> MeasurementVector;
@@ -60,10 +60,15 @@ namespace traits {
     typedef Matrix_<MeasurementDimension,Dynamic> MeasurementMatrix;
     typedef Matrix_<State::Covariance::RowsAtCompileTime,MeasurementDimension> GainMatrix;
     typedef ColumnVector_<State::Covariance::RowsAtCompileTime> UpdateVector;
+
+    enum { InputDimension = traits::Input<Derived>::Dimension };
+    typedef typename traits::Input<Derived>::Type InputType;
+    typedef typename traits::Input<Derived>::Vector InputVector;
+    typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix;
   };
 
-  #define MEASUREMENT_MODEL_TRAIT(_Dimension) \
-    typedef typename traits::MeasurementModel<_Dimension> trait; \
+  #define MEASUREMENT_MODEL_TRAIT(Derived, _Dimension) \
+    typedef typename traits::MeasurementModel<Derived, _Dimension> trait; \
     \
     enum { MeasurementDimension = _Dimension }; \
     typedef typename trait::MeasurementVector MeasurementVector; \
@@ -72,17 +77,17 @@ namespace traits {
     typedef typename trait::GainMatrix GainMatrix; \
     typedef typename trait::UpdateVector UpdateVector; \
     \
-    enum { InputDimension = traits::Input<Derived>::Dimension }; \
-    typedef typename traits::Input<Derived>::Type InputType; \
-    typedef typename traits::Input<Derived>::Vector InputVector; \
-    typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix; \
+    enum { InputDimension = trait::InputDimension }; \
+    typedef typename trait::InputType InputType; \
+    typedef typename trait::InputVector InputVector; \
+    typedef typename trait::InputMatrix InputMatrix; \
 
 } // namespace traits
 
 template <class Derived, int _Dimension>
 class MeasurementModel_ : public MeasurementModel {
 public:
-  MEASUREMENT_MODEL_TRAIT(_Dimension)
+  MEASUREMENT_MODEL_TRAIT(Derived, _Dimension)
   virtual ~MeasurementModel_() {}
 
   virtual int getDimension() const { return trait::MeasurementDimension; }

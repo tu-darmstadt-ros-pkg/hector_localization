@@ -67,7 +67,12 @@ extern template class Measurement_<MagneticModel>;
 class Magnetic : public Measurement_<MagneticModel>
 {
 public:
+  using Measurement_<MagneticModel>::Model;
   using Measurement_<MagneticModel>::Update;
+
+  enum { MeasurementDimension = Measurement_<MagneticModel>::MeasurementDimension };
+  using Measurement_<MagneticModel>::MeasurementVector;
+  using Measurement_<MagneticModel>::NoiseVariance;
 
   Magnetic(const std::string& name = "height");
   virtual ~Magnetic() {}

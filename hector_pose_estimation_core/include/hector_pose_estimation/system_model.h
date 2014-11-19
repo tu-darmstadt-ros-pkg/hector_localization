@@ -37,11 +37,6 @@ namespace hector_pose_estimation {
 
 class SystemModel : public Model {
 public:
-  typedef State::Vector StateVector;
-  typedef Matrix SystemMatrix;
-  typedef Matrix InputMatrix;
-  typedef SymmetricMatrix NoiseVariance;
-
   virtual ~SystemModel() {}
 
   enum SystemTypeEnum { UNKNOWN_SYSTEM_TYPE, TIME_DISCRETE, TIME_CONTINUOUS };
@@ -60,13 +55,38 @@ public:
   virtual bool limitState(State& state) { return true; }
 };
 
+namespace traits {
+
+  template <class Derived>
+  struct SystemModel {
+    typedef State::Vector StateVector;
+    typedef SymmetricMatrix NoiseVariance;
+    typedef Matrix SystemMatrix;
+
+    enum { InputDimension = traits::Input<Derived>::Dimension };
+    typedef typename traits::Input<Derived>::Type   InputType;
+    typedef typename traits::Input<Derived>::Vector InputVector;
+    typedef Matrix_<State::Covariance::RowsAtCompileTime,InputDimension> InputMatrix;
+  };
+
+  #define SYSTEM_MODEL_TRAIT(Derived) \
+    typedef traits::SystemModel<Derived> trait; \
+    \
+    typedef typename trait::StateVector   StateVector; \
+    typedef typename trait::NoiseVariance NoiseVariance; \
+    typedef typename trait::SystemMatrix  SystemMatrix; \
+    \
+    enum { InputDimension = trait::InputDimension }; \
+    typedef typename trait::InputType     InputType; \
+    typedef typename trait::InputVector   InputVector; \
+    typedef typename trait::InputMatrix   InputMatrix; \
+
+} // namespace traits
+
 template <class Derived>
 class SystemModel_ : public SystemModel {
 public:
-  using typename SystemModel::StateVector;
-  using typename SystemModel::SystemMatrix;
-  using typename SystemModel::InputMatrix;
-  using typename SystemModel::NoiseVariance;
+  SYSTEM_MODEL_TRAIT(Derived)
 
   virtual ~SystemModel_() {}
 
@@ -103,10 +123,7 @@ public:
 template <class Derived>
 class TimeContinuousSystemModel_ : public SystemModel_<Derived> {
 public:
-  using typename SystemModel::StateVector;
-  using typename SystemModel::SystemMatrix;
-  using typename SystemModel::InputMatrix;
-  using typename SystemModel::NoiseVariance;
+  SYSTEM_MODEL_TRAIT(Derived)
 
   TimeContinuousSystemModel_();
   virtual ~TimeContinuousSystemModel_();
