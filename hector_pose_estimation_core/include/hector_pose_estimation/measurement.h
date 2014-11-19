@@ -139,6 +139,8 @@ public:
   virtual const boost::shared_ptr< Filter::Corrector_<Model> >& corrector() const { return corrector_; }
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
+  virtual void reset(State& state) { clearNoiseVariance(); Measurement::reset(state); }
+
   virtual MeasurementVector const& getVector(const Update &update, const State &state) {
     const MeasurementVector *fixed = getModel()->getFixedMeasurementVector();
     if (fixed) return *fixed;
