@@ -44,9 +44,6 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/NavSatFix.h>
 
-// Use system model with angular rates.
-#define USE_RATE_SYSTEM_MODEL
-
 namespace hector_pose_estimation {
 
 class State {
@@ -213,6 +210,13 @@ class FullState : public State
 public:
   FullState();
   virtual ~FullState();
+};
+
+class OrientationPositionVelocityState : public State
+{
+public:
+  OrientationPositionVelocityState();
+  virtual ~OrientationPositionVelocityState();
 };
 
 class OrientationOnlyState : public State

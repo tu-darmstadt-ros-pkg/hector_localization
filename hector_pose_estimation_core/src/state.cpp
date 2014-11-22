@@ -34,15 +34,23 @@ namespace hector_pose_estimation {
 FullState::FullState()
 {
   orientation_ = addSubState<OrientationStateType::VectorDimension,OrientationStateType::CovarianceDimension>("orientation");
-#ifdef USE_RATE_SYSTEM_MODEL
   rate_ = addSubState<RateStateType::VectorDimension,RateStateType::CovarianceDimension>("rate");
-#endif
   position_ = addSubState<PositionStateType::VectorDimension,PositionStateType::CovarianceDimension>("position");
   velocity_ = addSubState<VelocityStateType::VectorDimension,VelocityStateType::CovarianceDimension>("velocity");
   construct();
 }
 
 FullState::~FullState() {}
+
+OrientationPositionVelocityState::OrientationPositionVelocityState()
+{
+  orientation_ = addSubState<OrientationStateType::VectorDimension,OrientationStateType::CovarianceDimension>("orientation");
+  position_ = addSubState<PositionStateType::VectorDimension,PositionStateType::CovarianceDimension>("position");
+  velocity_ = addSubState<VelocityStateType::VectorDimension,VelocityStateType::CovarianceDimension>("velocity");
+  construct();
+}
+
+OrientationPositionVelocityState::~OrientationPositionVelocityState() {}
 
 OrientationOnlyState::OrientationOnlyState()
 {
