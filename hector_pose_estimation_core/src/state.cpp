@@ -102,17 +102,17 @@ void State::updated()
   R_valid_ = false;
 }
 
-State::ConstOrientationType State::getOrientation() const   { return (orientation()  ? orientation()->getVector()  : fake_orientation_.segment<ConstOrientationType::RowsAtCompileTime>(0)); }
-State::ConstRateType State::getRate() const                 { return (rate()         ? rate()->getVector()         : fake_rate_.segment<ConstRateType::RowsAtCompileTime>(0)); }
-State::ConstPositionType State::getPosition() const         { return (position()     ? position()->getVector()     : fake_position_.segment<ConstPositionType::RowsAtCompileTime>(0)); }
-State::ConstVelocityType State::getVelocity() const         { return (velocity()     ? velocity()->getVector()     : fake_velocity_.segment<ConstVelocityType::RowsAtCompileTime>(0)); }
-State::ConstAccelerationType State::getAcceleration() const { return (acceleration() ? acceleration()->getVector() : fake_acceleration_.segment<ConstAccelerationType::RowsAtCompileTime>(0)); }
+State::ConstOrientationType State::getOrientation() const   { return (orientation()  ? orientation()->getVector()  : ConstOrientationType(fake_orientation_, 0)); }
+State::ConstRateType State::getRate() const                 { return (rate()         ? rate()->getVector()         : ConstRateType(fake_rate_, 0)); }
+State::ConstPositionType State::getPosition() const         { return (position()     ? position()->getVector()     : ConstPositionType(fake_position_, 0)); }
+State::ConstVelocityType State::getVelocity() const         { return (velocity()     ? velocity()->getVector()     : ConstVelocityType(fake_velocity_, 0)); }
+State::ConstAccelerationType State::getAcceleration() const { return (acceleration() ? acceleration()->getVector() : ConstAccelerationType(fake_acceleration_, 0)); }
 
-State::OrientationType State::orientationPart()   { return (orientation()  ? orientation()->vector()  : fake_orientation_.segment<OrientationType::RowsAtCompileTime>(0)); }
-State::RateType State::ratePart()                 { return (rate()         ? rate()->vector()         : fake_rate_.segment<RateType::RowsAtCompileTime>(0)); }
-State::PositionType State::positionPart()         { return (position()     ? position()->vector()     : fake_position_.segment<PositionType::RowsAtCompileTime>(0)); }
-State::VelocityType State::velocityPart()         { return (velocity()     ? velocity()->vector()     : fake_velocity_.segment<VelocityType::RowsAtCompileTime>(0)); }
-State::AccelerationType State::accelerationPart() { return (acceleration() ? acceleration()->vector() : fake_acceleration_.segment<AccelerationType::RowsAtCompileTime>(0)); }
+State::OrientationType State::orientationPart()   { return (orientation()  ? orientation()->vector()  : OrientationType(fake_orientation_, 0)); }
+State::RateType State::ratePart()                 { return (rate()         ? rate()->vector()         : RateType(fake_rate_, 0)); }
+State::PositionType State::positionPart()         { return (position()     ? position()->vector()     : PositionType(fake_position_, 0)); }
+State::VelocityType State::velocityPart()         { return (velocity()     ? velocity()->vector()     : VelocityType(fake_velocity_, 0)); }
+State::AccelerationType State::accelerationPart() { return (acceleration() ? acceleration()->vector() : AccelerationType(fake_acceleration_, 0)); }
 
 void State::getRotationMatrix(RotationMatrix &R) const
 {

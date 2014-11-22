@@ -36,6 +36,9 @@
 #define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION 1e-5
 #define FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
 
+// We need this to preallocate memory for vectors and matrices:
+#define MAXIMUM_STATE_VARIABLES 24
+
 namespace hector_pose_estimation {
   using Eigen::Dynamic;
   using Eigen::Lower;
@@ -43,30 +46,14 @@ namespace hector_pose_estimation {
 
   typedef double ScalarType;
   typedef Eigen::DenseIndex IndexType;
-  typedef Eigen::Matrix<ScalarType,Dynamic,1> ColumnVector;
-  typedef Eigen::Matrix<ScalarType,1,Dynamic> RowVector;
-  typedef Eigen::Matrix<ScalarType,Dynamic,Dynamic> Matrix;
-  typedef Eigen::Quaternion<ScalarType> Quaternion;
-
-  typedef Eigen::Matrix<ScalarType,3,1> Vector3;
-  typedef Eigen::Matrix<ScalarType,4,1> Vector4;
-
-  using Eigen::VectorBlock;
-  typedef VectorBlock<ColumnVector,3>       VectorBlock3;
-  typedef VectorBlock<ColumnVector,4>       VectorBlock4;
-  typedef VectorBlock<const ColumnVector,3> ConstVectorBlock3;
-  typedef VectorBlock<const ColumnVector,4> ConstVectorBlock4;
-
-  using Eigen::Block;
-  typedef Eigen::Block<Matrix,Dynamic,Dynamic> MatrixBlock;
 
   template <int Rows>
-  class ColumnVector_ : public Eigen::Matrix<ScalarType,Rows,1> {
+  class ColumnVector_ : public Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),1> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
     typedef ColumnVector_<Rows> Derived;
-    typedef Eigen::Matrix<ScalarType,Rows,1> Base;
+    typedef Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),1> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
     typedef Eigen::Map<Base> Map;
@@ -75,21 +62,22 @@ namespace hector_pose_estimation {
     ColumnVector_() { this->setZero(); }
     explicit ColumnVector_(IndexType size) : Base(size) { assert(Rows == Dynamic || size == Rows); this->setZero(); }
 //    explicit ColumnVector_(Scalar value) { this->setConstant(value); }
-    ColumnVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,Rows,1>(x, y, z) {}
+    ColumnVector_(Scalar x, Scalar y, Scalar z) : Base(x, y, z) {}
     template <typename OtherDerived> ColumnVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
     Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
   };
+  typedef ColumnVector_<Dynamic> ColumnVector;
   typedef ColumnVector_<3> ColumnVector3;
 
   template <int Cols>
-  class RowVector_ : public Eigen::Matrix<ScalarType,1,Cols> {
+  class RowVector_ : public Eigen::Matrix<ScalarType,1,Cols,Eigen::RowMajor,1,MAXIMUM_STATE_VARIABLES> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
     typedef RowVector_<Cols> Derived;
-    typedef Eigen::Matrix<ScalarType,1,Cols> Base;
+    typedef Eigen::Matrix<ScalarType,1,Cols,0,1,MAXIMUM_STATE_VARIABLES> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
     typedef Eigen::Map<Base> Map;
@@ -98,21 +86,22 @@ namespace hector_pose_estimation {
     RowVector_() { this->setZero(); }
     explicit RowVector_(IndexType size) : Base(size) { assert(Cols == Dynamic || size == Cols); this->setZero(); }
 //    explicit RowVector_(Scalar value) { this->setConstant(value); }
-    RowVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,1,Cols>(x, y, z) {}
+    RowVector_(Scalar x, Scalar y, Scalar z) : Base(x, y, z) {}
     template <typename OtherDerived> RowVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
     Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
   };
+  typedef RowVector_<Dynamic> RowVector;
   typedef RowVector_<3> RowVector3;
 
   template <int Rows, int Cols>
-  class Matrix_ : public Eigen::Matrix<ScalarType,Rows,Cols> {
+  class Matrix_ : public Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),(Cols != Dynamic ? Cols : MAXIMUM_STATE_VARIABLES)> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic || Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
     typedef Matrix_<Rows,Cols> Derived;
-    typedef Eigen::Matrix<ScalarType,Rows,Cols> Base;
+    typedef Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),(Cols != Dynamic ? Cols : MAXIMUM_STATE_VARIABLES)> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
     typedef Eigen::Map<Base> Map;
@@ -126,6 +115,7 @@ namespace hector_pose_estimation {
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
     Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
   };
+  typedef Matrix_<Dynamic,Dynamic> Matrix;
   typedef Matrix_<3,3> Matrix3;
 
   template <int RowsCols>
@@ -198,11 +188,11 @@ namespace hector_pose_estimation {
     typedef Eigen::Map<const Base> ConstMap;
 
     // Constructors
-    SymmetricMatrix() : SymmetricMatrix_<Dynamic>() {}
-    SymmetricMatrix(Index dim) : SymmetricMatrix_<Dynamic>(dim) { this->setZero(); }
-    // SymmetricMatrix(Index dim, Scalar value) : SymmetricMatrix_<Dynamic>(dim) { this->setConstant(value); }
-    template <int OtherRowsCols> SymmetricMatrix(const SymmetricMatrix_<OtherRowsCols>& other) : SymmetricMatrix_<Dynamic>(other) {}
-    template <typename OtherDerived> SymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : SymmetricMatrix_<Dynamic>(other) {}
+    SymmetricMatrix() : Storage() {}
+    SymmetricMatrix(Index dim) : Storage(dim) { this->setZero(); }
+    // SymmetricMatrix(Index dim, Scalar value) : Storage(dim) { this->setConstant(value); }
+    template <int OtherRowsCols> SymmetricMatrix(const SymmetricMatrix_<OtherRowsCols>& other) : Storage(other) {}
+    template <typename OtherDerived> SymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) {}
 
     template <typename OtherDerived> Derived& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
       this->Base::operator=(other);
@@ -233,6 +223,17 @@ namespace hector_pose_estimation {
                -other.y(),  other.x(),  0.0;
     }
   };
+
+  typedef Eigen::Quaternion<ScalarType> Quaternion;
+
+  using Eigen::VectorBlock;
+  typedef VectorBlock<ColumnVector,3>       VectorBlock3;
+  typedef VectorBlock<ColumnVector,4>       VectorBlock4;
+  typedef VectorBlock<const ColumnVector,3> ConstVectorBlock3;
+  typedef VectorBlock<const ColumnVector,4> ConstVectorBlock4;
+
+  using Eigen::Block;
+  typedef Eigen::Block<Matrix,Dynamic,Dynamic> MatrixBlock;
 
 } // namespace hector_pose_estimation
 

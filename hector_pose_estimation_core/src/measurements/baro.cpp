@@ -79,6 +79,7 @@ void Baro::onReset()
 
 bool Baro::prepareUpdate(State &state, const Update &update) {
   if (update.qnh() != 0) setQnh(update.qnh());
+  // Note: boost::bind is not real-time safe!
   setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
   return true;
 }
