@@ -66,6 +66,8 @@ public:
     Predictor(Filter *filter) : filter_(filter) {}
     virtual ~Predictor() {}
 
+    virtual void reset() { init_ = true; }
+
     Filter *base() { return filter_; }
     const Filter *base() const { return filter_; }
 
@@ -74,6 +76,7 @@ public:
 
   protected:
     Filter *filter_;
+    bool init_;
   };
 
   template <class ConcreteModel> struct Predictor_  : public Predictor {
@@ -81,14 +84,12 @@ public:
     virtual ~Predictor_() {}
 
     virtual bool predict(const Inputs& inputs, double dt) = 0;
-    virtual void reset() { init_ = true; }
 
     template <typename Derived> typename Derived::template Predictor_<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Predictor_<ConcreteModel> *>(this); }
     template <typename Derived> const typename Derived::template Predictor_<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Predictor_<ConcreteModel> *>(this); }
 
   protected:
     ConcreteModel *model_;
-    bool init_;
   };
 
   class Corrector
@@ -97,6 +98,8 @@ public:
     Corrector(Filter *filter) : filter_(filter) {}
     virtual ~Corrector() {}
 
+    virtual void reset() { init_ = true; }
+
     Filter *base() { return filter_; }
     const Filter *base() const { return filter_; }
 
@@ -105,6 +108,7 @@ public:
 
   protected:
     Filter *filter_;
+    bool init_;
   };
 
   template <class ConcreteModel> struct Corrector_ : public Corrector {
@@ -112,7 +116,6 @@ public:
     virtual ~Corrector_() {}
 
     virtual bool correct(const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R) = 0;
-    virtual void reset() { init_ = true; }
 
     virtual typename ConcreteModel::MeasurementVector getResidual() const { return typename ConcreteModel::MeasurementVector(); }
 
@@ -121,7 +124,6 @@ public:
 
   protected:
     ConcreteModel *model_;
-    bool init_;
   };
 
   template <typename Derived> Derived *derived() { return dynamic_cast<Derived *>(this); }

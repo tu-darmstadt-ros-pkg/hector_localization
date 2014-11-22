@@ -71,16 +71,16 @@ bool EKF::predict(const SystemPtr& system, const Inputs& inputs, double dt)
 }
 
 bool EKF::doPredict(const Inputs& inputs, double dt) {
-  ROS_DEBUG_NAMED("ekf", "EKF prediction (dt = %f):", dt);
+  ROS_DEBUG_NAMED("ekf.prediction", "EKF prediction (dt = %f):", dt);
 
-  ROS_DEBUG_STREAM_NAMED("ekf", "A      = [" << std::endl << A << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "Q      = [" << std::endl << Q << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "A      = [" << std::endl << A << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "Q      = [" << std::endl << Q << "]");
 
   state().P() = A * state().P() * A.transpose() + Q;
   state().update(x_diff);
 
-  ROS_DEBUG_STREAM_NAMED("ekf", "x_pred = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "P_pred = [" << std::endl << state().getCovariance() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "x_pred = [" << state().getVector().transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "P_pred = [" << std::endl << state().getCovariance() << "]");
 
   Filter::doPredict(inputs, dt);
   return true;

@@ -71,7 +71,7 @@ TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension
 template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getExpectedDiff(StateVector& x_diff, const State& state, const Inputs& inputs, double dt) {
   if (!internal_) internal_ = new internal(state);
-  internal_->x_diff = ColumnVector::Zero(x_diff.rows());
+  //internal_->x_diff = ColumnVector::Zero(x_diff.rows());
   getDerivative(internal_->x_diff, state, inputs);
   x_diff = dt * internal_->x_diff;
 }
@@ -79,7 +79,7 @@ void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDime
 template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs, double dt, bool init) {
   if (!internal_) internal_ = new internal(state);
-  if (init) internal_->A = SystemMatrix::Zero(A.rows(), A.cols());
+  //if (init) internal_->A = SystemMatrix::Zero(A.rows(), A.cols());
   getStateJacobian(internal_->A, state, inputs, init);
   A = dt * internal_->A;
 }
@@ -87,7 +87,7 @@ void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDime
 template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs, double dt, bool init) {
   if (!internal_) internal_ = new internal(state);
-  if (init) internal_->B = InputMatrix::Zero(B.rows(), B.cols());
+  //if (init) internal_->B = InputMatrix::Zero(B.rows(), B.cols());
   getInputJacobian(internal_->B, state, inputs, init);
   B = dt * internal_->B;
 }
@@ -95,10 +95,10 @@ void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDime
 template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
 void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, double dt, bool init) {
   if (!internal_) internal_ = new internal(state);
-  if (init) internal_->Q = NoiseVariance::Zero(Q.rows(), Q.cols());
+  //if (init) internal_->Q = NoiseVariance::Zero(Q.rows(), Q.cols());
   getSystemNoise(internal_->Q, state, inputs, init);
   // Q = dt * internal_->Q;
-  Q = internal_->Q;
+  Q = internal_->Q; // use SymmetricMatrix assignment operator
   Q *= dt;
 }
 

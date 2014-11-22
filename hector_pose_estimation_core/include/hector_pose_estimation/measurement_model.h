@@ -97,9 +97,9 @@ public:
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state) {}
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init) {}
-  virtual void getInputJacobian(InputMatrix& D, const State& state, bool init) {}
-  virtual void getMeasurementNoise(NoiseVariance& R, const State& state, bool init) {}
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init) { if (init) C.setZero(); }
+  virtual void getInputJacobian(InputMatrix& D, const State& state, bool init) { if (init) D.setZero(); }
+  virtual void getMeasurementNoise(NoiseVariance& R, const State& state, bool init) { if (init) R.setZero(); }
 
   virtual void limitError(MeasurementVector& error) {}
 

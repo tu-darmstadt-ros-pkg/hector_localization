@@ -110,6 +110,11 @@ public:
 
   virtual ~System_() {}
 
+  virtual void reset(State& state) {
+    System::reset(state);
+    if (predictor()) predictor()->reset();
+  }
+
   virtual Model *getModel() const { return model_.get(); }
 
   virtual Filter *filter() const { return predictor_ ? predictor_->base() : 0; }

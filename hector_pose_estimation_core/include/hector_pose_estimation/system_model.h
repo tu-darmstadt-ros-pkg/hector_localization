@@ -132,10 +132,10 @@ public:
 
   // time discrete models should overwrite the following virtual methods, as required:
 protected:
-  virtual void getExpectedDiff(StateVector& x_diff, double dt) {}
-  virtual void getStateJacobian(SystemMatrix& A, double dt) {}
-  virtual void getInputJacobian(InputMatrix& B, double dt) {}
-  virtual void getSystemNoise(NoiseVariance& Q, double dt) {}
+  virtual void getExpectedDiff(StateVector& x_diff, double dt) { x_diff.setZero(); }
+  virtual void getStateJacobian(SystemMatrix& A, double dt) { A.setZero(); }
+  virtual void getInputJacobian(InputMatrix& B, double dt) { B.setZero(); }
+  virtual void getSystemNoise(NoiseVariance& Q, double dt) { Q.setZero(); }
   virtual void getExpectedDiff(StateVector& x_diff, const State& state, double dt) { getExpectedDiff(x_diff, dt); }
   virtual void getStateJacobian(SystemMatrix& A, const State& state, double dt)    { getStateJacobian(A, dt); }
   virtual void getInputJacobian(InputMatrix& B, const State& state, double dt)     { getInputJacobian(B, dt); }
@@ -172,10 +172,10 @@ public:
 
   // time continuous models should overwrite the following virtual methods, as required:
 protected:
-  virtual void getDerivative(StateVector& x_dot) {}
-  virtual void getStateJacobian(SystemMatrix& A) {}
-  virtual void getInputJacobian(InputMatrix& B) {}
-  virtual void getSystemNoise(NoiseVariance& Q) {}
+  virtual void getDerivative(StateVector& x_dot) { x_dot.setZero(); }
+  virtual void getStateJacobian(SystemMatrix& A) { A.setZero(); }
+  virtual void getInputJacobian(InputMatrix& B) { B.setZero(); }
+  virtual void getSystemNoise(NoiseVariance& Q) { Q.setZero(); }
   virtual void getDerivative(StateVector& x_dot, const State& state) { getDerivative(x_dot); }
   virtual void getStateJacobian(SystemMatrix& A, const State& state) { getStateJacobian(A); }
   virtual void getInputJacobian(InputMatrix& B, const State& state)  { getInputJacobian(B); }

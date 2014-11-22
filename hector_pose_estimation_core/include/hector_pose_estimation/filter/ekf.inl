@@ -43,9 +43,9 @@ bool EKF::Predictor_<ConcreteModel, Enabled>::predict(const Inputs& inputs, doub
   this->model_->getStateJacobian(A, state(), inputs, dt, this->init_);
   this->model_->getSystemNoise(Q, state(), inputs, dt, this->init_);
 
-  ROS_DEBUG_STREAM_NAMED("ekf", "dt * f(x)      = [" << x_diff.transpose() << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "dt * Q         = [" << std::endl << Q  << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "A = dt * df/dx = [" << std::endl << A << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "dt * f(x) = [" << x_diff.transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "dt * Q    = [" << std::endl << Q  << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "dt * A    = [" << std::endl << A << "]");
 
 //  state().P0() = A * state().P() * A.transpose() + Q;
 //  state().x0() = x_pred;
@@ -59,13 +59,13 @@ bool EKF::Corrector_<ConcreteModel, Enabled>::correct(const typename ConcreteMod
   this->model_->getExpectedValue(y_pred, state());
   this->model_->getStateJacobian(C, state(), this->init_);
 
-  ROS_DEBUG_STREAM_NAMED("ekf", "x_prior   = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "P_prior   = [" << std::endl << state().getCovariance() << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "y         = [" << y.transpose() << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "R         = [" << std::endl << R << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "x_prior  = [" << state().getVector().transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "P_prior  = [" << std::endl << state().getCovariance() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "y        = [" << y.transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "R        = [" << std::endl << R << "]");
 
-  ROS_DEBUG_STREAM_NAMED("ekf", "h(x)      = [" << y_pred.transpose() << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "C = dh/dx = [" << std::endl << C << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "h(x)     = [" << y_pred.transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "C        = [" << std::endl << C << "]");
 
   // S = state().P0().quadratic(C) + R;
   S.noalias()  = C * state().P() * C.transpose() + R;
@@ -79,12 +79,12 @@ bool EKF::Corrector_<ConcreteModel, Enabled>::correct(const typename ConcreteMod
 
   state().update(update);
 
-  ROS_DEBUG_STREAM_NAMED("ekf", "S             = [" << std::endl << S << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "K             = [" << std::endl << K << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "error         = [" << error.transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "S        = [" << std::endl << S << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "K        = [" << std::endl << K << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "error    = [" << error.transpose() << "]");
 
-  ROS_DEBUG_STREAM_NAMED("ekf", "x_post    = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM_NAMED("ekf", "P_post    = [" << std::endl << state().getCovariance() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "x_post   = [" << state().getVector().transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.correction", "P_post   = [" << std::endl << state().getCovariance() << "]");
 
   this->init_ = false;
   return true;
