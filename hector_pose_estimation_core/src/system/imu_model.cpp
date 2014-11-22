@@ -55,25 +55,41 @@ bool GyroModel::init(PoseEstimation& estimator, System &system, State& state)
 void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &, bool init)
 {
   if (!init) return;
-  bias_->block(Q)(BIAS_GYRO_X,BIAS_GYRO_X) = bias_->block(Q)(BIAS_GYRO_Y,BIAS_GYRO_Y) = pow(rate_drift_, 2);
-  bias_->block(Q)(BIAS_GYRO_Z,BIAS_GYRO_Z) = pow(rate_drift_, 2);
+  bias_->block(Q)(X,X) = bias_->block(Q)(Y,Y) = pow(rate_drift_, 2);
+  bias_->block(Q)(Z,Z) = pow(rate_drift_, 2);
 }
 
-void GyroModel::getDerivative(StateVector &x_dot, const State &state)
+ColumnVector3 GyroModel::getRate(const ImuInput::RateType& imu_rate, const State& state) const
 {
-  x_dot.setZero();
-  if (state.orientation() && !state.rate()) {
-    state.orientation()->segment(x_dot).head(3) = state.R() * bias_->vector();
-  }
+  return imu_rate + bias_->getVector();
 }
 
-void GyroModel::getStateJacobian(SystemMatrix& A, const State& state)
+void GyroModel::getRateJacobian(SystemMatrixBlock& C, const State& state)
 {
-  A.setZero();
-  if (state.orientation() && !state.rate()) {
-    state.orientation()->block(A, *bias_) = state.R();
-  }
+  bias_->cols(C).setIdentity();
 }
+
+void GyroModel::getRateNoise(CovarianceBlock Q, const State &, const Inputs &, bool init)
+{
+  if (!init) return;
+  Q(X,X) = Q(Y,Y) = Q(Z,Z) = pow(rate_stddev_, 2);
+}
+
+//void GyroModel::getDerivative(StateVector &x_dot, const State &state)
+//{
+//  x_dot.setZero();
+//  if (state.orientation() && !state.rate()) {
+//    state.orientation()->segment(x_dot).head(3) = state.R() * bias_->vector();
+//  }
+//}
+
+//void GyroModel::getStateJacobian(SystemMatrix& A, const State& state)
+//{
+//  A.setZero();
+//  if (state.orientation() && !state.rate()) {
+//    state.orientation()->block(A, *bias_) = state.R();
+//  }
+//}
 
 AccelerometerModel::AccelerometerModel()
 {
@@ -95,61 +111,70 @@ bool AccelerometerModel::init(PoseEstimation& estimator, System &system, State& 
 void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State&, const Inputs &, bool init)
 {
   if (!init) return;
-  bias_->block(Q)(BIAS_ACCEL_X,BIAS_ACCEL_X) = bias_->block(Q)(BIAS_ACCEL_Y,BIAS_ACCEL_Y) = pow(acceleration_drift_, 2);
-  bias_->block(Q)(BIAS_ACCEL_Z,BIAS_ACCEL_Z) = pow(acceleration_drift_, 2);
+  bias_->block(Q)(X,X) = bias_->block(Q)(Y,Y) = pow(acceleration_drift_, 2);
+  bias_->block(Q)(Z,Z) = pow(acceleration_drift_, 2);
 }
 
-bool AccelerometerModel::prepareUpdate(State &state, double dt)
+ColumnVector3 AccelerometerModel::getAcceleration(const ImuInput::AccelerationType& imu_acceleration, const State& state) const
 {
-    bias_nav_ = state.R() * bias_->vector();
-    ROS_DEBUG_STREAM("bias_a_nav = [" << bias_nav_.transpose() << "]");
-    return true;
+  return imu_acceleration + bias_->getVector();
 }
 
-void AccelerometerModel::getDerivative(StateVector &x_dot, const State &state)
+void AccelerometerModel::getAccelerationJacobian(SystemMatrixBlock& C, const State&)
 {
-  x_dot.setZero();
-  if (state.velocity() && !state.acceleration()) {
-    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
-      state.velocity()->segment(x_dot)(X) = bias_nav_.x();
-      state.velocity()->segment(x_dot)(Y) = bias_nav_.y();
-    }
-    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
-      state.velocity()->segment(x_dot)(Z) = bias_nav_.z();
-    }
-  }
+  bias_->cols(C).setIdentity();
 }
 
-void AccelerometerModel::getStateJacobian(SystemMatrix& A, const State& state)
+void AccelerometerModel::getAccelerationNoise(CovarianceBlock Q, const State &, const Inputs &, bool init)
 {
-  A.setZero();
-  if (state.velocity() && !state.acceleration()) {
-    const State::RotationMatrix &R = state.R();
-
-    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
-      state.velocity()->block(A, *bias_).row(X) = R.row(X);
-      state.velocity()->block(A, *bias_).row(Y) = R.row(Y);
-    }
-    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
-      state.velocity()->block(A, *bias_).row(Z) = R.row(Z);
-    }
-
-    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
-      state.velocity()->block(A, *state.orientation())(X,X) = 0.0;
-      state.velocity()->block(A, *state.orientation())(X,Y) =  bias_nav_.z();
-      state.velocity()->block(A, *state.orientation())(X,Z) = -bias_nav_.y();
-
-      state.velocity()->block(A, *state.orientation())(Y,X) = -bias_nav_.z();
-      state.velocity()->block(A, *state.orientation())(Y,Y) = 0.0;
-      state.velocity()->block(A, *state.orientation())(Y,Z) =  bias_nav_.x();
-    }
-
-    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
-      state.velocity()->block(A, *state.orientation())(Z,X) =  bias_nav_.y();
-      state.velocity()->block(A, *state.orientation())(Z,Y) = -bias_nav_.x();
-      state.velocity()->block(A, *state.orientation())(Z,Z) = 0.0;
-    }
-  }
+  if (!init) return;
+  Q(X,X) = Q(Y,Y) = Q(Z,Z) = pow(acceleration_stddev_, 2);
 }
+
+//void AccelerometerModel::getDerivative(StateVector &x_dot, const State &state)
+//{
+//  x_dot.setZero();
+//  if (state.velocity() && !state.acceleration()) {
+//    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
+//      state.velocity()->segment(x_dot)(X) = bias_nav_.x();
+//      state.velocity()->segment(x_dot)(Y) = bias_nav_.y();
+//    }
+//    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
+//      state.velocity()->segment(x_dot)(Z) = bias_nav_.z();
+//    }
+//  }
+//}
+
+//void AccelerometerModel::getStateJacobian(SystemMatrixBlock& A, const State& state)
+//{
+//  A.setZero();
+//  if (state.velocity() && !state.acceleration()) {
+//    const State::RotationMatrix &R = state.R();
+
+//    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
+//      state.velocity()->block(A, *bias_).row(X) = R.row(X);
+//      state.velocity()->block(A, *bias_).row(Y) = R.row(Y);
+//    }
+//    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
+//      state.velocity()->block(A, *bias_).row(Z) = R.row(Z);
+//    }
+
+//    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
+//      state.velocity()->block(A, *state.orientation())(X,X) = 0.0;
+//      state.velocity()->block(A, *state.orientation())(X,Y) =  bias_nav_.z();
+//      state.velocity()->block(A, *state.orientation())(X,Z) = -bias_nav_.y();
+
+//      state.velocity()->block(A, *state.orientation())(Y,X) = -bias_nav_.z();
+//      state.velocity()->block(A, *state.orientation())(Y,Y) = 0.0;
+//      state.velocity()->block(A, *state.orientation())(Y,Z) =  bias_nav_.x();
+//    }
+
+//    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
+//      state.velocity()->block(A, *state.orientation())(Z,X) =  bias_nav_.y();
+//      state.velocity()->block(A, *state.orientation())(Z,Y) = -bias_nav_.x();
+//      state.velocity()->block(A, *state.orientation())(Z,Z) = 0.0;
+//    }
+//  }
+//}
 
 } // namespace hector_pose_estimation

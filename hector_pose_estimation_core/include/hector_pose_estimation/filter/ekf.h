@@ -37,6 +37,8 @@ namespace filter {
 class EKF : public Filter
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   EKF();
   virtual ~EKF();
 
@@ -50,6 +52,8 @@ public:
   class Predictor
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     Predictor(EKF *filter)
       : filter_(filter)
       , x_diff(filter->state().getVectorDimension())
@@ -99,6 +103,8 @@ public:
   class Corrector_ : public Filter::template Corrector_<ConcreteModel>, public Corrector
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     typedef ConcreteModel Model;
     typedef typename Filter::template Corrector_<ConcreteModel> Base;
     using Filter::template Corrector_<ConcreteModel>::state;

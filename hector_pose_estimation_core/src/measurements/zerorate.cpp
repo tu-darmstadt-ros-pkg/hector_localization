@@ -83,7 +83,7 @@ void ZeroRateModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
   if (state.rate()) {
     state.rate()->cols(C)(0,Z) = 1.0;
   } else if (bias_) {
-    bias_->cols(C)(0, GyroModel::BIAS_GYRO_Z) = 1.0;
+    bias_->cols(C)(0,Z) = 1.0;
   }
 }
 

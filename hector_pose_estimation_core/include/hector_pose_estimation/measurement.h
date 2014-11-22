@@ -69,7 +69,7 @@ public:
 
   bool enabled() const { return enabled_; }
   void enable() { enabled_ = true; }
-  void disable() { enabled_ = false; }
+  void disable() { enabled_ = false; status_flags_ = 0; }
 
   virtual bool active(const State& state);
   virtual SystemStatus getStatusFlags() const { return status_flags_; }

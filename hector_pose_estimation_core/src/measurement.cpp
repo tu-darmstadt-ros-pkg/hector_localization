@@ -35,7 +35,7 @@ Measurement::Measurement(const std::string& name)
   , status_flags_(0)
   , enabled_(true)
   , min_interval_(0.0)
-  , timeout_(1.0)
+  , timeout_(0.0)
   , timer_(0.0)
 {
   parameters().add("enabled", enabled_);

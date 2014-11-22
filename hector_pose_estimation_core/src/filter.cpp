@@ -59,7 +59,6 @@ bool Filter::preparePredict(const Inputs&, double)
 }
 
 bool Filter::predict(const Systems& systems, const Inputs& inputs, double dt) {
-  SystemStatus system_status = 0;
   bool result = true;
 
   if (!preparePredict(inputs, dt)) return false;
@@ -68,13 +67,11 @@ bool Filter::predict(const Systems& systems, const Inputs& inputs, double dt) {
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
     result &= predict(system, inputs, dt);
-    system_status |= system->getStatusFlags();
   }
 
   // Call the filter's global predict method. This will actually calculate the updated state vector and variance.
   result &= doPredict(inputs, dt);
 
-  state_.updateSystemStatus(system_status, STATE_MASK | STATE_PSEUDO_MASK);
   return result;
 }
 
@@ -94,7 +91,6 @@ bool Filter::prepareCorrect()
 }
 
 bool Filter::correct(const Measurements& measurements) {
-  SystemStatus measurement_status = 0;
   bool result = true;
 
   if (!prepareCorrect()) return false;
@@ -103,13 +99,11 @@ bool Filter::correct(const Measurements& measurements) {
   for(Measurements::iterator it = measurements.begin(); it != measurements.end(); it++) {
     const MeasurementPtr& measurement = *it;
     result &= correct(measurement);
-    measurement_status |= measurement->getStatusFlags();
   }
 
   // Call the filter's global correct method. No-op for EKF.
   result &= doCorrect();
 
-  state_.setMeasurementStatus(measurement_status);
   return result;
 }
 

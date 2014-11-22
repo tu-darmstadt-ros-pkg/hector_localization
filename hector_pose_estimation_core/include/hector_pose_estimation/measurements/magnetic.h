@@ -36,6 +36,8 @@ namespace hector_pose_estimation {
 
 class MagneticModel : public MeasurementModel_<MagneticModel,3> {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   MagneticModel();
   virtual ~MagneticModel();
 
@@ -67,6 +69,8 @@ extern template class Measurement_<MagneticModel>;
 class Magnetic : public Measurement_<MagneticModel>
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using Measurement_<MagneticModel>::Model;
   using Measurement_<MagneticModel>::Update;
 

@@ -44,42 +44,16 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/NavSatFix.h>
 
+// Use system model with angular rates.
+#define USE_RATE_SYSTEM_MODEL
+
 namespace hector_pose_estimation {
 
 class State {
 public:
-//  enum StateIndex {
-//    QUATERNION_X = 0,
-//    QUATERNION_Y,
-//    QUATERNION_Z,
-//    QUATERNION_W,
-
-//#ifdef USE_RATE_SYSTEM_MODEL
-//    RATE_X, // body frame
-//    RATE_Y, // body frame
-//    RATE_Z, // body frame
-//#endif // USE_RATE_SYSTEM_MODEL
-//    POSITION_X,
-//    POSITION_Y,
-//    POSITION_Z,
-//    VELOCITY_X,
-//    VELOCITY_Y,
-//    VELOCITY_Z,
-//    VectorDimension,
-//    CovarianceDimension = VectorDimension - 1,
-
-//#ifndef USE_RATE_SYSTEM_MODEL
-//    RATE_X = -1,
-//    RATE_Y = -1,
-//    RATE_Z = -1,
-//#endif // USE_RATE_SYSTEM_MODEL
-//    ACCELERATION_X = -1,
-//    ACCELERATION_Y = -1,
-//    ACCELERATION_Z = -1
-//  };
-
   typedef ColumnVector Vector;
   typedef SymmetricMatrix Covariance;
+
   typedef VectorBlock<Vector> VectorSegment;
   typedef Block<Covariance::Base> CovarianceBlock;
   typedef VectorBlock<const Vector> ConstVectorSegment;
@@ -110,8 +84,6 @@ public:
   State(const Vector &vector, const Covariance& covariance);
   virtual ~State();
 
-//  static IndexType getVectorDimension0() { return VectorDimension; }
-//  static IndexType getCovarianceDimension0() { return CovarianceDimension; }
   virtual IndexType getVectorDimension() const { return vector_.rows(); }
   virtual IndexType getCovarianceDimension() const { return covariance_.rows(); }
 
@@ -121,8 +93,8 @@ public:
 
   virtual bool valid() const;
 
-//  virtual BaseState& base() { return *base_; }
-//  virtual const BaseState& base() const { return *base_; }
+  virtual BaseState& base() { return *base_; }
+  virtual const BaseState& base() const { return *base_; }
 
   virtual const Vector& getVector() const { return vector_; }
   virtual const Covariance& getCovariance() const { return covariance_; }
@@ -195,7 +167,7 @@ private:
   std::map<const Model *, SubStateWPtr> substates_by_model_;
   std::map<std::string, SubStateWPtr> substates_by_name_;
 
-//  boost::shared_ptr<BaseState> base_;
+  boost::shared_ptr<BaseState> base_;
   boost::shared_ptr<OrientationStateType> orientation_;
   boost::shared_ptr<RateStateType> rate_;
   boost::shared_ptr<PositionStateType> position_;
@@ -243,7 +215,6 @@ template <typename Derived>
 void State::setAcceleration(const Eigen::MatrixBase<Derived>& acceleration) {
   eigen_assert(acceleration.rows() == 3 && acceleration.cols() == 1);
   fake_acceleration_ = acceleration;
-  ROS_DEBUG_STREAM("Acceleration: [" << fake_acceleration_.transpose() << "]");
 }
 
 } // namespace hector_pose_estimation

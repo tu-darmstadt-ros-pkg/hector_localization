@@ -68,24 +68,14 @@ public:
   template <typename ConcreteSystemModel> const SystemPtr& addSystem(ConcreteSystemModel *model, const std::string& name = "system");
 //  SystemPtr getSystem(std::size_t index = 0) const { return systems_.get(index); }
   SystemPtr getSystem(const std::string& name) const { return systems_.get(name); }
-
-//  const SystemModel *getSystemModel(std::size_t index) const {
-//    SystemPtr system = systems_.get(index);
-//    if (!system) return 0;
-//    return system->getModel();
-//  }
-
-  const SystemModel *getSystemModel(const std::string& name) const {
-    SystemPtr system = systems_.get(name);
-    if (!system) return 0;
-    return system->getModel();
-  }
+  template <typename SystemType> boost::shared_ptr<SystemType> getSystem_(const std::string& name) const;
 
   const MeasurementPtr& addMeasurement(const MeasurementPtr& measurement, const std::string& name = std::string());
   const MeasurementPtr& addMeasurement(Measurement *measurement) { return addMeasurement(MeasurementPtr(measurement)); }
   template <class ConcreteMeasurementModel> const MeasurementPtr& addMeasurement(ConcreteMeasurementModel *model, const std::string& name);
 //  MeasurementPtr getMeasurement(std::size_t index) const { return measurements_.get(index); }
   MeasurementPtr getMeasurement(const std::string &name) const { return measurements_.get(name); }
+  template <typename MeasurementType> boost::shared_ptr<MeasurementType> getMeasurement_(const std::string& name) const;
 
   template <class InputType> boost::shared_ptr<InputType> getInputType(const std::string& name) const { return inputs_.getType<InputType>(name); }
 
@@ -195,9 +185,21 @@ const SystemPtr& PoseEstimation::addSystem(ConcreteSystemModel *model, const std
   return addSystem(System::create(model, name));
 }
 
+template <typename SystemType>
+boost::shared_ptr<SystemType> PoseEstimation::getSystem_(const std::string& name) const
+{
+  return boost::static_pointer_cast<SystemType>(getSystem(name));
+}
+
 template <class ConcreteMeasurementModel>
 const MeasurementPtr& PoseEstimation::addMeasurement(ConcreteMeasurementModel *model, const std::string& name) {
   return addMeasurement(Measurement::create(model, name));
+}
+
+template <typename MeasurementType>
+boost::shared_ptr<MeasurementType> PoseEstimation::getMeasurement_(const std::string& name) const
+{
+  return boost::static_pointer_cast<MeasurementType>(getMeasurement(name));
 }
 
 template <class InputType>

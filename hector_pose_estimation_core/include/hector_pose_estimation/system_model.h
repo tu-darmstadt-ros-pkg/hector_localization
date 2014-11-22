@@ -59,8 +59,11 @@ public:
 
 namespace traits {
 
-  template <class Derived>
+  template <class Derived, int _VectorDimension = Derived::VectorDimension, int _CovarianceDimension = _VectorDimension>
   struct SystemModel {
+    enum { VectorDimension = _VectorDimension };
+    enum { CovarianceDimension = _CovarianceDimension };
+
     typedef State::Vector StateVector;
     typedef SymmetricMatrix NoiseVariance;
     typedef Matrix SystemMatrix;
@@ -69,10 +72,26 @@ namespace traits {
     typedef typename traits::Input<Derived>::Type   InputType;
     typedef typename traits::Input<Derived>::Vector InputVector;
     typedef Matrix_<State::Covariance::RowsAtCompileTime,InputDimension> InputMatrix;
+
+    typedef SubState_<VectorDimension,CovarianceDimension> SubState;
+    typedef ColumnVector_<VectorDimension> Vector;
+
+    typedef typename SubState::VectorSegment VectorSegment;
+    typedef typename SubState::CovarianceBlock CovarianceBlock;
+    typedef typename SubState::CrossVarianceBlock CrossVarianceBlock;
+    typedef Block<SystemMatrix,VectorDimension,SystemMatrix::ColsAtCompileTime> SystemMatrixBlock;
+
+    typedef typename SubState::ConstVectorSegment ConstVectorSegment;
+    typedef typename SubState::ConstCovarianceBlock ConstCovarianceBlock;
+    typedef typename SubState::ConstCrossVarianceBlock ConstCrossVarianceBlock;
+    typedef Block<const SystemMatrix,VectorDimension,SystemMatrix::ColsAtCompileTime> ConstSystemMatrixBlock;
   };
 
-  #define SYSTEM_MODEL_TRAIT(Derived) \
-    typedef traits::SystemModel<Derived> trait; \
+  #define SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension) \
+    typedef traits::SystemModel<Derived, _VectorDimension, _CovarianceDimension> trait; \
+    \
+    enum { VectorDimension = trait::VectorDimension }; \
+    enum { CovarianceDimension = trait::CovarianceDimension }; \
     \
     typedef typename trait::StateVector   StateVector; \
     typedef typename trait::NoiseVariance NoiseVariance; \
@@ -82,14 +101,26 @@ namespace traits {
     typedef typename trait::InputType     InputType; \
     typedef typename trait::InputVector   InputVector; \
     typedef typename trait::InputMatrix   InputMatrix; \
+    \
+    typedef typename trait::SubState SubState; \
+    typedef typename trait::Vector Vector; \
+    \
+    typedef typename trait::VectorSegment VectorSegment; \
+    typedef typename trait::CovarianceBlock CovarianceBlock; \
+    typedef typename trait::CrossVarianceBlock CrossVarianceBlock; \
+    typedef typename trait::SystemMatrixBlock SystemMatrixBlock; \
+    \
+    typedef typename trait::ConstVectorSegment ConstVectorSegment; \
+    typedef typename trait::ConstCovarianceBlock ConstCovarianceBlock; \
+    typedef typename trait::ConstCrossVarianceBlock ConstCrossVarianceBlock; \
+    typedef typename trait::ConstSystemMatrixBlock ConstSystemMatrixBlock; \
 
 } // namespace traits
 
-template <class Derived>
+template <class Derived, int _VectorDimension = Dynamic, int _CovarianceDimension = _VectorDimension>
 class SystemModel_ : public SystemModel {
 public:
-  SYSTEM_MODEL_TRAIT(Derived)
-
+  SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension)
   virtual ~SystemModel_() {}
 
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_DISCRETE; }
@@ -122,10 +153,10 @@ public:
   virtual void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, double dt, bool init)  { getSystemNoise(Q, state, inputs, dt); }
 };
 
-template <class Derived>
-class TimeContinuousSystemModel_ : public SystemModel_<Derived> {
+template <class Derived, int _VectorDimension = Dynamic, int _CovarianceDimension = _VectorDimension>
+class TimeContinuousSystemModel_ : public SystemModel_<Derived, _VectorDimension, _CovarianceDimension> {
 public:
-  SYSTEM_MODEL_TRAIT(Derived)
+  SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension)
 
   TimeContinuousSystemModel_();
   virtual ~TimeContinuousSystemModel_();

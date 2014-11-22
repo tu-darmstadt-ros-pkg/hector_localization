@@ -33,15 +33,15 @@
 
 namespace hector_pose_estimation {
 
-template <class ConcreteModel>
-void SystemModel_<ConcreteModel>::getPrior(State &state)
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+void SystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getPrior(State &state)
 {
   const double dt = 10.0;
   getSystemNoise(state.P(), state, Inputs(), dt);
 }
 
-template <class ConcreteModel>
-struct TimeContinuousSystemModel_<ConcreteModel>::internal {
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+struct TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::internal {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   typename ConcreteModel::StateVector x_diff;
@@ -50,43 +50,45 @@ struct TimeContinuousSystemModel_<ConcreteModel>::internal {
   typename ConcreteModel::NoiseVariance Q;
 };
 
-template <class ConcreteModel>
-TimeContinuousSystemModel_<ConcreteModel>::TimeContinuousSystemModel_()
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::TimeContinuousSystemModel_()
   : internal_(new internal)
 {}
 
-template <class ConcreteModel>
-TimeContinuousSystemModel_<ConcreteModel>::~TimeContinuousSystemModel_()
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::~TimeContinuousSystemModel_()
 {
   delete internal_;
 }
 
-template <class ConcreteModel>
-void TimeContinuousSystemModel_<ConcreteModel>::getExpectedDiff(StateVector& x_diff, const State& state, const Inputs& inputs, double dt) {
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getExpectedDiff(StateVector& x_diff, const State& state, const Inputs& inputs, double dt) {
   internal_->x_diff = ColumnVector::Zero(x_diff.rows());
   getDerivative(internal_->x_diff, state, inputs);
   x_diff = dt * internal_->x_diff;
 }
 
-template <class ConcreteModel>
-void TimeContinuousSystemModel_<ConcreteModel>::getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs, double dt, bool init) {
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs, double dt, bool init) {
   if (init) internal_->A = Matrix::Zero(A.rows(), A.cols());
   getStateJacobian(internal_->A, state, inputs, init);
   A = dt * internal_->A;
 }
 
-template <class ConcreteModel>
-void TimeContinuousSystemModel_<ConcreteModel>::getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs, double dt, bool init) {
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs, double dt, bool init) {
   if (init) internal_->B = Matrix::Zero(B.rows(), B.cols());
   getInputJacobian(internal_->B, state, inputs, init);
   B = dt * internal_->B;
 }
 
-template <class ConcreteModel>
-void TimeContinuousSystemModel_<ConcreteModel>::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, double dt, bool init) {
+template <class ConcreteModel, int _VectorDimension, int _CovarianceDimension>
+void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDimension>::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, double dt, bool init) {
   if (init) internal_->Q = Matrix::Zero(Q.rows(), Q.cols());
   getSystemNoise(internal_->Q, state, inputs, init);
-  Q = dt * internal_->Q;
+  // Q = dt * internal_->Q;
+  Q = internal_->Q;
+  Q *= dt;
 }
 
 } // namespace hector_pose_estimation

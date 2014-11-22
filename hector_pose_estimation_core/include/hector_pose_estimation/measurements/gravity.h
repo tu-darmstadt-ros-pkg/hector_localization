@@ -35,6 +35,8 @@ namespace hector_pose_estimation {
 
 class GravityModel : public MeasurementModel_<GravityModel,3> {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using MeasurementModel_<GravityModel,3>::MeasurementVector;
   using MeasurementModel_<GravityModel,3>::NoiseVariance;
 

@@ -29,17 +29,15 @@
 #include <hector_pose_estimation/state.h>
 #include <hector_pose_estimation/substate.h>
 
-// Use system model with angular rates.
-#define USE_RATE_SYSTEM_MODEL
-
 namespace hector_pose_estimation {
 
 State::State()
   : vector_()
   , covariance_()
-//  , base_(new SubState_<0,0>(*this))
 {
   construct();
+  base_.reset(new BaseState(*this, getVectorDimension(), getCovarianceDimension()));
+
   reset();
 }
 
@@ -49,6 +47,7 @@ State::State(const Vector &vector, const Covariance& covariance)
 //  , base_(new SubState_<0,0>(*this))
 {
   construct();
+  base_.reset(new BaseState(*this, getVectorDimension(), getCovarianceDimension()));
 
   // set initial state
   vector_ = vector;
@@ -104,7 +103,6 @@ bool State::valid() const {
 void State::updated()
 {
   normalize();
-  P().symmetric();
   R_valid_ = false;
 }
 
@@ -116,10 +114,11 @@ State::ConstAccelerationType State::getAcceleration() const { return (accelerati
 
 void State::getRotationMatrix(RotationMatrix &R) const
 {
-  ConstOrientationType q(getOrientation());
-  R << (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()), (2.0*q.x()*q.y()-2.0*q.w()*q.z()),                 (2.0*q.x()*q.z()+2.0*q.w()*q.y()),
-       (2.0*q.x()*q.y()+2.0*q.w()*q.z()),                 (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()), (2.0*q.y()*q.z()-2.0*q.w()*q.x()),
-       (2.0*q.x()*q.z()-2.0*q.w()*q.y()),                 (2.0*q.y()*q.z()+2.0*q.w()*q.x()),                 (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
+  Quaternion q(getOrientation());
+  R = q.toRotationMatrix();
+//  R << (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()), (2.0*q.x()*q.y()-2.0*q.w()*q.z()),                 (2.0*q.x()*q.z()+2.0*q.w()*q.y()),
+//       (2.0*q.x()*q.y()+2.0*q.w()*q.z()),                 (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()), (2.0*q.y()*q.z()-2.0*q.w()*q.x()),
+//       (2.0*q.x()*q.z()-2.0*q.w()*q.y()),                 (2.0*q.y()*q.z()+2.0*q.w()*q.x()),                 (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
 }
 
 const State::RotationMatrix &State::R() const {

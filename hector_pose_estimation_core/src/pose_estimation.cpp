@@ -184,12 +184,13 @@ void PoseEstimation::update(double dt)
   if (systems_.empty() || !filter_) return;
 
   // filter rate measurement first
-  boost::shared_ptr<ImuInput> imu = boost::dynamic_pointer_cast<ImuInput>(getInput("imu"));
+  boost::shared_ptr<ImuInput> imu = getInputType<ImuInput>("imu");
   if (imu) {
+    // Should the biases already be integrated here?
     state().setRate(imu->getRate());
     state().setAcceleration(imu->getAcceleration() + state().R().row(2).transpose() * gravity_);
 
-    if (rate_update_) {
+    if (state().rate() && rate_update_) {
       rate_update_->update(Rate::Update(imu->getRate()));
     }
   }
@@ -199,20 +200,20 @@ void PoseEstimation::update(double dt)
 
   // pseudo measurement updates (if required)
   if (imu && !(getSystemStatus() & STATE_ROLLPITCH)) {
+    gravity_update_->enable();
     gravity_update_->update(Gravity::Update(imu->getAcceleration()));
+  } else {
+    gravity_update_->disable();
   }
   if (!(getSystemStatus() & STATE_RATE_Z)) {
+    zerorate_update_->enable();
     zerorate_update_->update(ZeroRate::Update());
+  } else {
+    zerorate_update_->disable();
   }
 
   // measurement updates
   filter_->correct(measurements_);
-
-  // increase timeout timer for measurements
-  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); it++) {
-    const MeasurementPtr& measurement = *it;
-    measurement->increase_timer(dt);
-  }
 
   // check for invalid state
   if (!state().valid()) {
@@ -223,6 +224,23 @@ void PoseEstimation::update(double dt)
 
   // updated hook
   updated();
+
+  // set measurement status and increase timers
+  SystemStatus measurement_status = 0;
+  for(Measurements::iterator it = measurements_.begin(); it != measurements_.end(); it++) {
+    const MeasurementPtr& measurement = *it;
+    measurement_status |= measurement->getStatusFlags();
+    measurement->increase_timer(dt);
+  }
+  setMeasurementStatus(measurement_status);
+
+  // set system status
+  SystemStatus system_status = 0;
+  for(Systems::iterator it = systems_.begin(); it != systems_.end(); it++) {
+    const SystemPtr& system = *it;
+    system_status |= system->getStatusFlags();
+  }
+  updateSystemStatus(system_status, STATE_MASK | STATE_PSEUDO_MASK);
 
   // switch overall system status
   if (inSystemStatus(STATUS_ALIGNMENT)) {
@@ -509,9 +527,9 @@ void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleratio
   }
 
   if (accel) {
-    linear_acceleration.x += accel->getModel()->getBias().x();
-    linear_acceleration.y += accel->getModel()->getBias().y();
-    linear_acceleration.z += accel->getModel()->getBias().z();
+    linear_acceleration.x += accel->getModel()->getError().x();
+    linear_acceleration.y += accel->getModel()->getError().y();
+    linear_acceleration.z += accel->getModel()->getError().z();
   }
 
   getRate(angular_velocity);
@@ -574,9 +592,9 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
     }
 
     if (gyro) {
-      vector.x += gyro->getModel()->getBias().x();
-      vector.y += gyro->getModel()->getBias().y();
-      vector.z += gyro->getModel()->getBias().z();
+      vector.x += gyro->getModel()->getError().x();
+      vector.y += gyro->getModel()->getError().y();
+      vector.z += gyro->getModel()->getError().z();
     }
   }
 }
@@ -592,9 +610,9 @@ void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_
   boost::shared_ptr<const Gyro> gyro           = boost::dynamic_pointer_cast<const Gyro>(getSystem("gyro"));
 
   if (gyro) {
-    angular_velocity.x = gyro->getModel()->getBias().x();
-    angular_velocity.y = gyro->getModel()->getBias().y();
-    angular_velocity.z = gyro->getModel()->getBias().z();
+    angular_velocity.x = gyro->getModel()->getError().x();
+    angular_velocity.y = gyro->getModel()->getError().y();
+    angular_velocity.z = gyro->getModel()->getError().z();
   } else {
     angular_velocity.x = 0.0;
     angular_velocity.y = 0.0;
@@ -602,9 +620,9 @@ void PoseEstimation::getBias(geometry_msgs::Vector3& angular_velocity, geometry_
   }
 
   if (accel) {
-    linear_acceleration.x = accel->getModel()->getBias().x();
-    linear_acceleration.y = accel->getModel()->getBias().y();
-    linear_acceleration.z = accel->getModel()->getBias().z();
+    linear_acceleration.x = accel->getModel()->getError().x();
+    linear_acceleration.y = accel->getModel()->getError().y();
+    linear_acceleration.z = accel->getModel()->getError().z();
   } else {
     linear_acceleration.x = 0.0;
     linear_acceleration.y = 0.0;

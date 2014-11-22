@@ -69,6 +69,8 @@ extern template class Measurement_<GPSModel>;
 class GPS : public Measurement_<GPSModel>
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   GPS(const std::string& name = "gps");
   virtual ~GPS();
 

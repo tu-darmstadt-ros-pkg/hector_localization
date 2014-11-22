@@ -48,6 +48,8 @@ class GroundVehicleModel;
 class GroundVehicleModel : public GenericQuaternionSystemModel
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   GroundVehicleModel();
   virtual ~GroundVehicleModel();
 

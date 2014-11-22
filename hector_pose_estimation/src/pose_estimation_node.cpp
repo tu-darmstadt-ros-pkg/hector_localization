@@ -48,9 +48,6 @@ PoseEstimationNode::PoseEstimationNode(const SystemPtr& system)
   if (!system) pose_estimation_->addSystem(new GenericQuaternionSystemModel);
 
   pose_estimation_->addInput(new ImuInput, "imu");
-  pose_estimation_->addSystem(new AccelerometerModel, "accelerometer");
-  pose_estimation_->addSystem(new GyroModel, "gyro");
-
   pose_estimation_->addMeasurement(new PoseUpdate("poseupdate"));
 #if defined(USE_HECTOR_UAV_MSGS)
   pose_estimation_->addMeasurement(new Baro("baro"));

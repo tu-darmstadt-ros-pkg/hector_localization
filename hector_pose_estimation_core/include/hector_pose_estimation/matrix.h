@@ -143,20 +143,32 @@ namespace hector_pose_estimation {
     SymmetricMatrix_() {}
     //explicit SymmetricMatrix_(Scalar value) { this->setConstant(value); }
     explicit SymmetricMatrix_(Index dim) : Storage(dim, dim) { this->setZero(); }
-    template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) { symmetric(); }
+    template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) {
+#if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
+      symmetric();
+#endif
+    }
+    SymmetricMatrix_(const Derived& other) : Storage(other) {}
 
     template <typename OtherDerived> Derived& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
       this->Base::operator=(other);
-      return symmetric();
-    }
-
-    Derived& symmetric() {
 #if defined(ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
       eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
 #endif
 #if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
-      this->Base::operator=((*this + this->transpose()) / 2);
+      return symmetric();
+#else
+      return *this;
 #endif
+    }
+
+    template <typename OtherDerived> Derived& operator=(const Derived& other) {
+      this->Base::operator=(other);
+      return *this;
+    }
+
+    Derived& symmetric() {
+      this->Base::operator=((*this + this->transpose()) / 2);
       return *this;
     }
 
@@ -205,6 +217,17 @@ namespace hector_pose_estimation {
 
     void conservativeResize(Index size) {
       Base::conservativeResize(size, size);
+    }
+  };
+
+  class SkewSymmetricMatrix : public Matrix3 {
+  public:
+    template <typename OtherDerived> SkewSymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Matrix3()
+    {
+      EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Eigen::MatrixBase<OtherDerived>, 3);
+      *this <<  0.0,       -other.z(),  other.y(),
+                other.z(),  0.0,       -other.x(),
+               -other.y(),  other.x(),  0.0;
     }
   };
 

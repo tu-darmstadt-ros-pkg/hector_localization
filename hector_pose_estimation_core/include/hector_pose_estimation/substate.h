@@ -66,15 +66,16 @@ protected:
   const IndexType covariance_index_;
 };
 
-//template <> class SubState::initializer<0,0> {
-//public:
-//  enum { VectorDimension = Dynamic };
-//  enum { CovarianceDimension = Dynamic };
-//  initializer(State&) : index_(0), covariance_index_(0) {}
-//protected:
-//  const IndexType index_;
-//  const IndexType covariance_index_;
-//};
+template <> class SubState::initializer<Dynamic,Dynamic> {
+public:
+  enum { VectorDimension = Dynamic };
+  enum { CovarianceDimension = Dynamic };
+  initializer(State& state) : index_(0), covariance_index_(0)
+  {}
+protected:
+  const IndexType index_;
+  const IndexType covariance_index_;
+};
 
 template <int _VectorDimension, int _CovarianceDimension = _VectorDimension>
 class SubState_ : public SubState, public SubState::initializer<_VectorDimension, _CovarianceDimension>
@@ -101,8 +102,7 @@ public:
   SubState_(State& state)
     : SubState(state)
     , SubState::initializer<_VectorDimension, _CovarianceDimension>(state)
-  {
-  }
+  {}
   virtual ~SubState_() {}
 
   int getVectorDimension() const { return VectorDimension; }
@@ -126,11 +126,23 @@ public:
   template <typename MatrixType> Block<MatrixType,MatrixType::RowsAtCompileTime,CovarianceDimension> cols(MatrixType &matrix) { return Block<MatrixType,MatrixType::RowsAtCompileTime,CovarianceDimension>(matrix, 0, covariance_index_, matrix.rows(), getCovarianceDimension()); }
 };
 
-//// specialized variants of getVectorDimension() and getCovarianceDimension() for SubState_<0,0>
-//template <> int SubState_<0,0>::getVectorDimension() const { return state_.getVectorDimension(); }
-//template <> int SubState_<0,0>::getCovarianceDimension() const { return state_.getCovarianceDimension(); }
+class BaseState : public SubState_<Dynamic,Dynamic>
+{
+public:
+    BaseState(State& state, int vector_dimension, int covariance_dimension)
+      : SubState_<Dynamic,Dynamic>(state)
+      , dimension_(vector_dimension)
+      , covariance_dimension_(covariance_dimension)
+    {}
+    virtual ~BaseState() {}
 
-//extern template class SubState_<0,0>;
+    int getVectorDimension() const { return dimension_; }
+    int getCovarianceDimension() const { return covariance_dimension_; }
+
+private:
+    const IndexType dimension_;
+    const IndexType covariance_dimension_;
+};
 
 template <int _VectorDimension, int _CovarianceDimension>
 boost::shared_ptr<SubState_<_VectorDimension, _CovarianceDimension> > State::getSubState(const Model *model) const {

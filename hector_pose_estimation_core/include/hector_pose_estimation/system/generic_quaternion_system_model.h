@@ -33,7 +33,7 @@
 #include <hector_pose_estimation/system.h>
 
 #include <hector_pose_estimation/system/imu_input.h>
-//#include <hector_pose_estimation/system/imu_model.h>
+#include <hector_pose_estimation/system/imu_model.h>
 
 namespace hector_pose_estimation {
 
@@ -51,6 +51,8 @@ class GenericQuaternionSystemModel;
 class GenericQuaternionSystemModel : public TimeContinuousSystemModel_<GenericQuaternionSystemModel>
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   GenericQuaternionSystemModel();
   virtual ~GenericQuaternionSystemModel();
 
@@ -80,15 +82,16 @@ protected:
   double velocity_stddev_;
 
   boost::shared_ptr<ImuInput> imu_;
-//  boost::shared_ptr<Gyro> gyro_;
-//  boost::shared_ptr<Accelerometer> accelerometer_;
+  boost::shared_ptr<Gyro> gyro_;
+  boost::shared_ptr<Accelerometer> accelerometer_;
 
+  ColumnVector3 rate_nav_;
   ColumnVector3 acceleration_nav_;
-  ColumnVector3 force_input_nav_;
-  ColumnVector3 imu_acceleration_nav_;
 
   typedef Input_<3> TorqueInput;
   TorqueInput::Ptr torque_input_;
+  typedef Input_<3> RateInput;
+  RateInput::Ptr rate_input_;
   typedef Input_<3> ForceInput;
   ForceInput::Ptr force_input_;
 };
