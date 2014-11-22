@@ -103,7 +103,7 @@ public:
 
   virtual void limitError(MeasurementVector& error) {}
 
-  virtual const MeasurementVector* getFixedMeasurementVector() { return 0; }
+  virtual const MeasurementVector* getFixedMeasurementVector() const { return 0; }
 };
 
 } // namespace hector_pose_estimation

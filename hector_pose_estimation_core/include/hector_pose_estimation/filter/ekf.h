@@ -39,7 +39,7 @@ class EKF : public Filter
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  EKF();
+  EKF(State &state);
   virtual ~EKF();
 
   virtual std::string getType() const { return "EKF"; }

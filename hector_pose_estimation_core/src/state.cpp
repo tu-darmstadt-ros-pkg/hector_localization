@@ -31,36 +31,7 @@
 
 namespace hector_pose_estimation {
 
-State::State()
-  : vector_()
-  , covariance_()
-{
-  construct();
-  base_.reset(new BaseState(*this, getVectorDimension(), getCovarianceDimension()));
-
-  reset();
-}
-
-State::State(const Vector &vector, const Covariance& covariance)
-  : vector_()
-  , covariance_()
-//  , base_(new SubState_<0,0>(*this))
-{
-  construct();
-  base_.reset(new BaseState(*this, getVectorDimension(), getCovarianceDimension()));
-
-  // set initial state
-  vector_ = vector;
-  covariance_ = covariance;
-
-  reset();
-}
-
-State::~State()
-{
-}
-
-void State::construct()
+FullState::FullState()
 {
   orientation_ = addSubState<OrientationStateType::VectorDimension,OrientationStateType::CovarianceDimension>("orientation");
 #ifdef USE_RATE_SYSTEM_MODEL
@@ -68,6 +39,36 @@ void State::construct()
 #endif
   position_ = addSubState<PositionStateType::VectorDimension,PositionStateType::CovarianceDimension>("position");
   velocity_ = addSubState<VelocityStateType::VectorDimension,VelocityStateType::CovarianceDimension>("velocity");
+  construct();
+}
+
+FullState::~FullState() {}
+
+OrientationOnlyState::OrientationOnlyState()
+{
+  orientation_ = addSubState<OrientationStateType::VectorDimension,OrientationStateType::CovarianceDimension>("orientation");
+  construct();
+}
+
+OrientationOnlyState::~OrientationOnlyState() {}
+
+PositionVelocityState::PositionVelocityState()
+{
+  position_ = addSubState<PositionStateType::VectorDimension,PositionStateType::CovarianceDimension>("position");
+  velocity_ = addSubState<VelocityStateType::VectorDimension,VelocityStateType::CovarianceDimension>("velocity");
+  construct();
+}
+
+PositionVelocityState::~PositionVelocityState() {}
+
+State::State() {}
+
+State::~State() {}
+
+void State::construct()
+{
+  base_.reset(new BaseState(*this, getVectorDimension(), getCovarianceDimension()));
+  reset();
 }
 
 void State::reset()
@@ -77,21 +78,16 @@ void State::reset()
   measurement_status_ = 0;
 
   // reset pseudo-states
-  fake_rate_.resize(3,1);
-  fake_rate_ << 0.0, 0.0, 0.0;
-  fake_orientation_.resize(4,1);
-  fake_orientation_ << 0.0, 0.0, 0.0, 1.0;
-  fake_position_.resize(3,1);
-  fake_position_ << 0.0, 0.0, 0.0;
-  fake_velocity_.resize(3,1);
-  fake_velocity_ << 0.0, 0.0, 0.0;
-  fake_acceleration_.resize(3,1);
-  fake_acceleration_ << 0.0, 0.0, 0.0;
+  fake_rate_ = Vector::Zero(3,1);
+  fake_orientation_ = Vector::Zero(4,1);
+  fake_position_ = Vector::Zero(3,1);
+  fake_velocity_ = Vector::Zero(3,1);
+  fake_acceleration_ = Vector::Zero(3,1);
 
   // reset state
   vector_.setZero();
   covariance_.setZero();
-  if (orientation()) orientation()->vector().w() = 1.0;
+  orientationPart().w() = 1.0;
 
   R_valid_ = false;
 }
@@ -111,6 +107,12 @@ State::ConstRateType State::getRate() const                 { return (rate()    
 State::ConstPositionType State::getPosition() const         { return (position()     ? position()->getVector()     : fake_position_.segment<ConstPositionType::RowsAtCompileTime>(0)); }
 State::ConstVelocityType State::getVelocity() const         { return (velocity()     ? velocity()->getVector()     : fake_velocity_.segment<ConstVelocityType::RowsAtCompileTime>(0)); }
 State::ConstAccelerationType State::getAcceleration() const { return (acceleration() ? acceleration()->getVector() : fake_acceleration_.segment<ConstAccelerationType::RowsAtCompileTime>(0)); }
+
+State::OrientationType State::orientationPart()   { return (orientation()  ? orientation()->vector()  : fake_orientation_.segment<OrientationType::RowsAtCompileTime>(0)); }
+State::RateType State::ratePart()                 { return (rate()         ? rate()->vector()         : fake_rate_.segment<RateType::RowsAtCompileTime>(0)); }
+State::PositionType State::positionPart()         { return (position()     ? position()->vector()     : fake_position_.segment<PositionType::RowsAtCompileTime>(0)); }
+State::VelocityType State::velocityPart()         { return (velocity()     ? velocity()->vector()     : fake_velocity_.segment<VelocityType::RowsAtCompileTime>(0)); }
+State::AccelerationType State::accelerationPart() { return (acceleration() ? acceleration()->vector() : fake_acceleration_.segment<AccelerationType::RowsAtCompileTime>(0)); }
 
 void State::getRotationMatrix(RotationMatrix &R) const
 {
@@ -133,6 +135,21 @@ double State::getYaw() const
 {
   ConstOrientationType q(getOrientation());
   return atan2(2*q.x()*q.y() + 2*q.w()*q.z(), q.x()*q.x() + q.w()*q.w() - q.z()*q.z() - q.y()*q.y());
+}
+
+void State::getEuler(double &roll, double &pitch, double &yaw) const
+{
+  ConstOrientationType q(getOrientation());
+  roll  = atan2(2*(q.y()*q.z() + q.w()*q.x()), q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
+  pitch = -asin(2*(q.x()*q.z() - q.w()*q.y()));
+  yaw   = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
+}
+
+ColumnVector3 State::getEuler() const
+{
+  ColumnVector3 euler;
+  getEuler(euler(0), euler(1), euler(2));
+  return euler;
 }
 
 void State::update(const Vector &vector_update)
@@ -237,6 +254,95 @@ void State::normalize() {
   }
 }
 
-//template class SubState_<0,0>;
+void State::setOrientation(const Quaternion& orientation)
+{
+  setOrientation(orientation.coeffs());
+}
+
+void State::setRollPitch(const Quaternion& q)
+{
+  ScalarType roll, pitch;
+  roll  = atan2(2*(q.y()*q.z() + q.w()*q.x()), q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
+  pitch = -asin(2*(q.x()*q.z() - q.w()*q.y()));
+  setRollPitch(roll, pitch);
+}
+
+void State::setRollPitch(ScalarType roll, ScalarType pitch)
+{
+  ScalarType yaw = getYaw();
+  this->orientationPart() = Quaternion(Eigen::AngleAxis<ScalarType>(yaw, ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(pitch, ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(roll, ColumnVector3::UnitX())).coeffs();
+  rollpitchSet();
+}
+
+void State::setYaw(const Quaternion& orientation)
+{
+  ColumnVector3 euler = getEuler();
+  setYaw(euler(0));
+}
+
+void State::setYaw(ScalarType yaw)
+{
+  ColumnVector3 euler = Quaternion(this->getOrientation()).matrix().eulerAngles(2,1,0);
+  this->orientationPart() = Quaternion(Eigen::AngleAxis<ScalarType>(yaw, ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(euler(1), ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(euler(2), ColumnVector3::UnitX())).coeffs();
+  yawSet();
+}
+
+void State::orientationSet() {
+  if (orientation()) {
+    orientation()->rows(P()).setZero();
+    orientation()->cols(P()).setZero();
+  }
+  system_status_ |= STATE_ROLLPITCH | STATE_YAW;
+}
+
+void State::rollpitchSet() {
+  if (orientation()) {
+    orientation()->rows(P()).topRows(2).setZero();
+    orientation()->cols(P()).leftCols(2).setZero();
+  }
+  system_status_ |= STATE_ROLLPITCH;
+}
+
+void State::yawSet() {
+  if (orientation()) {
+    orientation()->rows(P()).row(2).setZero();
+    orientation()->cols(P()).col(2).setZero();
+  }
+  system_status_ |= STATE_YAW;
+}
+
+void State::rateSet() {
+  if (rate()) {
+    rate()->rows(P()).setZero();
+    rate()->cols(P()).setZero();
+  }
+  system_status_ |= STATE_RATE_XY | STATE_RATE_Z;
+}
+
+void State::positionSet() {
+  if (position()) {
+    position()->rows(P()).setZero();
+    position()->cols(P()).setZero();
+  }
+  system_status_ |= STATE_POSITION_XY | STATE_POSITION_Z;
+}
+
+void State::velocitySet() {
+  if (velocity()) {
+    velocity()->rows(P()).setZero();
+    velocity()->cols(P()).setZero();
+  }
+  system_status_ |= STATE_VELOCITY_XY | STATE_VELOCITY_Z;
+}
+
+void State::accelerationSet() {
+  if (acceleration()) {
+    acceleration()->rows(P()).setZero();
+    acceleration()->cols(P()).setZero();
+  }
+}
+
+template class SubState::initializer<Dynamic,Dynamic>;
+template class SubState_<Dynamic,Dynamic>;
 
 } // namespace hector_pose_estimation

@@ -76,6 +76,7 @@ protected:
   const IndexType index_;
   const IndexType covariance_index_;
 };
+extern template class SubState::initializer<Dynamic,Dynamic>;
 
 template <int _VectorDimension, int _CovarianceDimension = _VectorDimension>
 class SubState_ : public SubState, public SubState::initializer<_VectorDimension, _CovarianceDimension>
@@ -125,6 +126,7 @@ public:
   template <typename MatrixType> Block<MatrixType,CovarianceDimension,MatrixType::ColsAtCompileTime> rows(MatrixType &matrix) { return Block<MatrixType,CovarianceDimension,MatrixType::ColsAtCompileTime>(matrix, covariance_index_, 0, getCovarianceDimension(), matrix.cols()); }
   template <typename MatrixType> Block<MatrixType,MatrixType::RowsAtCompileTime,CovarianceDimension> cols(MatrixType &matrix) { return Block<MatrixType,MatrixType::RowsAtCompileTime,CovarianceDimension>(matrix, 0, covariance_index_, matrix.rows(), getCovarianceDimension()); }
 };
+extern template class SubState_<Dynamic,Dynamic>;
 
 class BaseState : public SubState_<Dynamic,Dynamic>
 {
@@ -150,7 +152,7 @@ boost::shared_ptr<SubState_<_VectorDimension, _CovarianceDimension> > State::get
 }
 
 //template <>
-//inline boost::shared_ptr<BaseState> State::getSubState<0>(const Model *) const {
+//inline boost::shared_ptr<BaseState> State::getSubState<Dynamic>(const Model *) const {
 //  return base_;
 //}
 

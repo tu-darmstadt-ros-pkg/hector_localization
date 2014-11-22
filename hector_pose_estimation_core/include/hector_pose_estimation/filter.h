@@ -38,7 +38,7 @@ namespace hector_pose_estimation {
 
 class Filter {
 public:
-  Filter();
+  Filter(State &state);
   virtual ~Filter();
 
   virtual std::string getType() const = 0;
@@ -139,7 +139,7 @@ public:
   template <typename Derived> static Factory<Derived> factory(Derived *filter) { return Factory<Derived>(filter); }
 
 protected:
-  State state_;
+  State& state_;
   Inputs inputs_;
 };
 

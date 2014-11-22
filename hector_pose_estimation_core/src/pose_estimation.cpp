@@ -41,8 +41,9 @@ namespace {
   static PoseEstimation *the_instance = 0;
 }
 
-PoseEstimation::PoseEstimation(const SystemPtr& system)
-  : rate_update_(new Rate("rate"))
+PoseEstimation::PoseEstimation(const SystemPtr& system, const StatePtr& state)
+  : state_(state ? state : StatePtr(new FullState))
+  , rate_update_(new Rate("rate"))
   , gravity_update_(new Gravity ("gravity"))
   , zerorate_update_(new ZeroRate("zerorate"))
 {
@@ -93,7 +94,7 @@ bool PoseEstimation::init()
   if (systems_.empty()) return false;
 
   // create new filter
-  filter_.reset(new filter::EKF);
+  filter_.reset(new filter::EKF(*state_));
 
   // initialize systems (new systems could be added during initialization!)
   for(Systems::iterator it = systems_.begin(); it != systems_.end(); ++it)
@@ -163,7 +164,10 @@ void PoseEstimation::update(ros::Time new_timestamp)
   if (systems_.empty()) return;
 
   ros::Duration dt;
-  if (!getTimestamp().isZero()) dt = new_timestamp - getTimestamp();
+  if (!getTimestamp().isZero()) {
+    if (new_timestamp.isZero()) new_timestamp = ros::Time::now();
+    dt = new_timestamp - getTimestamp();
+  }
   setTimestamp(new_timestamp);
 
   // do the update step
@@ -187,8 +191,8 @@ void PoseEstimation::update(double dt)
   boost::shared_ptr<ImuInput> imu = getInputType<ImuInput>("imu");
   if (imu) {
     // Should the biases already be integrated here?
-    state().setRate(imu->getRate());
-    state().setAcceleration(imu->getAcceleration() + state().R().row(2).transpose() * gravity_);
+    if (!state().rate())         state().setRate(imu->getRate());
+    if (!state().acceleration()) state().setAcceleration(imu->getAcceleration() + state().R().row(2).transpose() * gravity_);
 
     if (state().rate() && rate_update_) {
       rate_update_->update(Rate::Update(imu->getRate()));

@@ -104,7 +104,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
     SymmetricMatrix_<6> information(SymmetricMatrix_<6>::ConstMap(update.pose->pose.covariance.data()));
 
     ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: x = [ " << filter()->state().getVector().transpose() << " ], P = [ " << filter()->state().getCovariance() << " ]" << std::endl
-                                      << "update: pose = [ " << update_pose.transpose() << " ], euler = [ " << update_euler.transpose() << " ], information = [ " << information << " ]");
+                                      << "update: pose = [ " << update_pose.transpose() << " ], rpy = [ " << update_euler.transpose() << " ], information = [ " << information << " ]");
     ROS_DEBUG_STREAM_NAMED("poseupdate", "dt = " << (filter()->state().getTimestamp() - update.pose->header.stamp).toSec() << " s");
 
     // predict update pose using the estimated velocity and degrade information
@@ -136,9 +136,9 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
     // Calculate euler angles
     {
         const Eigen::Quaterniond &q = update_orientation;
-        /* roll  = */ update_euler(2) = atan2(2*(q.y()*q.z() + q.w()*q.x()), q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
+        /* roll  = */ update_euler(0) = atan2(2*(q.y()*q.z() + q.w()*q.x()), q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
         /* pitch = */ update_euler(1) = -asin(2*(q.x()*q.z() - q.w()*q.y()));
-        /* yaw   = */ update_euler(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
+        /* yaw   = */ update_euler(2) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
     }
 
     // update PositionXY
@@ -208,7 +208,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
       yaw_model_.getStateJacobian(H, filter()->state(), true);
       yaw_model_.getExpectedValue(x, filter()->state());
 
-      YawModel::MeasurementVector y(update_euler.head<1>());
+      YawModel::MeasurementVector y(update_euler.tail<1>());
       YawModel::NoiseVariance Iy(information.block<1,1>(5,5));
 
       // invert Iy if information is a covariance matrix
@@ -356,7 +356,7 @@ double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const M
   NoiseVariance H_Px_HT(H * state.P() * H.transpose());
 
   if (H_Px_HT.determinant() <= 0) {
-    ROS_WARN_STREAM("Ignoring poseupdate for " << text << " as the a-priori state covariance is zero!");
+    ROS_DEBUG_STREAM("Ignoring poseupdate for " << text << " as the a-priori state covariance is zero!");
     return 0.0;
   }
   NoiseVariance Ix(H_Px_HT.inverse().eval());

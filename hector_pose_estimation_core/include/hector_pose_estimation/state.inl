@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2011, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2014, Johannes Meyer and contributors, Technische Universitat Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,71 +26,48 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include <hector_pose_estimation/measurements/zerorate.h>
-#include <hector_pose_estimation/system/imu_model.h>
-#include <hector_pose_estimation/filter/set_filter.h>
+#ifndef HECTOR_POSE_ESTIMATION_STATE_INL
+#define HECTOR_POSE_ESTIMATION_STATE_INL
+
+#include <hector_pose_estimation/state.h>
 
 namespace hector_pose_estimation {
 
-template class Measurement_<ZeroRateModel>;
-
-ZeroRateModel::ZeroRateModel()
-{
-  parameters().add("stddev", stddev_, 90.0*M_PI/180.0);
-  parameters().add("use_bias", use_bias_, std::string("gyro_bias"));
+template <typename Derived>
+void State::setOrientation(const Eigen::MatrixBase<Derived>& orientation) {
+  eigen_assert(orientation.rows() == 4 && orientation.cols() == 1);
+  orientationPart() = orientation;
+  orientationSet();
 }
 
-ZeroRateModel::~ZeroRateModel() {}
-
-bool ZeroRateModel::init(PoseEstimation &estimator, Measurement &measurement, State &state)
-{
-  if (!use_bias_.empty()) {
-    bias_ = state.getSubState<3,3>(use_bias_);
-    if (!bias_) {
-      ROS_ERROR("Could not find bias substate '%s' during initialization of zero rate pseudo measurement '%s'.", use_bias_.c_str(), measurement.getName().c_str());
-      return false;
-    }
-  } else {
-    bias_.reset();
-  }
-
-  if (!bias_ && !state.rate()) {
-    ROS_WARN("Pseudo updating with zero rate is a no-op, as the state does not contain rates nor biases.");
-    // return false;
-  }
-
-  return true;
+template <typename Derived>
+void State::setRate(const Eigen::MatrixBase<Derived>& rate) {
+  eigen_assert(rate.rows() == 3 && rate.cols() == 1);
+  ratePart() = rate;
+  rateSet();
 }
 
-void ZeroRateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
-{
-  if (init) {
-    R(0,0) = pow(stddev_, 2);
-  }
+template <typename Derived>
+void State::setPosition(const Eigen::MatrixBase<Derived>& position) {
+  eigen_assert(position.rows() == 3 && position.cols() == 1);
+  positionPart() = position;
+  positionSet();
 }
 
-void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
-{
-  y_pred(0) = state.getRate().z();
-
-  if (!state.rate() && bias_) {
-    y_pred(0) += bias_->getVector().z();
-  }
+template <typename Derived>
+void State::setVelocity(const Eigen::MatrixBase<Derived>& velocity) {
+  eigen_assert(velocity.rows() == 3 && velocity.cols() == 1);
+  velocityPart() = velocity;
+  velocitySet();
 }
 
-void ZeroRateModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
-{
-  if (state.rate()) {
-    state.rate()->cols(C)(0,Z) = 1.0;
-  } else if (bias_) {
-    bias_->cols(C)(0,Z) = 1.0;
-  }
-}
-
-const ZeroRateModel::MeasurementVector* ZeroRateModel::getFixedMeasurementVector() const
-{
-  static MeasurementVector zero(MeasurementVector::Zero());
-  return &zero;
+template <typename Derived>
+void State::setAcceleration(const Eigen::MatrixBase<Derived>& acceleration) {
+  eigen_assert(acceleration.rows() == 3 && acceleration.cols() == 1);
+  accelerationPart() = acceleration;
+  accelerationSet();
 }
 
 } // namespace hector_pose_estimation
+
+#endif // HECTOR_POSE_ESTIMATION_STATE_INL

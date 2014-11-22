@@ -34,7 +34,8 @@
 namespace hector_pose_estimation {
 namespace filter {
 
-EKF::EKF()
+EKF::EKF(State &state)
+  : Filter(state)
 {}
 
 EKF::~EKF()

@@ -65,8 +65,8 @@ namespace traits {
     enum { CovarianceDimension = _CovarianceDimension };
 
     typedef State::Vector StateVector;
-    typedef SymmetricMatrix NoiseVariance;
-    typedef Matrix SystemMatrix;
+    typedef State::Covariance NoiseVariance;
+    typedef State::SystemMatrix SystemMatrix;
 
     enum { InputDimension = traits::Input<Derived>::Dimension };
     typedef typename traits::Input<Derived>::Type   InputType;

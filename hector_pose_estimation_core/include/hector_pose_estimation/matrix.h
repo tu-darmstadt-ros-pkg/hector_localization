@@ -73,12 +73,13 @@ namespace hector_pose_estimation {
     typedef Eigen::Map<const Base> ConstMap;
 
     ColumnVector_() { this->setZero(); }
-    explicit ColumnVector_(Index rows) : Base(rows) { this->setZero(); }
+    explicit ColumnVector_(IndexType size) : Base(size) { assert(Rows == Dynamic || size == Rows); this->setZero(); }
 //    explicit ColumnVector_(Scalar value) { this->setConstant(value); }
     ColumnVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,Rows,1>(x, y, z) {}
     template <typename OtherDerived> ColumnVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
+    Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
   };
   typedef ColumnVector_<3> ColumnVector3;
 
@@ -95,12 +96,13 @@ namespace hector_pose_estimation {
     typedef Eigen::Map<const Base> ConstMap;
 
     RowVector_() { this->setZero(); }
-    explicit RowVector_(Index cols) : Base(cols) { this->setZero(); }
+    explicit RowVector_(IndexType size) : Base(size) { assert(Cols == Dynamic || size == Cols); this->setZero(); }
 //    explicit RowVector_(Scalar value) { this->setConstant(value); }
     RowVector_(Scalar x, Scalar y, Scalar z) : Eigen::Matrix<ScalarType,1,Cols>(x, y, z) {}
     template <typename OtherDerived> RowVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
+    Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
   };
   typedef RowVector_<3> RowVector3;
 
@@ -117,11 +119,12 @@ namespace hector_pose_estimation {
     typedef Eigen::Map<const Base> ConstMap;
 
     Matrix_() { this->setZero(); }
-    explicit Matrix_(Index rows, Index cols) : Base(rows, cols) { this->setZero(); }
+    explicit Matrix_(Index rows, Index cols) : Base(rows, cols) { assert(Rows == Dynamic || rows == Rows); assert(Cols == Dynamic || cols == Cols); this->setZero(); }
 //    explicit Matrix_(Scalar value) { this->setConstant(value); }
     template <typename OtherDerived> Matrix_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
+    Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
   };
   typedef Matrix_<3,3> Matrix3;
 
@@ -142,7 +145,7 @@ namespace hector_pose_estimation {
     // Constructors
     SymmetricMatrix_() {}
     //explicit SymmetricMatrix_(Scalar value) { this->setConstant(value); }
-    explicit SymmetricMatrix_(Index dim) : Storage(dim, dim) { this->setZero(); }
+    explicit SymmetricMatrix_(Index dim) : Storage(dim, dim) { assert(RowsCols == Dynamic || dim == RowsCols); }
     template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) {
 #if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
       symmetric();

@@ -53,6 +53,7 @@ class State {
 public:
   typedef ColumnVector Vector;
   typedef SymmetricMatrix Covariance;
+  typedef Matrix SystemMatrix;
 
   typedef VectorBlock<Vector> VectorSegment;
   typedef Block<Covariance::Base> CovarianceBlock;
@@ -80,8 +81,6 @@ public:
   typedef Matrix_<3,3> RotationMatrix;
 
 public:
-  State();
-  State(const Vector &vector, const Covariance& covariance);
   virtual ~State();
 
   virtual IndexType getVectorDimension() const { return vector_.rows(); }
@@ -132,7 +131,12 @@ public:
   virtual ConstVelocityType getVelocity() const;
   virtual ConstAccelerationType getAcceleration() const;
 
+  void setOrientation(const Quaternion& orientation);
   template <typename Derived> void setOrientation(const Eigen::MatrixBase<Derived>& orientation);
+  void setRollPitch(const Quaternion& orientation);
+  void setRollPitch(ScalarType roll, ScalarType pitch);
+  void setYaw(const Quaternion& orientation);
+  void setYaw(ScalarType yaw);
   template <typename Derived> void setRate(const Eigen::MatrixBase<Derived>& rate);
   template <typename Derived> void setPosition(const Eigen::MatrixBase<Derived>& position);
   template <typename Derived> void setVelocity(const Eigen::MatrixBase<Derived>& velocity);
@@ -141,6 +145,8 @@ public:
   void getRotationMatrix(RotationMatrix &R) const;
   const State::RotationMatrix &R() const;
   double getYaw() const;
+  void getEuler(double &roll, double &pitch, double &yaw) const;
+  ColumnVector3 getEuler() const;
 
   const SubStates& getSubStates() const { return substates_; }
   template <int SubVectorDimension, int SubCovarianceDimension> boost::shared_ptr<SubState_<SubVectorDimension,SubCovarianceDimension> > getSubState(const Model *model) const;
@@ -152,9 +158,24 @@ public:
   void setTimestamp(const ros::Time& timestamp) { timestamp_ = timestamp; }
 
 protected:
-  virtual void construct();
+  State();
+  void construct();
 
-private:
+  OrientationType orientationPart();
+  RateType ratePart();
+  PositionType positionPart();
+  VelocityType velocityPart();
+  AccelerationType accelerationPart();
+
+  void orientationSet();
+  void rollpitchSet();
+  void yawSet();
+  void rateSet();
+  void positionSet();
+  void velocitySet();
+  void accelerationSet();
+
+protected:
   Vector vector_;
   Covariance covariance_;
 
@@ -187,36 +208,29 @@ private:
   mutable bool R_valid_;
 };
 
-template <typename Derived>
-void State::setOrientation(const Eigen::MatrixBase<Derived>& orientation) {
-  eigen_assert(orientation.rows() == 4 && orientation.cols() == 1);
-  fake_orientation_ = orientation;
-}
+class FullState : public State
+{
+public:
+  FullState();
+  virtual ~FullState();
+};
 
-template <typename Derived>
-void State::setRate(const Eigen::MatrixBase<Derived>& rate) {
-  eigen_assert(rate.rows() == 3 && rate.cols() == 1);
-  fake_rate_ = rate;
-}
+class OrientationOnlyState : public State
+{
+public:
+  OrientationOnlyState();
+  virtual ~OrientationOnlyState();
+};
 
-template <typename Derived>
-void State::setPosition(const Eigen::MatrixBase<Derived>& position) {
-  eigen_assert(position.rows() == 3 && position.cols() == 1);
-  fake_position_ = position;
-}
-
-template <typename Derived>
-void State::setVelocity(const Eigen::MatrixBase<Derived>& velocity) {
-  eigen_assert(velocity.rows() == 3 && velocity.cols() == 1);
-  fake_velocity_ = velocity;
-}
-
-template <typename Derived>
-void State::setAcceleration(const Eigen::MatrixBase<Derived>& acceleration) {
-  eigen_assert(acceleration.rows() == 3 && acceleration.cols() == 1);
-  fake_acceleration_ = acceleration;
-}
+class PositionVelocityState : public State
+{
+public:
+  PositionVelocityState();
+  virtual ~PositionVelocityState();
+};
 
 } // namespace hector_pose_estimation
+
+#include <hector_pose_estimation/state.inl>
 
 #endif // HECTOR_POSE_ESTIMATION_STATE_H

@@ -58,12 +58,14 @@ bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, System &syste
   gravity_ = estimator.parameters().get("gravity_magnitude");
 
   imu_ = estimator.getInputType<ImuInput>("imu");
-  if (imu_) {
+  if (imu_ && state.orientation()) {
     gyro_ = estimator.getSystem_<Gyro>("gyro");
     if (!gyro_) {
       gyro_.reset(new Gyro("gyro"));
       estimator.addSystem(gyro_);
     }
+  }
+  if (imu_ && state.velocity()) {
     accelerometer_ = estimator.getSystem_<Accelerometer>("accelerometer");
     if (!accelerometer_) {
       accelerometer_.reset(new Accelerometer("accelerometer"));
