@@ -192,7 +192,7 @@ void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State&
     if (!state.rate() && imu_ && gyro_) {
       gyro_->getModel()->getRateNoise(state.orientation()->block(Q), state, inputs, init);
     }
-    state.orientation()->block(Q) = pow(rate_stddev_, 2) * SymmetricMatrix3::Identity();
+    state.orientation()->block(Q) += pow(rate_stddev_, 2) * SymmetricMatrix3::Identity();
   }
   if (state.rate()) {
     state.rate()->block(Q) = pow(angular_acceleration_stddev_, 2) * SymmetricMatrix3::Identity();
