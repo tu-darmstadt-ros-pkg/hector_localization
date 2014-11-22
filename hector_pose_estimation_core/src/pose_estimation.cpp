@@ -42,7 +42,7 @@ namespace {
 }
 
 PoseEstimation::PoseEstimation(const SystemPtr& system, const StatePtr& state)
-  : state_(state ? state : StatePtr(new FullState))
+  : state_(state ? state : StatePtr(new OrientationPositionVelocityState))
   , rate_update_(new Rate("rate"))
   , gravity_update_(new Gravity ("gravity"))
   , zerorate_update_(new ZeroRate("zerorate"))
