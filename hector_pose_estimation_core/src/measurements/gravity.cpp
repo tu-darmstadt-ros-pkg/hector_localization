@@ -37,7 +37,7 @@ template class Measurement_<GravityModel>;
 GravityModel::GravityModel()
   : gravity_(MeasurementVector::Zero())
 {
-  parameters().add("stddev", stddev_, 10.0);
+  parameters().add("stddev", stddev_, 1.0);
   parameters().add("use_bias", use_bias_, std::string("accelerometer_bias"));
 }
 
@@ -100,10 +100,10 @@ void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bo
      state.orientation()->cols(C)(Z,Y) =  gravity_.z() * R(0,2);
   }
 
-//  Bias is not observable if we use gravity only for orientation
-//  if (bias_) {
-//    bias_->cols(C).setIdentity();
-//  }
+//  Only the bias component in direction of the gravity is observable, under the assumption that we do not accelerate vertically.
+  if (bias_) {
+    bias_->cols(C) = R.row(2).transpose() * R.row(2);
+  }
 }
 
 } // namespace hector_pose_estimation
