@@ -159,11 +159,11 @@ void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State
   }
 
   if (state.velocity()) {
-    if (state.getSystemStatus() & STATE_VELOCITY_XY) {
+    if ((state.getSystemStatus() & STATE_VELOCITY_XY) && !(state.getSystemStatus() & STATUS_ALIGNMENT)) {
       state.velocity()->segment(x_dot)(X) = acceleration_nav_.x();
       state.velocity()->segment(x_dot)(Y) = acceleration_nav_.y();
     }
-    if (state.getSystemStatus() & STATE_VELOCITY_Z) {
+    if ((state.getSystemStatus() & STATE_VELOCITY_Z) && !(state.getSystemStatus() & STATUS_ALIGNMENT)) {
       state.velocity()->segment(x_dot)(Z) = acceleration_nav_.z();
       if (imu_) {
         state.velocity()->segment(x_dot)(Z) += gravity_;
@@ -173,11 +173,11 @@ void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State
 
   if (state.position()) {
     State::ConstVelocityType v(state.getVelocity());
-    if (state.getSystemStatus() & STATE_POSITION_XY) {
+    if ((state.getSystemStatus() & STATE_POSITION_XY) && !(state.getSystemStatus() & STATUS_ALIGNMENT)) {
       state.position()->segment(x_dot)(X) = v.x();
       state.position()->segment(x_dot)(Y) = v.y();
     }
-    if (state.getSystemStatus() & STATE_POSITION_Z) {
+    if ((state.getSystemStatus() & STATE_POSITION_Z) && !(state.getSystemStatus() & STATUS_ALIGNMENT)) {
       state.position()->segment(x_dot)(Z) = v.z();
     }
   }
@@ -238,24 +238,24 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
       state.velocity()->block(A, *state.orientation()) += SkewSymmetricMatrix(-acceleration_nav_);
     }
 
-    if (!(state.getSystemStatus() & STATE_VELOCITY_XY)) {
-      state.velocity()->block(A).topRows(2).setZero();
+    if (!((state.getSystemStatus() & STATE_VELOCITY_XY) && !(state.getSystemStatus() & STATUS_ALIGNMENT))) {
+      state.velocity()->rows(A).topRows(2).setZero();
     }
 
-    if (!(state.getSystemStatus() & STATE_VELOCITY_Z)) {
-      state.velocity()->block(A).row(2).setZero();
+    if (!((state.getSystemStatus() & STATE_VELOCITY_Z) && !(state.getSystemStatus() & STATUS_ALIGNMENT))) {
+      state.velocity()->rows(A).row(2).setZero();
     }
   }
 
   if (state.position() && state.velocity()) {
     state.position()->block(A, *state.velocity()).setIdentity();
 
-    if (!(state.getSystemStatus() & STATE_POSITION_XY)) {
-      state.position()->block(A, *state.velocity()).topRows(2).setZero();
+    if ((state.getSystemStatus() & STATE_POSITION_XY) && !(state.getSystemStatus() & STATUS_ALIGNMENT)) {
+      state.position()->block(A, *state.velocity())(X,X) = 1.0;
+      state.position()->block(A, *state.velocity())(Y,Y) = 1.0;
     }
-
-    if (!(state.getSystemStatus() & STATE_POSITION_Z)) {
-      state.position()->block(A, *state.velocity()).row(2).setZero();
+    if ((state.getSystemStatus() & STATE_POSITION_Z) && !(state.getSystemStatus() & STATUS_ALIGNMENT)) {
+      state.position()->block(A, *state.velocity())(Z,Z) = 1.0;
     }
   }
 

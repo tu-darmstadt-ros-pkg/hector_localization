@@ -45,6 +45,7 @@ public:
   virtual ~GyroModel();
 
   bool init(PoseEstimation& estimator, System &system, State& state);
+  void getPrior(State &state);
 
   ColumnVector3 getError() const { return bias_->getVector(); }
 
@@ -70,6 +71,7 @@ public:
   virtual ~AccelerometerModel();
 
   bool init(PoseEstimation& estimator, System &system, State& state);
+  void getPrior(State &state);
 
   ColumnVector3 getError() const { return bias_->getVector(); }
 
