@@ -36,36 +36,31 @@ namespace hector_pose_estimation {
 template <typename Derived>
 void State::setOrientation(const Eigen::MatrixBase<Derived>& orientation) {
   eigen_assert(orientation.rows() == 4 && orientation.cols() == 1);
-  orientationPart() = orientation;
-  orientationSet();
+  fake_orientation_ = orientation;
 }
 
 template <typename Derived>
 void State::setRate(const Eigen::MatrixBase<Derived>& rate) {
   eigen_assert(rate.rows() == 3 && rate.cols() == 1);
-  ratePart() = rate;
-  rateSet();
+  fake_rate_ = rate;
 }
 
 template <typename Derived>
 void State::setPosition(const Eigen::MatrixBase<Derived>& position) {
   eigen_assert(position.rows() == 3 && position.cols() == 1);
-  positionPart() = position;
-  positionSet();
+  fake_position_ = position;
 }
 
 template <typename Derived>
 void State::setVelocity(const Eigen::MatrixBase<Derived>& velocity) {
   eigen_assert(velocity.rows() == 3 && velocity.cols() == 1);
-  velocityPart() = velocity;
-  velocitySet();
+  fake_velocity_ = velocity;
 }
 
 template <typename Derived>
 void State::setAcceleration(const Eigen::MatrixBase<Derived>& acceleration) {
   eigen_assert(acceleration.rows() == 3 && acceleration.cols() == 1);
-  accelerationPart() = acceleration;
-  accelerationSet();
+  fake_acceleration_ = acceleration;
 }
 
 } // namespace hector_pose_estimation

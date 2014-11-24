@@ -95,7 +95,8 @@ void State::reset()
   // reset state
   vector_.setZero();
   covariance_.setZero();
-  orientationPart().w() = 1.0;
+  fake_orientation_.w() = 1.0;
+  if (orientation()) orientation()->vector().w() = 1.0;
 
   R_valid_ = false;
 }
@@ -115,12 +116,6 @@ State::ConstRateType State::getRate() const                 { return (rate()    
 State::ConstPositionType State::getPosition() const         { return (position()     ? position()->getVector()     : ConstPositionType(fake_position_, 0)); }
 State::ConstVelocityType State::getVelocity() const         { return (velocity()     ? velocity()->getVector()     : ConstVelocityType(fake_velocity_, 0)); }
 State::ConstAccelerationType State::getAcceleration() const { return (acceleration() ? acceleration()->getVector() : ConstAccelerationType(fake_acceleration_, 0)); }
-
-State::OrientationType State::orientationPart()   { return (orientation()  ? orientation()->vector()  : OrientationType(fake_orientation_, 0)); }
-State::RateType State::ratePart()                 { return (rate()         ? rate()->vector()         : RateType(fake_rate_, 0)); }
-State::PositionType State::positionPart()         { return (position()     ? position()->vector()     : PositionType(fake_position_, 0)); }
-State::VelocityType State::velocityPart()         { return (velocity()     ? velocity()->vector()     : VelocityType(fake_velocity_, 0)); }
-State::AccelerationType State::accelerationPart() { return (acceleration() ? acceleration()->vector() : AccelerationType(fake_acceleration_, 0)); }
 
 void State::getRotationMatrix(RotationMatrix &R) const
 {
@@ -278,76 +273,20 @@ void State::setRollPitch(const Quaternion& q)
 void State::setRollPitch(ScalarType roll, ScalarType pitch)
 {
   ScalarType yaw = getYaw();
-  this->orientationPart() = Quaternion(Eigen::AngleAxis<ScalarType>(yaw, ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(pitch, ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(roll, ColumnVector3::UnitX())).coeffs();
-  rollpitchSet();
+  fake_orientation_ = Quaternion(Eigen::AngleAxis<ScalarType>(yaw, ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(pitch, ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(roll, ColumnVector3::UnitX())).coeffs();
 }
 
 void State::setYaw(const Quaternion& orientation)
 {
-  ColumnVector3 euler = getEuler();
-  setYaw(euler(0));
+  const Quaternion &q = orientation;
+  double yaw = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
+  setYaw(yaw);
 }
 
 void State::setYaw(ScalarType yaw)
 {
-  ColumnVector3 euler = Quaternion(this->getOrientation()).matrix().eulerAngles(2,1,0);
-  this->orientationPart() = Quaternion(Eigen::AngleAxis<ScalarType>(yaw, ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(euler(1), ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(euler(2), ColumnVector3::UnitX())).coeffs();
-  yawSet();
-}
-
-void State::orientationSet() {
-  if (orientation()) {
-    orientation()->rows(P()).setZero();
-    orientation()->cols(P()).setZero();
-  }
-  system_status_ |= STATE_ROLLPITCH | STATE_YAW;
-}
-
-void State::rollpitchSet() {
-  if (orientation()) {
-    orientation()->rows(P()).topRows(2).setZero();
-    orientation()->cols(P()).leftCols(2).setZero();
-  }
-  system_status_ |= STATE_ROLLPITCH;
-}
-
-void State::yawSet() {
-  if (orientation()) {
-    orientation()->rows(P()).row(2).setZero();
-    orientation()->cols(P()).col(2).setZero();
-  }
-  system_status_ |= STATE_YAW;
-}
-
-void State::rateSet() {
-  if (rate()) {
-    rate()->rows(P()).setZero();
-    rate()->cols(P()).setZero();
-  }
-  system_status_ |= STATE_RATE_XY | STATE_RATE_Z;
-}
-
-void State::positionSet() {
-  if (position()) {
-    position()->rows(P()).setZero();
-    position()->cols(P()).setZero();
-  }
-  system_status_ |= STATE_POSITION_XY | STATE_POSITION_Z;
-}
-
-void State::velocitySet() {
-  if (velocity()) {
-    velocity()->rows(P()).setZero();
-    velocity()->cols(P()).setZero();
-  }
-  system_status_ |= STATE_VELOCITY_XY | STATE_VELOCITY_Z;
-}
-
-void State::accelerationSet() {
-  if (acceleration()) {
-    acceleration()->rows(P()).setZero();
-    acceleration()->cols(P()).setZero();
-  }
+  ColumnVector3 euler = getEuler();
+  fake_orientation_ = Quaternion(Eigen::AngleAxis<ScalarType>(yaw, ColumnVector3::UnitZ()) * Eigen::AngleAxis<ScalarType>(euler(1), ColumnVector3::UnitY()) * Eigen::AngleAxis<ScalarType>(euler(2), ColumnVector3::UnitX())).coeffs();
 }
 
 template class SubState::initializer<Dynamic,Dynamic>;

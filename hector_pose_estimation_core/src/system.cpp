@@ -59,6 +59,7 @@ void System::cleanup()
 void System::reset(State& state)
 {
   if (getModel()) getModel()->reset(state);
+  status_flags_ = 0;
 }
 
 bool System::active(const State& state) {

@@ -191,8 +191,9 @@ void PoseEstimation::update(double dt)
   boost::shared_ptr<ImuInput> imu = getInputType<ImuInput>("imu");
   if (imu) {
     // Should the biases already be integrated here?
-    if (!state().rate())         state().setRate(imu->getRate());
-    if (!state().acceleration()) state().setAcceleration(imu->getAcceleration() + state().R().row(2).transpose() * gravity_);
+    // Note: The state set here only has an effect if the state vector does not have a rate/acceleration component.
+    state().setRate(imu->getRate());
+    state().setAcceleration(imu->getAcceleration() + state().R().row(2).transpose() * gravity_);
 
     if (state().rate() && rate_update_) {
       rate_update_->update(Rate::Update(imu->getRate()));
@@ -219,13 +220,6 @@ void PoseEstimation::update(double dt)
   // measurement updates
   filter_->correct(measurements_);
 
-  // check for invalid state
-  if (!state().valid()) {
-    ROS_FATAL("Invalid state, resetting...");
-    reset();
-    return;
-  }
-
   // updated hook
   updated();
 
@@ -245,6 +239,13 @@ void PoseEstimation::update(double dt)
     system_status |= system->getStatusFlags();
   }
   updateSystemStatus(system_status, STATE_MASK | STATE_PSEUDO_MASK);
+
+  // check for invalid state
+  if (!state().valid()) {
+    ROS_FATAL("Invalid state, resetting...");
+    reset();
+    return;
+  }
 
   // switch overall system status
   if (inSystemStatus(STATUS_ALIGNMENT)) {

@@ -43,12 +43,9 @@ EKF::~EKF()
 
 bool EKF::init(PoseEstimation &estimator)
 {
-  x_diff.resize(state_.getVectorDimension());
-  x_diff.setZero();
-  A.resize(state_.getCovarianceDimension(), state_.getCovarianceDimension());
-  A.setZero();
-  Q.resize(state_.getCovarianceDimension());
-  Q.setZero();
+  x_diff = State::Vector::Zero(state_.getVectorDimension());
+  A = State::SystemMatrix::Zero(state_.getCovarianceDimension(), state_.getCovarianceDimension());
+  Q = State::Covariance::Zero(state_.getCovarianceDimension(), state_.getCovarianceDimension());
   return true;
 }
 

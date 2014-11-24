@@ -65,6 +65,7 @@ void Measurement::reset(State& state)
 {
   queue().clear();
   timer_ = 0;
+  status_flags_ = 0;
 
   if (getModel()) getModel()->reset(state);
   onReset();
