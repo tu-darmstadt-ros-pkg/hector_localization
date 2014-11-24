@@ -44,6 +44,8 @@ PoseEstimationNode::PoseEstimationNode(const SystemPtr& system, const StatePtr& 
   : pose_estimation_(new PoseEstimation(system, state))
   , private_nh_("~")
   , transform_listener_(0)
+  , world_nav_transform_updated_(true)
+  , world_nav_transform_valid_(false)
 {
   if (!system) pose_estimation_->addSystem(new GenericQuaternionSystemModel);
 
@@ -67,9 +69,12 @@ PoseEstimationNode::~PoseEstimationNode()
 bool PoseEstimationNode::init() {
   // get parameters
   pose_estimation_->parameters().initialize(ParameterRegistryROS(getPrivateNodeHandle()));
-  getPrivateNodeHandle().param("publish_covariances", publish_covariances_, false);
-  getPrivateNodeHandle().param("publish_world_map_transform", publish_world_other_transform_, false);
-  getPrivateNodeHandle().param("map_frame", other_frame_, std::string());
+  getPrivateNodeHandle().getParam("publish_covariances", publish_covariances_ = false);
+  getPrivateNodeHandle().getParam("publish_world_map_transform", publish_world_other_transform_ = false); // deprecated
+  getPrivateNodeHandle().getParam("publish_world_other_transform", publish_world_other_transform_);
+  getPrivateNodeHandle().getParam("map_frame", other_frame_ = std::string()); // deprecated
+  getPrivateNodeHandle().getParam("other_frame", other_frame_);
+  getPrivateNodeHandle().getParam("publish_world_nav_transform", publish_world_nav_transform_ = true);
 
   // search tf_prefix parameter
   tf_prefix_ = tf::getPrefixParam(getPrivateNodeHandle());
@@ -111,6 +116,18 @@ bool PoseEstimationNode::init() {
   twistupdate_subscriber_ = getNodeHandle().subscribe("twistupdate", 10, &PoseEstimationNode::twistupdateCallback, this);
   syscommand_subscriber_  = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
 
+  global_reference_publisher_  = getNodeHandle().advertise<geographic_msgs::GeoPose>("global/reference", 1, true);
+  pose_estimation_->globalReference()->addUpdateCallback(boost::bind(&PoseEstimationNode::globalReferenceUpdated, this));
+
+  // setup publish_world_nav_transform timer
+  if (publish_world_nav_transform_) {
+    double period = 0.1;
+    getPrivateNodeHandle().getParam("publish_world_nav_transform_period", period);
+    publish_world_nav_transform_period_ = ros::Duration(period);
+    publish_world_nav_transform_timer_ = getNodeHandle().createTimer(publish_world_nav_transform_period_, &PoseEstimationNode::publishWorldNavTransform, this,
+                                                                     /* oneshot = */ false, /* autostart = */ true);
+  }
+
   // publish initial state
   publish();
 
@@ -122,11 +139,13 @@ void PoseEstimationNode::reset() {
 }
 
 void PoseEstimationNode::cleanup() {
-  pose_estimation_->cleanup();
   if (gps_synchronizer_) {
     delete gps_synchronizer_;
     gps_synchronizer_ = 0;
   }
+  publish_world_nav_transform_timer_.stop();
+
+  pose_estimation_->cleanup();
 }
 
 void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
@@ -208,6 +227,27 @@ void PoseEstimationNode::syscommandCallback(const std_msgs::StringConstPtr& sysc
     ROS_INFO("Resetting pose_estimation");
     pose_estimation_->reset();
     publish();
+  }
+}
+
+void PoseEstimationNode::globalReferenceUpdated() {
+  geographic_msgs::GeoPose geopose;
+  pose_estimation_->globalReference()->getGeoPose(geopose);
+  global_reference_publisher_.publish(geopose);
+
+  // update world nav transform
+  world_nav_transform_updated_ = true;
+}
+
+void PoseEstimationNode::publishWorldNavTransform(const ros::TimerEvent &) {
+  if (world_nav_transform_updated_) {
+    world_nav_transform_valid_ = pose_estimation_->getWorldToNavTransform(world_nav_transform_);
+    world_nav_transform_updated_ = false;
+  }
+
+  if (world_nav_transform_valid_) {
+    world_nav_transform_.header.stamp = ros::Time::now() + publish_world_nav_transform_period_;
+    getTransformBroadcaster()->sendTransform(world_nav_transform_);
   }
 }
 

@@ -137,6 +137,7 @@ public:
   virtual void getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration);
   virtual void getTransforms(std::vector<tf::StampedTransform>& transforms);
   virtual void updateWorldToOtherTransform(tf::StampedTransform& world_to_other_transform);
+  virtual bool getWorldToNavTransform(geometry_msgs::TransformStamped& transform);
 
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }

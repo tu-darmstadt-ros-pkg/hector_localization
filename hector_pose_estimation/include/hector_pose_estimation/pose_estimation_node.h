@@ -86,6 +86,10 @@ protected:
   void twistupdateCallback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& twist);
   void syscommandCallback(const std_msgs::StringConstPtr& syscommand);
 
+  void globalReferenceUpdated();
+
+  void publishWorldNavTransform(const ros::TimerEvent & = ros::TimerEvent());
+
   virtual ros::NodeHandle& getNodeHandle() { return nh_; }
   virtual ros::NodeHandle& getPrivateNodeHandle() { return private_nh_; }
 
@@ -106,6 +110,7 @@ protected:
   ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_, gps_pose_publisher_;
   ros::Subscriber poseupdate_subscriber_, twistupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
+  ros::Publisher global_reference_publisher_;
 
   std::vector<tf::StampedTransform> transforms_;
   tf::TransformBroadcaster transform_broadcaster_;
@@ -115,6 +120,12 @@ protected:
   bool publish_covariances_;
   bool publish_world_other_transform_;
   std::string other_frame_;
+
+  bool publish_world_nav_transform_;
+  geometry_msgs::TransformStamped world_nav_transform_;
+  ros::Timer publish_world_nav_transform_timer_;
+  ros::Duration publish_world_nav_transform_period_;
+  bool world_nav_transform_updated_, world_nav_transform_valid_;
 };
 
 } // namespace hector_pose_estimation

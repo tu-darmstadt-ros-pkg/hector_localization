@@ -88,7 +88,7 @@ PoseEstimation *PoseEstimation::Instance() {
 bool PoseEstimation::init()
 {
   // initialize global reference
-  globalReference()->updated();
+  globalReference()->reset();
 
   // check if system is initialized
   if (systems_.empty()) return false;
@@ -721,6 +721,10 @@ void PoseEstimation::updateWorldToOtherTransform(tf::StampedTransform& world_to_
   if (!(getSystemStatus() & (STATE_POSITION_XY | STATE_PSEUDO_POSITION_XY))) { world_to_other_transform.getOrigin().setX(0.0); world_to_other_transform.getOrigin().setY(0.0); }
   if (!(getSystemStatus() & (STATE_POSITION_Z  | STATE_PSEUDO_POSITION_Z)))  { world_to_other_transform.getOrigin().setZ(0.0); }
   world_to_other_transform.getBasis().setEulerYPR(y, p, r);
+}
+
+bool PoseEstimation::getWorldToNavTransform(geometry_msgs::TransformStamped& transform) {
+  return globalReference()->getWorldToNavTransform(transform, world_frame_, nav_frame_, getTimestamp());
 }
 
 const GlobalReferencePtr &PoseEstimation::globalReference() {
