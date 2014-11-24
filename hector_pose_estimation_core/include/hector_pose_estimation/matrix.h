@@ -32,12 +32,7 @@
 #include <Eigen/Geometry>
 #include <stdexcept>
 
-// #define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
-#define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION 1e-5
-#define FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
-
-// We need this to preallocate memory for vectors and matrices:
-#define MAXIMUM_STATE_VARIABLES 24
+#include <hector_pose_estimation/matrix_config.h>
 
 namespace hector_pose_estimation {
   using Eigen::Dynamic;
@@ -50,12 +45,12 @@ namespace hector_pose_estimation {
   typedef Eigen::Quaternion<ScalarType> Quaternion;
 
   template <int Rows>
-  class ColumnVector_ : public Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),1> {
+  class ColumnVector_ : public Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MaxVectorSize),1> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
     typedef ColumnVector_<Rows> Derived;
-    typedef Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),1> Base;
+    typedef Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MaxVectorSize),1> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
     typedef Eigen::Map<Base> Map;
@@ -74,12 +69,12 @@ namespace hector_pose_estimation {
   typedef ColumnVector_<3> ColumnVector3;
 
   template <int Cols>
-  class RowVector_ : public Eigen::Matrix<ScalarType,1,Cols,Eigen::RowMajor,1,MAXIMUM_STATE_VARIABLES> {
+  class RowVector_ : public Eigen::Matrix<ScalarType,1,Cols,Eigen::RowMajor,1,MaxVectorSize> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
     typedef RowVector_<Cols> Derived;
-    typedef Eigen::Matrix<ScalarType,1,Cols,0,1,MAXIMUM_STATE_VARIABLES> Base;
+    typedef Eigen::Matrix<ScalarType,1,Cols,0,1,MaxVectorSize> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
     typedef Eigen::Map<Base> Map;
@@ -98,12 +93,12 @@ namespace hector_pose_estimation {
   typedef RowVector_<3> RowVector3;
 
   template <int Rows, int Cols>
-  class Matrix_ : public Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),(Cols != Dynamic ? Cols : MAXIMUM_STATE_VARIABLES)> {
+  class Matrix_ : public Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MaxMatrixRowsCols),(Cols != Dynamic ? Cols : MaxMatrixRowsCols)> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic || Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
 
     typedef Matrix_<Rows,Cols> Derived;
-    typedef Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),(Cols != Dynamic ? Cols : MAXIMUM_STATE_VARIABLES)> Base;
+    typedef Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MaxMatrixRowsCols),(Cols != Dynamic ? Cols : MaxMatrixRowsCols)> Base;
     typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
     typedef typename Eigen::internal::traits<Base>::Index Index;
     typedef Eigen::Map<Base> Map;

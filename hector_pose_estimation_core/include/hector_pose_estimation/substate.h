@@ -58,7 +58,9 @@ public:
   enum { VectorDimension = _VectorDimension };
   enum { CovarianceDimension = _CovarianceDimension };
   initializer(State& state) : index_(state.getVector().rows()), covariance_index_(state.getCovariance().rows()) {
+    assert(index_ + VectorDimension <= MaxVectorSize);
     state.x().conservativeResize(index_ + VectorDimension);
+    assert(covariance_index_ + CovarianceDimension <= MaxMatrixRowsCols);
     state.P().conservativeResize(covariance_index_ + CovarianceDimension);
   }
 protected:
