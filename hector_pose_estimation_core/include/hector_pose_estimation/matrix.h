@@ -47,12 +47,10 @@ namespace hector_pose_estimation {
   template <int Rows>
   class ColumnVector_ : public Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MaxVectorSize),1> {
   public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic) // is this really required if Eigen::Matrix is the base class?
-
     typedef ColumnVector_<Rows> Derived;
     typedef Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MaxVectorSize),1> Base;
-    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
-    typedef typename Eigen::internal::traits<Base>::Index Index;
+    using typename Base::Scalar;
+    using typename Base::Index;
     typedef Eigen::Map<Base> Map;
     typedef Eigen::Map<const Base> ConstMap;
 
@@ -71,12 +69,10 @@ namespace hector_pose_estimation {
   template <int Cols>
   class RowVector_ : public Eigen::Matrix<ScalarType,1,Cols,Eigen::RowMajor,1,MaxVectorSize> {
   public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
-
     typedef RowVector_<Cols> Derived;
     typedef Eigen::Matrix<ScalarType,1,Cols,0,1,MaxVectorSize> Base;
-    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
-    typedef typename Eigen::internal::traits<Base>::Index Index;
+    using typename Base::Scalar;
+    using typename Base::Index;
     typedef Eigen::Map<Base> Map;
     typedef Eigen::Map<const Base> ConstMap;
 
@@ -95,12 +91,10 @@ namespace hector_pose_estimation {
   template <int Rows, int Cols>
   class Matrix_ : public Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MaxMatrixRowsCols),(Cols != Dynamic ? Cols : MaxMatrixRowsCols)> {
   public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(Rows != Dynamic || Cols != Dynamic) // is this really required if Eigen::Matrix is the base class?
-
     typedef Matrix_<Rows,Cols> Derived;
     typedef Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MaxMatrixRowsCols),(Cols != Dynamic ? Cols : MaxMatrixRowsCols)> Base;
-    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
-    typedef typename Eigen::internal::traits<Base>::Index Index;
+    using typename Base::Scalar;
+    using typename Base::Index;
     typedef Eigen::Map<Base> Map;
     typedef Eigen::Map<const Base> ConstMap;
 
@@ -118,16 +112,14 @@ namespace hector_pose_estimation {
   template <int RowsCols>
   class SymmetricMatrix_ : public Matrix_<RowsCols,RowsCols> {
   public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(RowsCols != Dynamic) // is this really required if Eigen::Matrix is the base class?
-
     typedef SymmetricMatrix_<RowsCols> Derived;
     typedef Matrix_<RowsCols,RowsCols> Storage;
-    typedef typename Storage::Base Base;
-    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
-    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
-    typedef typename Eigen::internal::traits<Base>::Index Index;
-    typedef Eigen::Map<Base> Map;
-    typedef Eigen::Map<const Base> ConstMap;
+    using typename Storage::Base;
+//    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
+    using typename Storage::Scalar;
+    using typename Storage::Index;
+    using typename Storage::Map;
+    using typename Storage::ConstMap;
 
     // Constructors
     SymmetricMatrix_() {}
@@ -177,12 +169,12 @@ namespace hector_pose_estimation {
   public:
     typedef SymmetricMatrix Derived;
     typedef SymmetricMatrix_<Dynamic> Storage;
-    typedef typename Storage::Base Base;
-    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
-    typedef typename Eigen::internal::traits<Base>::Scalar Scalar;
-    typedef typename Eigen::internal::traits<Base>::Index Index;
-    typedef Eigen::Map<Base> Map;
-    typedef Eigen::Map<const Base> ConstMap;
+    using typename Storage::Base;
+//    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
+    using typename Storage::Scalar;
+    using typename Storage::Index;
+    using typename Storage::Map;
+    using typename Storage::ConstMap;
 
     // Constructors
     SymmetricMatrix() : Storage() {}
@@ -192,7 +184,7 @@ namespace hector_pose_estimation {
     template <typename OtherDerived> SymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) {}
 
     template <typename OtherDerived> Derived& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
-      this->Base::operator=(other);
+      this->Storage::operator=(other);
       return symmetric();
     }
 
