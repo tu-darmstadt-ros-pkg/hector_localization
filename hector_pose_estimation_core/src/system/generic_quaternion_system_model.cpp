@@ -166,8 +166,6 @@ bool GenericQuaternionSystemModel::prepareUpdate(State& state, const Inputs& inp
 
 void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State& state)
 {
-  const State::RotationMatrix &R = state.R();
-
   x_dot.setZero();
 
   if (state.rate()) {

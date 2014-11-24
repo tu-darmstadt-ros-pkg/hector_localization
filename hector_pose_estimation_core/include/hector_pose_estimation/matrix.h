@@ -47,6 +47,8 @@ namespace hector_pose_estimation {
   typedef double ScalarType;
   typedef Eigen::DenseIndex IndexType;
 
+  typedef Eigen::Quaternion<ScalarType> Quaternion;
+
   template <int Rows>
   class ColumnVector_ : public Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MAXIMUM_STATE_VARIABLES),1> {
   public:
@@ -224,20 +226,26 @@ namespace hector_pose_estimation {
     }
   };
 
-  typedef Eigen::Quaternion<ScalarType> Quaternion;
-
-  using Eigen::VectorBlock;
-  typedef VectorBlock<ColumnVector,3>       VectorBlock3;
-  typedef VectorBlock<ColumnVector,4>       VectorBlock4;
-  typedef VectorBlock<const ColumnVector,3> ConstVectorBlock3;
-  typedef VectorBlock<const ColumnVector,4> ConstVectorBlock4;
-
-  using Eigen::Block;
-  typedef Eigen::Block<Matrix,Dynamic,Dynamic> MatrixBlock;
-
 } // namespace hector_pose_estimation
 
 namespace Eigen {
+
+// Add template specializations of DenseStorage for null matrices for older Eigen versions.
+// Those have been added to Eigen 3.1.0.
+// See https://bitbucket.org/eigen/eigen/commits/e03061319d0297c34e3128dcc5a780824b4fdb78.
+// Copied from https://bitbucket.org/eigen/eigen/src/167ce78594dc4e7a4b9ca27fc745e674300e85ff/Eigen/src/Core/DenseStorage.h.
+#if !EIGEN_VERSION_AT_LEAST(3,1,0)
+  // more specializations for null matrices; these are necessary to resolve ambiguities
+  template<typename T, int _Options> class DenseStorage<T, 0, Dynamic, Dynamic, _Options>
+  : public DenseStorage<T, 0, 0, 0, _Options> { };
+
+  template<typename T, int _Rows, int _Options> class DenseStorage<T, 0, _Rows, Dynamic, _Options>
+  : public DenseStorage<T, 0, 0, 0, _Options> { };
+
+  template<typename T, int _Cols, int _Options> class DenseStorage<T, 0, Dynamic, _Cols, _Options>
+  : public DenseStorage<T, 0, 0, 0, _Options> { };
+#endif
+
 namespace internal {
 
 #define EIGEN_FORWARD_TRAITS_FOR_TYPE(Base) \
@@ -284,5 +292,18 @@ template <> struct traits< hector_pose_estimation::SymmetricMatrix > {
 
 } // namespace internal
 } // namespace Eigen
+
+namespace hector_pose_estimation {
+
+  using Eigen::VectorBlock;
+  typedef VectorBlock<ColumnVector,3>       VectorBlock3;
+  typedef VectorBlock<ColumnVector,4>       VectorBlock4;
+  typedef VectorBlock<const ColumnVector,3> ConstVectorBlock3;
+  typedef VectorBlock<const ColumnVector,4> ConstVectorBlock4;
+
+  using Eigen::Block;
+  typedef Eigen::Block<Matrix,Dynamic,Dynamic> MatrixBlock;
+
+} // namespace hector_pose_estimation
 
 #endif // HECTOR_POSE_ESTIMATION_MATRIX_H
