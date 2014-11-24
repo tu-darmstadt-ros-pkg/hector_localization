@@ -35,6 +35,8 @@ namespace hector_pose_estimation {
 template class System_<GyroModel>;
 template class System_<AccelerometerModel>;
 
+static const Matrix3 MinusIdentity = -Matrix3::Identity();
+
 GyroModel::GyroModel()
 {
   rate_stddev_ = 1.0 * M_PI/180.0;
@@ -52,6 +54,11 @@ bool GyroModel::init(PoseEstimation& estimator, System &system, State& state)
   return bias_;
 }
 
+void GyroModel::getPrior(State &state)
+{
+  bias_->block(state.P()) = 3600./2. * pow(rate_drift_, 2) * SymmetricMatrix3::Identity();
+}
+
 void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &, bool init)
 {
   if (!init) return;
@@ -61,12 +68,12 @@ void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, const Input
 
 ColumnVector3 GyroModel::getRate(const ImuInput::RateType& imu_rate, const State& state) const
 {
-  return imu_rate + bias_->getVector();
+  return imu_rate - bias_->getVector();
 }
 
 void GyroModel::getRateJacobian(SystemMatrixBlock& C, const State& state)
 {
-  bias_->cols(C).setIdentity();
+  bias_->cols(C) = MinusIdentity;
 }
 
 void GyroModel::getRateNoise(CovarianceBlock Q, const State &, const Inputs &, bool init)
@@ -94,7 +101,7 @@ void GyroModel::getRateNoise(CovarianceBlock Q, const State &, const Inputs &, b
 AccelerometerModel::AccelerometerModel()
 {
   acceleration_stddev_ = 1.0e-2;
-  acceleration_drift_ = 1.0e-3;
+  acceleration_drift_ = 1.0e-2;
   parameters().add("stddev", acceleration_stddev_);
   parameters().add("drift", acceleration_drift_);
 }
@@ -108,6 +115,11 @@ bool AccelerometerModel::init(PoseEstimation& estimator, System &system, State& 
   return bias_;
 }
 
+void AccelerometerModel::getPrior(State &state)
+{
+  bias_->block(state.P()) = 3600./2. * pow(acceleration_drift_, 2) * SymmetricMatrix3::Identity();
+}
+
 void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State&, const Inputs &, bool init)
 {
   if (!init) return;
@@ -117,12 +129,12 @@ void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State&, const In
 
 ColumnVector3 AccelerometerModel::getAcceleration(const ImuInput::AccelerationType& imu_acceleration, const State& state) const
 {
-  return imu_acceleration + bias_->getVector();
+  return imu_acceleration - bias_->getVector();
 }
 
 void AccelerometerModel::getAccelerationJacobian(SystemMatrixBlock& C, const State&)
 {
-  bias_->cols(C).setIdentity();
+  bias_->cols(C) = MinusIdentity;
 }
 
 void AccelerometerModel::getAccelerationNoise(CovarianceBlock Q, const State &, const Inputs &, bool init)
