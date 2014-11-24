@@ -103,7 +103,7 @@ void GenericQuaternionSystemModel::getPrior(State &state) {
   if (state.orientation()) {
     state.orientation()->P()(X,X) = 1.0;
     state.orientation()->P()(Y,Y) = 1.0;
-    state.orientation()->P()(Z,Z) = 1.0;
+    state.orientation()->P()(Z,Z) = 0.0;
   }
 
   if (state.rate()) {
