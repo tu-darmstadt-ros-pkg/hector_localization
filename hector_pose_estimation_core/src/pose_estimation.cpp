@@ -532,9 +532,9 @@ void PoseEstimation::getImuWithBiases(geometry_msgs::Vector3& linear_acceleratio
   }
 
   if (accel) {
-    linear_acceleration.x += accel->getModel()->getError().x();
-    linear_acceleration.y += accel->getModel()->getError().y();
-    linear_acceleration.z += accel->getModel()->getError().z();
+    linear_acceleration.x -= accel->getModel()->getError().x();
+    linear_acceleration.y -= accel->getModel()->getError().y();
+    linear_acceleration.z -= accel->getModel()->getError().z();
   }
 
   getRate(angular_velocity);
@@ -597,9 +597,9 @@ void PoseEstimation::getRate(geometry_msgs::Vector3& vector) {
     }
 
     if (gyro) {
-      vector.x += gyro->getModel()->getError().x();
-      vector.y += gyro->getModel()->getError().y();
-      vector.z += gyro->getModel()->getError().z();
+      vector.x -= gyro->getModel()->getError().x();
+      vector.y -= gyro->getModel()->getError().y();
+      vector.z -= gyro->getModel()->getError().z();
     }
   }
 }
