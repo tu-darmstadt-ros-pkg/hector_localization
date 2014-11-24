@@ -87,6 +87,7 @@ protected:
 
   ColumnVector3 rate_nav_;
   ColumnVector3 acceleration_nav_;
+//  State::Covariance Q_;
 
   typedef Input_<3> TorqueInput;
   TorqueInput::Ptr torque_input_;

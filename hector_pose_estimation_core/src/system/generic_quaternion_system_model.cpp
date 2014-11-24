@@ -74,6 +74,28 @@ bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, System &syste
 
   }
 
+//  // precalculate Q in order to just copy the parts that are active
+//  // Note: Q might be too small as we add other substates later.
+//  Q_ = State::Covariance::Zero(state.getCovarianceDimension(), state.getCovarianceDimension());
+//  if (state.orientation()) {
+//    if (!state.rate() && imu_ && gyro_) {
+//      gyro_->getModel()->getRateNoise(state.orientation()->block(Q_), state, Inputs(), true);
+//    }
+//    state.orientation()->block(Q_) += pow(rate_stddev_, 2) * SymmetricMatrix3::Identity();
+//  }
+//  if (state.rate()) {
+//    state.rate()->block(Q_) = pow(angular_acceleration_stddev_, 2) * SymmetricMatrix3::Identity();
+//  }
+//  if (state.position()) {
+//    state.position()->block(Q_) = pow(velocity_stddev_, 2) * SymmetricMatrix3::Identity();
+//  }
+//  if (state.velocity()) {
+//    if (!state.acceleration() && imu_ && accelerometer_) {
+//      accelerometer_->getModel()->getAccelerationNoise(state.velocity()->block(Q_), state, Inputs(), true);
+//    }
+//    state.velocity()->block(Q_) += pow(acceleration_stddev_, 2) * SymmetricMatrix3::Identity();
+//  }
+
   return true;
 }
 
@@ -156,6 +178,9 @@ void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State
 
   if (state.orientation()) {
     state.orientation()->segment(x_dot).head(3) = rate_nav_;
+    if (!(state.getSystemStatus() & STATE_YAW) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
+      state.orientation()->segment(x_dot).z() = 0.0;
+    }
   }
 
   if (state.velocity()) {
@@ -185,6 +210,35 @@ void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State
 
 void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &inputs, bool init)
 {
+//  if (init) Q.setZero();
+//  Q.topLeftCorner(Q_.rows(), Q_.cols()) = Q_;
+
+//  if (state.orientation()) {
+//    if (!(state.getSystemStatus() & STATE_YAW) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
+//      state.orientation()->block(Q)(Z,Z) = 0.0;
+//    }
+//  }
+
+//  if (state.velocity()) {
+//    if (!(state.getSystemStatus() & STATE_VELOCITY_XY) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
+//      state.velocity()->block(Q)(X,X) = 0.0;
+//      state.velocity()->block(Q)(Y,Y) = 0.0;
+//    }
+//    if (!(state.getSystemStatus() & STATE_VELOCITY_Z) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
+//      state.velocity()->block(Q)(Z,Z) = 0.0;
+//    }
+//  }
+
+//  if (state.position()) {
+//    if (!(state.getSystemStatus() & STATE_POSITION_XY) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
+//      state.position()->block(Q)(X,X) = 0.0;
+//      state.position()->block(Q)(Y,Y) = 0.0;
+//    }
+//    if (!(state.getSystemStatus() & STATE_POSITION_Z) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
+//      state.position()->block(Q)(Z,Z) = 0.0;
+//    }
+//  }
+
   if (!init) return;
 
   Q.setZero();
@@ -222,7 +276,12 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
       state.orientation()->rows(A) = R * A_orientation;
     }
 
-    state.orientation()->block(A, *state.orientation()) += SkewSymmetricMatrix(-rate_nav_);
+    state.orientation()->block(A) += SkewSymmetricMatrix(-rate_nav_);
+
+    if (!(state.getSystemStatus() & STATE_YAW) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
+      state.orientation()->rows(A).row(2).setZero();
+      state.orientation()->block(A).col(2).setZero();
+    }
   }
 
   if (state.velocity()) {
@@ -238,11 +297,11 @@ void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State
       state.velocity()->block(A, *state.orientation()) += SkewSymmetricMatrix(-acceleration_nav_);
     }
 
-    if (!((state.getSystemStatus() & STATE_VELOCITY_XY) && !(state.getSystemStatus() & STATUS_ALIGNMENT))) {
+    if (!(state.getSystemStatus() & STATE_VELOCITY_XY) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
       state.velocity()->rows(A).topRows(2).setZero();
     }
 
-    if (!((state.getSystemStatus() & STATE_VELOCITY_Z) && !(state.getSystemStatus() & STATUS_ALIGNMENT))) {
+    if (!(state.getSystemStatus() & STATE_VELOCITY_Z) || (state.getSystemStatus() & STATUS_ALIGNMENT)) {
       state.velocity()->rows(A).row(2).setZero();
     }
   }
@@ -266,9 +325,13 @@ SystemStatus GenericQuaternionSystemModel::getStatusFlags(const State& state)
   SystemStatus flags = state.getMeasurementStatus();
   if (flags & STATE_POSITION_XY) flags |= STATE_VELOCITY_XY;
   if (flags & STATE_POSITION_Z)  flags |= STATE_VELOCITY_Z;
-  if (imu_ && (flags & STATE_VELOCITY_XY)) flags |= STATE_ROLLPITCH;
-  if (flags & STATE_ROLLPITCH)   flags |= STATE_RATE_XY;
-  if (flags & STATE_YAW)         flags |= STATE_RATE_Z;
+  if (imu_) {
+    if (flags & STATE_VELOCITY_XY)      flags |= STATE_ROLLPITCH;
+    if (flags & STATE_ROLLPITCH)        flags |= STATE_RATE_XY;
+    if (flags & STATE_PSEUDO_ROLLPITCH) flags |= STATE_PSEUDO_RATE_XY;
+    if (flags & STATE_YAW)              flags |= STATE_RATE_Z;
+    if (flags & STATE_PSEUDO_YAW)       flags |= STATE_PSEUDO_RATE_Z;
+  }
   return flags & STATE_MASK;
 }
 
