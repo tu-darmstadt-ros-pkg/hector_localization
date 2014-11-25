@@ -49,19 +49,17 @@ namespace hector_pose_estimation {
   public:
     typedef ColumnVector_<Rows> Derived;
     typedef Eigen::Matrix<ScalarType,Rows,1,0,(Rows != Dynamic ? Rows : MaxVectorSize),1> Base;
-    using typename Base::Scalar;
-    using typename Base::Index;
     typedef Eigen::Map<Base> Map;
     typedef Eigen::Map<const Base> ConstMap;
 
     ColumnVector_() { this->setZero(); }
     explicit ColumnVector_(IndexType size) : Base(size) { assert(Rows == Dynamic || size == Rows); this->setZero(); }
-//    explicit ColumnVector_(Scalar value) { this->setConstant(value); }
-    ColumnVector_(Scalar x, Scalar y, Scalar z) : Base(x, y, z) {}
+//    explicit ColumnVector_(ScalarType value) { this->setConstant(value); }
+    ColumnVector_(ScalarType x, ScalarType y, ScalarType z) : Base(x, y, z) {}
     template <typename OtherDerived> ColumnVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
-    Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
+    Derived& operator=(ScalarType scalar) { this->setConstant(scalar); return *this; }
   };
   typedef ColumnVector_<Dynamic> ColumnVector;
   typedef ColumnVector_<3> ColumnVector3;
@@ -71,19 +69,17 @@ namespace hector_pose_estimation {
   public:
     typedef RowVector_<Cols> Derived;
     typedef Eigen::Matrix<ScalarType,1,Cols,0,1,MaxVectorSize> Base;
-    using typename Base::Scalar;
-    using typename Base::Index;
     typedef Eigen::Map<Base> Map;
     typedef Eigen::Map<const Base> ConstMap;
 
     RowVector_() { this->setZero(); }
     explicit RowVector_(IndexType size) : Base(size) { assert(Cols == Dynamic || size == Cols); this->setZero(); }
-//    explicit RowVector_(Scalar value) { this->setConstant(value); }
-    RowVector_(Scalar x, Scalar y, Scalar z) : Base(x, y, z) {}
+//    explicit RowVector_(ScalarType value) { this->setConstant(value); }
+    RowVector_(ScalarType x, ScalarType y, ScalarType z) : Base(x, y, z) {}
     template <typename OtherDerived> RowVector_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
-    Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
+    Derived& operator=(ScalarType scalar) { this->setConstant(scalar); return *this; }
   };
   typedef RowVector_<Dynamic> RowVector;
   typedef RowVector_<3> RowVector3;
@@ -93,18 +89,16 @@ namespace hector_pose_estimation {
   public:
     typedef Matrix_<Rows,Cols> Derived;
     typedef Eigen::Matrix<ScalarType,Rows,Cols,(Rows==1 && Cols!=1 ? Eigen::RowMajor : Eigen::ColMajor),(Rows != Dynamic ? Rows : MaxMatrixRowsCols),(Cols != Dynamic ? Cols : MaxMatrixRowsCols)> Base;
-    using typename Base::Scalar;
-    using typename Base::Index;
     typedef Eigen::Map<Base> Map;
     typedef Eigen::Map<const Base> ConstMap;
 
     Matrix_() { this->setZero(); }
-    explicit Matrix_(Index rows, Index cols) : Base(rows, cols) { assert(Rows == Dynamic || rows == Rows); assert(Cols == Dynamic || cols == Cols); this->setZero(); }
-//    explicit Matrix_(Scalar value) { this->setConstant(value); }
+    explicit Matrix_(IndexType rows, IndexType cols) : Base(rows, cols) { assert(Rows == Dynamic || rows == Rows); assert(Cols == Dynamic || cols == Cols); this->setZero(); }
+//    explicit Matrix_(ScalarType value) { this->setConstant(value); }
     template <typename OtherDerived> Matrix_(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) {}
 
     EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived)
-    Derived& operator=(Scalar scalar) { setConstant(scalar); return *this; }
+    Derived& operator=(ScalarType scalar) { this->setConstant(scalar); return *this; }
   };
   typedef Matrix_<Dynamic,Dynamic> Matrix;
   typedef Matrix_<3,3> Matrix3;
@@ -116,15 +110,13 @@ namespace hector_pose_estimation {
     typedef Matrix_<RowsCols,RowsCols> Storage;
     using typename Storage::Base;
 //    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
-    using typename Storage::Scalar;
-    using typename Storage::Index;
     using typename Storage::Map;
     using typename Storage::ConstMap;
 
     // Constructors
     SymmetricMatrix_() {}
-    //explicit SymmetricMatrix_(Scalar value) { this->setConstant(value); }
-    explicit SymmetricMatrix_(Index dim) : Storage(dim, dim) { assert(RowsCols == Dynamic || dim == RowsCols); }
+    //explicit SymmetricMatrix_(ScalarType value) { this->setConstant(value); }
+    explicit SymmetricMatrix_(IndexType dim) : Storage(dim, dim) { assert(RowsCols == Dynamic || dim == RowsCols); }
     template <typename OtherDerived> SymmetricMatrix_(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) {
 #if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
       symmetric();
@@ -133,7 +125,7 @@ namespace hector_pose_estimation {
     SymmetricMatrix_(const Derived& other) : Storage(other) {}
 
     template <typename OtherDerived> Derived& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
-      this->Base::operator=(other);
+      this->Storage::operator=(other);
 #if defined(ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
       eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
 #endif
@@ -145,12 +137,12 @@ namespace hector_pose_estimation {
     }
 
     template <typename OtherDerived> Derived& operator=(const Derived& other) {
-      this->Base::operator=(other);
+      this->Storage::operator=(other);
       return *this;
     }
 
     Derived& symmetric() {
-      this->Base::operator=((*this + this->transpose()) / 2);
+      this->Storage::operator=((*this + this->transpose()) / 2);
       return *this;
     }
 
@@ -171,15 +163,13 @@ namespace hector_pose_estimation {
     typedef SymmetricMatrix_<Dynamic> Storage;
     using typename Storage::Base;
 //    typedef Eigen::SelfAdjointView<typename Storage::Base,Upper> SelfAdjointView;
-    using typename Storage::Scalar;
-    using typename Storage::Index;
     using typename Storage::Map;
     using typename Storage::ConstMap;
 
     // Constructors
     SymmetricMatrix() : Storage() {}
-    SymmetricMatrix(Index dim) : Storage(dim) { this->setZero(); }
-    // SymmetricMatrix(Index dim, Scalar value) : Storage(dim) { this->setConstant(value); }
+    SymmetricMatrix(IndexType dim) : Storage(dim) { this->setZero(); }
+    // SymmetricMatrix(IndexType dim, ScalarType value) : Storage(dim) { this->setConstant(value); }
     template <int OtherRowsCols> SymmetricMatrix(const SymmetricMatrix_<OtherRowsCols>& other) : Storage(other) {}
     template <typename OtherDerived> SymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) {}
 
@@ -189,16 +179,16 @@ namespace hector_pose_estimation {
     }
 
     Derived& symmetric() {
-      Storage::symmetric();
+      this->Storage::symmetric();
       return *this;
     }
 
-    void resize(Index size) {
-      Base::resize(size, size);
+    void resize(IndexType size) {
+      this->Storage::resize(size, size);
     }
 
-    void conservativeResize(Index size) {
-      Base::conservativeResize(size, size);
+    void conservativeResize(IndexType size) {
+      this->Storage::conservativeResize(size, size);
     }
   };
 
