@@ -46,6 +46,7 @@ PoseEstimationNode::PoseEstimationNode(const SystemPtr& system, const StatePtr& 
   , transform_listener_(0)
   , world_nav_transform_updated_(true)
   , world_nav_transform_valid_(false)
+  , sensor_pose_roll_(0), sensor_pose_pitch_(0), sensor_pose_yaw_(0)
 {
   if (!system) pose_estimation_->addSystem(new GenericQuaternionSystemModel);
 
@@ -111,6 +112,7 @@ bool PoseEstimationNode::init() {
   angular_velocity_bias_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("angular_velocity_bias", 10, false);
   linear_acceleration_bias_publisher_ = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("linear_acceleration_bias", 10, false);
   gps_pose_publisher_                 = getNodeHandle().advertise<geometry_msgs::PoseStamped>("fix/pose", 10, false);
+  sensor_pose_publisher_              = getNodeHandle().advertise<geometry_msgs::PoseStamped>("sensor_pose", 10, false);
 
   poseupdate_subscriber_  = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
   twistupdate_subscriber_ = getNodeHandle().subscribe("twistupdate", 10, &PoseEstimationNode::twistupdateCallback, this);
@@ -136,6 +138,11 @@ bool PoseEstimationNode::init() {
 
 void PoseEstimationNode::reset() {
   pose_estimation_->reset();
+
+  sensor_pose_ = geometry_msgs::PoseStamped();
+  sensor_pose_roll_  = 0.0;
+  sensor_pose_pitch_ = 0.0;
+  sensor_pose_yaw_   = 0.0;
 }
 
 void PoseEstimationNode::cleanup() {
@@ -151,6 +158,15 @@ void PoseEstimationNode::cleanup() {
 void PoseEstimationNode::imuCallback(const sensor_msgs::ImuConstPtr& imu) {
   pose_estimation_->setInput(ImuInput(*imu));
   pose_estimation_->update(imu->header.stamp);
+
+  // calculate roll and pitch purely from acceleration
+  if (sensor_pose_publisher_) {
+    tf::Vector3 linear_acceleration_body(imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z);
+    linear_acceleration_body.normalize();
+    sensor_pose_roll_  =  atan2(linear_acceleration_body.y(), linear_acceleration_body.z());
+    sensor_pose_pitch_ = -asin(linear_acceleration_body.x());
+  }
+
   publish();
 }
 
@@ -178,6 +194,11 @@ void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPt
   Height::MeasurementVector update;
   update(0) = height->point.z;
   pose_estimation_->getMeasurement("height")->add(Height::Update(update));
+
+  if (sensor_pose_publisher_) {
+    boost::shared_ptr<Height> m = boost::static_pointer_cast<Height>(pose_estimation_->getMeasurement("height"));
+    sensor_pose_.pose.position.z = height->point.z - m->getElevation();
+  }
 }
 #endif
 
@@ -187,6 +208,11 @@ void PoseEstimationNode::magneticCallback(const geometry_msgs::Vector3StampedCon
   update.y() = magnetic->vector.y;
   update.z() = magnetic->vector.z;
   pose_estimation_->getMeasurement("magnetic")->add(Magnetic::Update(update));
+
+  if (sensor_pose_publisher_) {
+    boost::shared_ptr<Magnetic> m = boost::static_pointer_cast<Magnetic>(pose_estimation_->getMeasurement("magnetic"));
+    sensor_pose_yaw_ = -m->getModel()->getTrueHeading(pose_estimation_->state(), update);
+  }
 }
 
 void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, const geometry_msgs::Vector3StampedConstPtr& gps_velocity) {
@@ -198,24 +224,44 @@ void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, 
   update.velocity_east  = -gps_velocity->vector.y;
   pose_estimation_->getMeasurement("gps")->add(update);
 
-  if (gps_pose_publisher_.getNumSubscribers() > 0) {
+  if (gps_pose_publisher_ || sensor_pose_publisher_) {
+    boost::shared_ptr<GPS> m = boost::static_pointer_cast<GPS>(pose_estimation_->getMeasurement("gps"));
+
     geometry_msgs::PoseStamped gps_pose;
     pose_estimation_->getHeader(gps_pose.header);
-    gps_pose.header.seq = gps->header.seq;
     gps_pose.header.stamp = gps->header.stamp;
-    GPSModel::MeasurementVector y = boost::static_pointer_cast<GPS>(pose_estimation_->getMeasurement("gps"))->getVector(update, pose_estimation_->state());
-    gps_pose.pose.position.x = y(0);
-    gps_pose.pose.position.y = y(1);
-    gps_pose.pose.position.z = gps->altitude - pose_estimation_->globalReference()->position().altitude;
-    double track = atan2(gps_velocity->vector.y, gps_velocity->vector.x);
-    gps_pose.pose.orientation.w = cos(track/2);
-    gps_pose.pose.orientation.z = sin(track/2);
-    gps_pose_publisher_.publish(gps_pose);
+    GPSModel::MeasurementVector y = m->getVector(update, pose_estimation_->state());
+
+    if (gps_pose_publisher_) {
+      gps_pose.pose.position.x = y(0);
+      gps_pose.pose.position.y = y(1);
+      gps_pose.pose.position.z = gps->altitude - pose_estimation_->globalReference()->position().altitude;
+      double track = atan2(gps_velocity->vector.y, gps_velocity->vector.x);
+      gps_pose.pose.orientation.w = cos(track/2);
+      gps_pose.pose.orientation.z = sin(track/2);
+      gps_pose_publisher_.publish(gps_pose);
+    }
+
+    sensor_pose_.pose.position.x = y(0);
+    sensor_pose_.pose.position.y = y(1);
   }
 }
 
 void PoseEstimationNode::poseupdateCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) {
   pose_estimation_->getMeasurement("poseupdate")->add(PoseUpdate::Update(pose));
+
+  if (sensor_pose_publisher_) {
+    if (pose->pose.covariance[0] > 0)  sensor_pose_.pose.position.x = pose->pose.pose.position.x;
+    if (pose->pose.covariance[7] > 0)  sensor_pose_.pose.position.y = pose->pose.pose.position.y;
+    if (pose->pose.covariance[14] > 0) sensor_pose_.pose.position.z = pose->pose.pose.position.z;
+    tf::Quaternion q;
+    double yaw, pitch, roll;
+    tf::quaternionMsgToTF(pose->pose.pose.orientation, q);
+    tf::Matrix3x3(q).getEulerYPR(yaw, pitch, roll);
+    if (pose->pose.covariance[21] > 0) sensor_pose_roll_  = roll;
+    if (pose->pose.covariance[28] > 0) sensor_pose_pitch_ = pitch;
+    if (pose->pose.covariance[35] > 0) sensor_pose_yaw_   = yaw;
+  }
 }
 
 void PoseEstimationNode::twistupdateCallback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& twist) {
@@ -296,6 +342,14 @@ void PoseEstimationNode::publish() {
     pose_estimation_->getBias(angular_velocity_msg, linear_acceleration_msg);
     if (angular_velocity_bias_publisher_) angular_velocity_bias_publisher_.publish(angular_velocity_msg);
     if (linear_acceleration_bias_publisher_) linear_acceleration_bias_publisher_.publish(linear_acceleration_msg);
+  }
+
+  if (sensor_pose_publisher_) {
+    pose_estimation_->getHeader(sensor_pose_.header);
+    tf::Quaternion orientation;
+    orientation.setRPY(sensor_pose_roll_, sensor_pose_pitch_, sensor_pose_yaw_);
+    tf::quaternionTFToMsg(orientation, sensor_pose_.pose.orientation);
+    sensor_pose_publisher_.publish(sensor_pose_);
   }
 
   if (getTransformBroadcaster())
