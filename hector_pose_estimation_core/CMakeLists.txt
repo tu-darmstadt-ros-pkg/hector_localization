@@ -65,6 +65,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(include)
 include_directories(${catkin_INCLUDE_DIRS})
+include_directories(${CATKIN_DEVEL_PREFIX}/include)
 
 add_library(hector_pose_estimation
   src/global_reference.cpp
