@@ -68,8 +68,8 @@ public:
 
   public:
     State::Vector x_diff;
-    Matrix A;
-    SymmetricMatrix Q;
+    State::SystemMatrix A;
+    State::Covariance Q;
   };
 
   template <class ConcreteModel, typename Enabled = void>
@@ -137,8 +137,8 @@ public:
 
 public:
   State::Vector x_diff;
-  Matrix A;
-  SymmetricMatrix Q;
+  State::SystemMatrix A;
+  State::Covariance Q;
 };
 
 } // namespace filter

@@ -137,7 +137,7 @@ namespace hector_pose_estimation {
 #endif
     }
 
-    template <typename OtherDerived> Derived& operator=(const Derived& other) {
+    Derived& operator=(const Derived& other) {
       this->Storage::operator=(other);
       return *this;
     }
@@ -151,10 +151,10 @@ namespace hector_pose_estimation {
 //      return other * this->template selfadjointView<Upper>() * other.transpose();
 //    }
 
-    Derived inverse() const {
-//      return this->template selfadjointView<Upper>().inverse();
-      return this->Storage::inverse().eval();
-    }
+//    Derived inverse() const {
+////      return this->template selfadjointView<Upper>().inverse();
+//      return this->Storage::inverse().eval();
+//    }
   };
   typedef SymmetricMatrix_<3> SymmetricMatrix3;
 
@@ -169,7 +169,7 @@ namespace hector_pose_estimation {
 
     // Constructors
     SymmetricMatrix() : Storage() {}
-    SymmetricMatrix(IndexType dim) : Storage(dim) { this->setZero(); }
+    SymmetricMatrix(IndexType dim) : Storage(dim) {}
     // SymmetricMatrix(IndexType dim, ScalarType value) : Storage(dim) { this->setConstant(value); }
     template <int OtherRowsCols> SymmetricMatrix(const SymmetricMatrix_<OtherRowsCols>& other) : Storage(other) {}
     template <typename OtherDerived> SymmetricMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Storage(other) {}
