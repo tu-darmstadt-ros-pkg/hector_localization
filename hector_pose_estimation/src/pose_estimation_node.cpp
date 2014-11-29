@@ -75,11 +75,15 @@ bool PoseEstimationNode::init() {
   // get parameters
   pose_estimation_->parameters().initialize(ParameterRegistryROS(getPrivateNodeHandle()));
   getPrivateNodeHandle().getParam("publish_covariances", publish_covariances_ = false);
-  getPrivateNodeHandle().getParam("publish_world_map_transform", publish_world_other_transform_ = false); // deprecated
+  if (getPrivateNodeHandle().getParam("publish_world_map_transform", publish_world_other_transform_ = false)) {
+    ROS_WARN("Parameter 'publish_world_map_transform' is deprecated. Use 'publish_world_other_transform' and 'other_frame' instead.");
+  }
   getPrivateNodeHandle().getParam("publish_world_other_transform", publish_world_other_transform_);
-  getPrivateNodeHandle().getParam("map_frame", other_frame_ = std::string()); // deprecated
+  if (getPrivateNodeHandle().getParam("map_frame", other_frame_ = std::string())) {
+    ROS_WARN("Parameter 'map_frame' is deprecated. Use 'other_frame' instead.");
+  }
   getPrivateNodeHandle().getParam("other_frame", other_frame_);
-  getPrivateNodeHandle().getParam("publish_world_nav_transform", publish_world_nav_transform_ = true);
+  getPrivateNodeHandle().getParam("publish_world_nav_transform", publish_world_nav_transform_ = false);
 
   // search tf_prefix parameter
   tf_prefix_ = tf::getPrefixParam(getPrivateNodeHandle());
