@@ -50,11 +50,11 @@ public:
   ColumnVector3 getError() const { return bias_->getVector(); }
 
   ColumnVector3 getRate(const ImuInput::RateType& imu_rate, const State& state) const;
-  void getRateJacobian(SystemMatrixBlock& C, const State& state);
-  void getRateNoise(CovarianceBlock Q, const State& state, const Inputs &inputs, bool init);
+  void getRateJacobian(SystemMatrixBlock& C, const State& state, bool init = true);
+  void getRateNoise(CovarianceBlock Q, const State& state, bool init = true);
 
   using TimeContinuousSystemModel_<GyroModel,3>::getSystemNoise;
-  void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &inputs, bool init);
+  void getSystemNoise(NoiseVariance& Q, const State& state, bool init = true);
 
 private:
   typename SubState::Ptr bias_;
@@ -76,11 +76,11 @@ public:
   ColumnVector3 getError() const { return bias_->getVector(); }
 
   ColumnVector3 getAcceleration(const ImuInput::AccelerationType& imu_acceleration, const State& state) const;
-  void getAccelerationJacobian(SystemMatrixBlock& C, const State& state);
-  void getAccelerationNoise(CovarianceBlock Q, const State& state, const Inputs &inputs, bool init);
+  void getAccelerationJacobian(SystemMatrixBlock& C, const State& state, bool init = true);
+  void getAccelerationNoise(CovarianceBlock Q, const State& state, bool init = true);
 
   using TimeContinuousSystemModel_<AccelerometerModel,3>::getSystemNoise;
-  void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &inputs, bool init);
+  void getSystemNoise(NoiseVariance& Q, const State& state, bool init = true);
 
 private:
   typename SubState::Ptr bias_;

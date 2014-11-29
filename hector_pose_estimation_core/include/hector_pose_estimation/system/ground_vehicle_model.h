@@ -57,9 +57,9 @@ public:
   virtual SystemStatus getStatusFlags(const State& state);
 
   using GenericQuaternionSystemModel::getDerivative;
-  virtual void getDerivative(StateVector& x_dot, const State& state, const Inputs& inputs);
+  virtual void getDerivative(StateVector& x_dot, const State& state);
   using GenericQuaternionSystemModel::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init = true);
 
   virtual bool limitState(State& state);
 

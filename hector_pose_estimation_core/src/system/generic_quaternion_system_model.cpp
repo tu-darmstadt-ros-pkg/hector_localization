@@ -79,7 +79,7 @@ bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, System &syste
 //  Q_ = State::Covariance::Zero(state.getCovarianceDimension(), state.getCovarianceDimension());
 //  if (state.orientation()) {
 //    if (!state.rate() && imu_ && gyro_) {
-//      gyro_->getModel()->getRateNoise(state.orientation()->block(Q_), state, Inputs(), true);
+//      gyro_->getModel()->getRateNoise(state.orientation()->block(Q_), state, true);
 //    }
 //    state.orientation()->block(Q_) += pow(rate_stddev_, 2) * SymmetricMatrix3::Identity();
 //  }
@@ -91,7 +91,7 @@ bool GenericQuaternionSystemModel::init(PoseEstimation& estimator, System &syste
 //  }
 //  if (state.velocity()) {
 //    if (!state.acceleration() && imu_ && accelerometer_) {
-//      accelerometer_->getModel()->getAccelerationNoise(state.velocity()->block(Q_), state, Inputs(), true);
+//      accelerometer_->getModel()->getAccelerationNoise(state.velocity()->block(Q_), state, true);
 //    }
 //    state.velocity()->block(Q_) += pow(acceleration_stddev_, 2) * SymmetricMatrix3::Identity();
 //  }
@@ -125,7 +125,7 @@ void GenericQuaternionSystemModel::getPrior(State &state) {
   }
 }
 
-bool GenericQuaternionSystemModel::prepareUpdate(State& state, const Inputs& inputs, double dt)
+bool GenericQuaternionSystemModel::prepareUpdate(State& state, double dt)
 {
   if (state.rate()) {
     rate_nav_ = state.R() * state.getRate();
@@ -206,7 +206,7 @@ void GenericQuaternionSystemModel::getDerivative(StateVector& x_dot, const State
   }
 }
 
-void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &inputs, bool init)
+void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State& state, bool init)
 {
 //  if (init) Q.setZero();
 //  Q.topLeftCorner(Q_.rows(), Q_.cols()) = Q_;
@@ -242,7 +242,7 @@ void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State&
   Q.setZero();
   if (state.orientation()) {
     if (!state.rate() && imu_ && gyro_) {
-      gyro_->getModel()->getRateNoise(state.orientation()->block(Q), state, inputs, init);
+      gyro_->getModel()->getRateNoise(state.orientation()->block(Q), state, init);
     }
     state.orientation()->block(Q) += pow(rate_stddev_, 2) * SymmetricMatrix3::Identity();
   }
@@ -254,13 +254,13 @@ void GenericQuaternionSystemModel::getSystemNoise(NoiseVariance& Q, const State&
   }
   if (state.velocity()) {
     if (!state.acceleration() && imu_ && accelerometer_) {
-      accelerometer_->getModel()->getAccelerationNoise(state.velocity()->block(Q), state, inputs, init);
+      accelerometer_->getModel()->getAccelerationNoise(state.velocity()->block(Q), state, init);
     }
     state.velocity()->block(Q) += pow(acceleration_stddev_, 2) * SymmetricMatrix3::Identity();
   }
 }
 
-void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State& state)
+void GenericQuaternionSystemModel::getStateJacobian(SystemMatrix& A, const State& state, bool)
 {
   const State::RotationMatrix &R = state.R();
   A.setZero();

@@ -64,10 +64,10 @@ void GroundVehicleModel::getPrior(State &state)
   if (state.position()) state.position()->vector().z() = base_height_;
 }
 
-void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state, const Inputs& inputs)
+void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state)
 {
   // forward to GenericQuaternionSystemModel
-  GenericQuaternionSystemModel::getDerivative(x_dot, state, inputs);
+  GenericQuaternionSystemModel::getDerivative(x_dot, state);
 
   const State::RotationMatrix &R = state.R();
   State::ConstVelocityType v(state.getVelocity());
@@ -79,9 +79,9 @@ void GroundVehicleModel::getDerivative(StateVector& x_dot, const State& state, c
   }
 }
 
-void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs)
+void GroundVehicleModel::getStateJacobian(SystemMatrix& A, const State& state, bool init)
 {
-  GenericQuaternionSystemModel::getStateJacobian(A, state, inputs);
+  GenericQuaternionSystemModel::getStateJacobian(A, state, init);
 
   const State::RotationMatrix &R = state.R();
   State::ConstVelocityType v(state.getVelocity());

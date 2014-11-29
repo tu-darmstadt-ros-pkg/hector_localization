@@ -45,9 +45,9 @@ public:
   virtual std::string getType() const { return "EKF"; }
 
   virtual bool init(PoseEstimation &estimator);
-  virtual bool preparePredict(const Inputs& inputs, double dt);
-  virtual bool predict(const SystemPtr& system, const Inputs& inputs, double dt);
-  virtual bool doPredict(const Inputs& inputs, double dt);
+  virtual bool preparePredict(double dt);
+  virtual bool predict(const SystemPtr& system, double dt);
+  virtual bool doPredict(double dt);
 
   class Predictor
   {
@@ -61,7 +61,7 @@ public:
       , Q(filter->state().getCovarianceDimension())
     {}
     virtual ~Predictor() {}
-    virtual bool predict(const Inputs& inputs, double dt) = 0;
+    virtual bool predict(double dt) = 0;
 
   protected:
     EKF *filter_;
@@ -86,7 +86,7 @@ public:
     {}
     virtual ~Predictor_() {}
 
-    virtual bool predict(const Inputs& inputs, double dt);
+    virtual bool predict(double dt);
   };
 
   class Corrector

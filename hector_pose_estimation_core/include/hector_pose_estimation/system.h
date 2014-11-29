@@ -70,15 +70,15 @@ public:
 
   virtual void getPrior(State &state) const;
 
-  virtual bool update(const Inputs& inputs, double dt);
+  virtual bool update(double dt);
 
   virtual void updated();
   virtual bool limitState(State& state);
 
 protected:
-  virtual bool updateImpl(const Inputs& inputs, double dt) = 0;
-  virtual bool prepareUpdate(State &state, const Inputs& inputs, double dt) { return getModel()->prepareUpdate(state, inputs, dt); }
-  virtual void afterUpdate(State &state, const Inputs& inputs) { getModel()->afterUpdate(state, inputs); }
+  virtual bool updateImpl(double dt) = 0;
+  virtual bool prepareUpdate(State &state, double dt) { return getModel()->prepareUpdate(state, dt); }
+  virtual void afterUpdate(State &state) { getModel()->afterUpdate(state); }
 
 protected:
   std::string name_;
@@ -122,7 +122,7 @@ public:
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:
-  virtual bool updateImpl(const Inputs& inputs, double dt);
+  virtual bool updateImpl(double dt);
 
 private:
   boost::shared_ptr<Model> model_;

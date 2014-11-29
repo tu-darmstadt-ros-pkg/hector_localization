@@ -58,40 +58,40 @@ void Filter::reset()
   state_.reset();
 }
 
-bool Filter::preparePredict(const Inputs&, double)
+bool Filter::preparePredict(double)
 {
   return true;
 }
 
-bool Filter::predict(const Systems& systems, const Inputs& inputs, double dt) {
+bool Filter::predict(const Systems& systems, double dt) {
   bool result = true;
 
 #ifdef USE_HECTOR_TIMING
   hector_diagnostics::TimingSection section("predict");
 #endif
 
-  if (!preparePredict(inputs, dt)) return false;
+  if (!preparePredict(dt)) return false;
 
   // Iterate through system models. For an EKF, this will populate the x_diff vector, A and Q matrices.
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
-    result &= predict(system, inputs, dt);
+    result &= predict(system, dt);
   }
 
   // Call the filter's global predict method. This will actually calculate the updated state vector and variance.
-  result &= doPredict(inputs, dt);
+  result &= doPredict(dt);
 
   return result;
 }
 
-bool Filter::predict(const SystemPtr& system, const Inputs& inputs, double dt) {
+bool Filter::predict(const SystemPtr& system, double dt) {
 #ifdef USE_HECTOR_TIMING
   hector_diagnostics::TimingSection section("predict." + system->getName());
 #endif
-  return system->update(inputs, dt);
+  return system->update(dt);
 }
 
-bool Filter::doPredict(const Inputs&, double dt) {
+bool Filter::doPredict(double dt) {
   // already done in System::update()
   // state_.updated();
   return true;

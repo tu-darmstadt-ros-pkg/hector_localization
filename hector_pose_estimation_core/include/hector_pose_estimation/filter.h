@@ -50,10 +50,10 @@ public:
   virtual const State& state() const { return state_; }
   virtual State& state() { return state_; }
 
-  virtual bool preparePredict(const Inputs& inputs, double dt);
-  virtual bool predict(const Systems& systems, const Inputs& inputs, double dt);
-  virtual bool predict(const SystemPtr& system, const Inputs& inputs, double dt);
-  virtual bool doPredict(const Inputs& inputs, double dt);
+  virtual bool preparePredict(double dt);
+  virtual bool predict(const Systems& systems, double dt);
+  virtual bool predict(const SystemPtr& system, double dt);
+  virtual bool doPredict(double dt);
 
   virtual bool prepareCorrect();
   virtual bool correct(const Measurements& measurements);
@@ -83,7 +83,7 @@ public:
     Predictor_(Filter *filter, ConcreteModel *model) : Predictor(filter), model_(model) { reset(); }
     virtual ~Predictor_() {}
 
-    virtual bool predict(const Inputs& inputs, double dt) = 0;
+    virtual bool predict(double dt) = 0;
 
     template <typename Derived> typename Derived::template Predictor_<ConcreteModel> *derived() { return dynamic_cast<typename Derived::template Predictor_<ConcreteModel> *>(this); }
     template <typename Derived> const typename Derived::template Predictor_<ConcreteModel> *derived() const { return dynamic_cast<const typename Derived::template Predictor_<ConcreteModel> *>(this); }

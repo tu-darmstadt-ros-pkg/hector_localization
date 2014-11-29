@@ -34,14 +34,14 @@
 namespace hector_pose_estimation {
 
 template <class ConcreteModel>
-bool System_<ConcreteModel>::updateImpl(const Inputs& inputs, double dt)
+bool System_<ConcreteModel>::updateImpl(double dt)
 {
-  if (!prepareUpdate(filter()->state(), inputs, dt)) return false;
+  if (!prepareUpdate(filter()->state(), dt)) return false;
 
   ROS_DEBUG("Updating with system model %s (dt = %f)", getName().c_str(), dt);
-  if (!predictor()->predict(inputs, dt)) return false;
+  if (!predictor()->predict(dt)) return false;
 
-  afterUpdate(filter()->state(), inputs);
+  afterUpdate(filter()->state());
   return true;
 }
 

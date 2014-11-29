@@ -68,11 +68,11 @@ bool System::active(const State& state) {
   return active;
 }
 
-bool System::update(const Inputs& inputs, double dt) {
+bool System::update(double dt) {
   if (!filter() || !active(filter()->state())) return false;
 
   if (getModel()) status_flags_ = getModel()->getStatusFlags(filter()->state());
-  if (!this->updateImpl(inputs, dt)) return false;
+  if (!this->updateImpl(dt)) return false;
   filter()->state().updated();
 
   updated();

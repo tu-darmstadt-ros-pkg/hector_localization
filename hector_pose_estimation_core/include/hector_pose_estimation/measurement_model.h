@@ -96,15 +96,39 @@ public:
   Derived *derived() { return static_cast<Derived *>(this); }
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
-  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state) {}
-  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init) { if (init) C.setZero(); }
-  virtual void getInputJacobian(InputMatrix& D, const State& state, bool init) { if (init) D.setZero(); }
-  virtual void getMeasurementNoise(NoiseVariance& R, const State& state, bool init) { if (init) R.setZero(); }
+  virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init = true);
+  virtual void getInputJacobian(InputMatrix& D, const State& state, bool init = true);
+  virtual void getMeasurementNoise(NoiseVariance& R, const State& state, bool init = true);
 
   virtual void limitError(MeasurementVector& error) {}
 
   virtual const MeasurementVector* getFixedMeasurementVector() const { return 0; }
 };
+
+template <class Derived, int _Dimension>
+void MeasurementModel_<Derived, _Dimension>::getExpectedValue(MeasurementVector& y_pred, const State& state)
+{
+  y_pred.setZero();
+}
+
+template <class Derived, int _Dimension>
+void MeasurementModel_<Derived, _Dimension>::getStateJacobian(MeasurementMatrix& C, const State& state, bool init)
+{
+  if (init) C.setZero();
+}
+
+template <class Derived, int _Dimension>
+void MeasurementModel_<Derived, _Dimension>::getInputJacobian(InputMatrix& D, const State& state, bool init)
+{
+  if (init) D.setZero();
+}
+
+template <class Derived, int _Dimension>
+void MeasurementModel_<Derived, _Dimension>::getMeasurementNoise(NoiseVariance& R, const State& state, bool init)
+{
+  if (init) R.setZero();
+}
 
 } // namespace hector_pose_estimation
 

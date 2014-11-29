@@ -53,17 +53,17 @@ bool EKF::init(PoseEstimation &estimator)
   return true;
 }
 
-bool EKF::preparePredict(const Inputs& inputs, double dt)
+bool EKF::preparePredict(double dt)
 {
   x_diff.setZero();
   A.setIdentity();
   Q.setZero();
-  return Filter::preparePredict(inputs, dt);
+  return Filter::preparePredict(dt);
 }
 
-bool EKF::predict(const SystemPtr& system, const Inputs& inputs, double dt)
+bool EKF::predict(const SystemPtr& system, double dt)
 {
-  if (!Filter::predict(system, inputs, dt)) return false;
+  if (!Filter::predict(system, dt)) return false;
   EKF::Predictor *predictor = boost::dynamic_pointer_cast<EKF::Predictor>(system->predictor());
   x_diff += predictor->x_diff;
   A += predictor->A;
@@ -71,7 +71,7 @@ bool EKF::predict(const SystemPtr& system, const Inputs& inputs, double dt)
   return true;
 }
 
-bool EKF::doPredict(const Inputs& inputs, double dt) {
+bool EKF::doPredict(double dt) {
   ROS_DEBUG_NAMED("ekf.prediction", "EKF prediction (dt = %f):", dt);
 
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "A      = [" << std::endl << A << "]");
@@ -95,7 +95,7 @@ bool EKF::doPredict(const Inputs& inputs, double dt) {
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "x_pred = [" << state().getVector().transpose() << "]");
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "P_pred = [" << std::endl << state().getCovariance() << "]");
 
-  Filter::doPredict(inputs, dt);
+  Filter::doPredict(dt);
   return true;
 }
 

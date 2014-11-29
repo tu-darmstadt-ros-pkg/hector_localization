@@ -62,14 +62,14 @@ public:
 
   virtual SystemStatus getStatusFlags(const State& state);
 
-  bool prepareUpdate(State& state, const Inputs& inputs, double dt);
+  bool prepareUpdate(State& state, double dt);
 
   using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getDerivative;
   virtual void getDerivative(StateVector& x_dot, const State& state);
   using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getSystemNoise;
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs&, bool init);
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init = true);
   using TimeContinuousSystemModel_<GenericQuaternionSystemModel>::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& A, const State& state);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init = true);
 
 //  void setGravity(double gravity) { gravity_ = gravity; }
 //  double getGravity() const { return gravity_; }

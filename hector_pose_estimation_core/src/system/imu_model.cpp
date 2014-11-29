@@ -59,7 +59,7 @@ void GyroModel::getPrior(State &state)
   bias_->block(state.P()) = 3600./2. * pow(rate_drift_, 2) * SymmetricMatrix3::Identity();
 }
 
-void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, const Inputs &, bool init)
+void GyroModel::getSystemNoise(NoiseVariance& Q, const State& state, bool init)
 {
   if (!init) return;
   bias_->block(Q)(X,X) = bias_->block(Q)(Y,Y) = pow(rate_drift_, 2);
@@ -71,12 +71,13 @@ ColumnVector3 GyroModel::getRate(const ImuInput::RateType& imu_rate, const State
   return imu_rate - bias_->getVector();
 }
 
-void GyroModel::getRateJacobian(SystemMatrixBlock& C, const State& state)
+void GyroModel::getRateJacobian(SystemMatrixBlock& C, const State& state, bool init)
 {
+  if (!init) return;
   bias_->cols(C) = MinusIdentity;
 }
 
-void GyroModel::getRateNoise(CovarianceBlock Q, const State &, const Inputs &, bool init)
+void GyroModel::getRateNoise(CovarianceBlock Q, const State &, bool init)
 {
   if (!init) return;
   Q(X,X) = Q(Y,Y) = Q(Z,Z) = pow(rate_stddev_, 2);
@@ -120,7 +121,7 @@ void AccelerometerModel::getPrior(State &state)
   bias_->block(state.P()) = 3600./2. * pow(acceleration_drift_, 2) * SymmetricMatrix3::Identity();
 }
 
-void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State&, const Inputs &, bool init)
+void AccelerometerModel::getSystemNoise(NoiseVariance& Q, const State&, bool init)
 {
   if (!init) return;
   bias_->block(Q)(X,X) = bias_->block(Q)(Y,Y) = pow(acceleration_drift_, 2);
@@ -132,12 +133,13 @@ ColumnVector3 AccelerometerModel::getAcceleration(const ImuInput::AccelerationTy
   return imu_acceleration - bias_->getVector();
 }
 
-void AccelerometerModel::getAccelerationJacobian(SystemMatrixBlock& C, const State&)
+void AccelerometerModel::getAccelerationJacobian(SystemMatrixBlock& C, const State&, bool init)
 {
+  if (!init) return;
   bias_->cols(C) = MinusIdentity;
 }
 
-void AccelerometerModel::getAccelerationNoise(CovarianceBlock Q, const State &, const Inputs &, bool init)
+void AccelerometerModel::getAccelerationNoise(CovarianceBlock Q, const State &, bool init)
 {
   if (!init) return;
   Q(X,X) = Q(Y,Y) = Q(Z,Z) = pow(acceleration_stddev_, 2);

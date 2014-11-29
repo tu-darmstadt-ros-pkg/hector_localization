@@ -50,9 +50,7 @@ public:
   virtual void getPrior(State &state) {}
 
   virtual bool prepareUpdate(State& state, double dt) { return true; }
-  virtual bool prepareUpdate(State& state, const Inputs& inputs, double dt) { return prepareUpdate(state, dt); }
   virtual void afterUpdate(State& state) {}
-  virtual void afterUpdate(State& state, const Inputs& inputs) { afterUpdate(state); }
 
   virtual bool limitState(State& state) { return true; }
 };
@@ -130,27 +128,10 @@ public:
   Derived *derived() { return static_cast<Derived *>(this); }
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
-  // time discrete models should overwrite the following virtual methods, as required:
-protected:
-  virtual void getExpectedDiff(StateVector& x_diff, double dt) { x_diff.setZero(); }
-  virtual void getStateJacobian(SystemMatrix& A, double dt) { A.setZero(); }
-  virtual void getInputJacobian(InputMatrix& B, double dt) { B.setZero(); }
-  virtual void getSystemNoise(NoiseVariance& Q, double dt) { Q.setZero(); }
-  virtual void getExpectedDiff(StateVector& x_diff, const State& state, double dt) { getExpectedDiff(x_diff, dt); }
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, double dt)    { getStateJacobian(A, dt); }
-  virtual void getInputJacobian(InputMatrix& B, const State& state, double dt)     { getInputJacobian(B, dt); }
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, double dt)     { getSystemNoise(Q, dt); }
-
-public:
-  virtual void getExpectedDiff(StateVector& x_diff, const State& state, const Inputs& inputs, double dt) { getExpectedDiff(x_diff, state, dt); }
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs, double dt)    { getStateJacobian(A, state, dt); }
-  virtual void getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs, double dt)     { getInputJacobian(B, state, dt); }
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, double dt)     { getSystemNoise(Q, state, dt); }
-
-  // variants with boolean init argument for time invariant systems
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs, double dt, bool init) { getStateJacobian(A, state, inputs, dt); }
-  virtual void getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs, double dt, bool init)  { getInputJacobian(B, state, inputs, dt); }
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, double dt, bool init)  { getSystemNoise(Q, state, inputs, dt); }
+  virtual void getExpectedDiff(StateVector& x_diff, const State& state, double dt);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, double dt, bool init = true);
+  virtual void getInputJacobian(InputMatrix& B, const State& state, double dt, bool init = true);
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, double dt, bool init = true);
 };
 
 template <class Derived, int _VectorDimension = Dynamic, int _CovarianceDimension = _VectorDimension>
@@ -163,34 +144,16 @@ public:
 
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_CONTINUOUS; }
 
-public:
+  virtual void getDerivative(StateVector& x_dot, const State& state);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init = true);
+  virtual void getInputJacobian(InputMatrix& B, const State& state, bool init = true);
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init = true);
+
   // the overwritten time discrete model functions are implemented in system_model.inl
-  void getExpectedDiff(StateVector& x_diff, const State& state, const Inputs& inputs, double dt);
-  void getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs, double dt, bool init);
-  void getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs, double dt, bool init);
-  void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, double dt, bool init);
-
-  // time continuous models should overwrite the following virtual methods, as required:
-protected:
-  virtual void getDerivative(StateVector& x_dot) { x_dot.setZero(); }
-  virtual void getStateJacobian(SystemMatrix& A) { A.setZero(); }
-  virtual void getInputJacobian(InputMatrix& B) { B.setZero(); }
-  virtual void getSystemNoise(NoiseVariance& Q) { Q.setZero(); }
-  virtual void getDerivative(StateVector& x_dot, const State& state) { getDerivative(x_dot); }
-  virtual void getStateJacobian(SystemMatrix& A, const State& state) { getStateJacobian(A); }
-  virtual void getInputJacobian(InputMatrix& B, const State& state)  { getInputJacobian(B); }
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state)  { getSystemNoise(Q); }
-
-public:
-  virtual void getDerivative(StateVector& x_dot, const State& state, const Inputs& inputs) { getDerivative(x_dot, state); }
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs) { getStateJacobian(A, state); }
-  virtual void getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs)  { getInputJacobian(B, state); }
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs)  { getSystemNoise(Q, state); }
-
-  // variants with boolean init argument for time invariant systems
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, const Inputs& inputs, bool init) { getStateJacobian(A, state, inputs); }
-  virtual void getInputJacobian(InputMatrix& B, const State& state, const Inputs& inputs, bool init)  { getInputJacobian(B, state, inputs); }
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, const Inputs& inputs, bool init)  { getSystemNoise(Q, state, inputs); }
+  void getExpectedDiff(StateVector& x_diff, const State& state, double dt);
+  void getStateJacobian(SystemMatrix& A, const State& state, double dt, bool init = true);
+  void getInputJacobian(InputMatrix& B, const State& state, double dt, bool init = true);
+  void getSystemNoise(NoiseVariance& Q, const State& state, double dt, bool init = true);
 
 private:
   struct internal;

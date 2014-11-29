@@ -159,12 +159,6 @@ public:
 
   virtual NoiseVariance const& getVariance(const Update &update, const State &state) {
     if (update.hasVariance()) return traits::UpdateInspector<ConcreteModel>(update).getVariance(state);
-
-//    bool init = false;
-//    if (!R_) {
-//      R_.reset(new NoiseVariance);
-//      init = true;
-//    }
     model_->getMeasurementNoise(R_, state, false);
     return R_;
   }

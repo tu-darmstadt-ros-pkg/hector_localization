@@ -205,7 +205,7 @@ void PoseEstimation::update(double dt)
   }
 
   // time update step
-  filter_->predict(systems_, inputs_, dt);
+  filter_->predict(systems_, dt);
 
   // pseudo measurement updates (if required)
   if (imu && !(getSystemStatus() & STATE_ROLLPITCH)) {

@@ -38,10 +38,10 @@ namespace hector_pose_estimation {
 namespace filter {
 
 template <class ConcreteModel, typename Enabled>
-bool EKF::Predictor_<ConcreteModel, Enabled>::predict(const Inputs& inputs, double dt) {
-  this->model_->getExpectedDiff(x_diff, state(), inputs, dt);
-  this->model_->getStateJacobian(A, state(), inputs, dt, this->init_);
-  this->model_->getSystemNoise(Q, state(), inputs, dt, this->init_);
+bool EKF::Predictor_<ConcreteModel, Enabled>::predict(double dt) {
+  this->model_->getExpectedDiff(x_diff, state(), dt);
+  this->model_->getStateJacobian(A, state(), dt, this->init_);
+  this->model_->getSystemNoise(Q, state(), dt, this->init_);
 
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "dt * f(x) = [" << x_diff.transpose() << "]");
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "dt * Q    = [" << std::endl << Q  << "]");
