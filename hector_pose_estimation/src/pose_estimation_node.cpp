@@ -220,7 +220,7 @@ void PoseEstimationNode::magneticCallback(const geometry_msgs::Vector3StampedCon
 
   if (sensor_pose_publisher_) {
     boost::shared_ptr<Magnetic> m = boost::static_pointer_cast<Magnetic>(pose_estimation_->getMeasurement("magnetic"));
-    sensor_pose_yaw_ = -m->getModel()->getTrueHeading(pose_estimation_->state(), update);
+    sensor_pose_yaw_ = -(m->getModel()->getTrueHeading(pose_estimation_->state(), update) - pose_estimation_->globalReference()->heading());
   }
 }
 
