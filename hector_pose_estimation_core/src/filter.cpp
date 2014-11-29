@@ -29,6 +29,10 @@
 #include <hector_pose_estimation/filter.h>
 #include <hector_pose_estimation/pose_estimation.h>
 
+#ifdef USE_HECTOR_TIMING
+  #include <hector_diagnostics/timing.h>
+#endif
+
 namespace hector_pose_estimation {
 
 Filter::Filter(State &state)
@@ -62,6 +66,10 @@ bool Filter::preparePredict(const Inputs&, double)
 bool Filter::predict(const Systems& systems, const Inputs& inputs, double dt) {
   bool result = true;
 
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("predict");
+#endif
+
   if (!preparePredict(inputs, dt)) return false;
 
   // Iterate through system models. For an EKF, this will populate the x_diff vector, A and Q matrices.
@@ -77,6 +85,9 @@ bool Filter::predict(const Systems& systems, const Inputs& inputs, double dt) {
 }
 
 bool Filter::predict(const SystemPtr& system, const Inputs& inputs, double dt) {
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("predict." + system->getName());
+#endif
   return system->update(inputs, dt);
 }
 
@@ -94,6 +105,10 @@ bool Filter::prepareCorrect()
 bool Filter::correct(const Measurements& measurements) {
   bool result = true;
 
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("correct");
+#endif
+
   if (!prepareCorrect()) return false;
 
   // Iterate through measurement models. This will process the correction step directly.
@@ -109,6 +124,9 @@ bool Filter::correct(const Measurements& measurements) {
 }
 
 bool Filter::correct(const MeasurementPtr& measurement) {
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("correct." + measurement->getName());
+#endif
   return measurement->process();
 }
 

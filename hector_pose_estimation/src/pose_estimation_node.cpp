@@ -38,6 +38,10 @@
 #include <hector_pose_estimation/measurements/magnetic.h>
 #include <hector_pose_estimation/measurements/gps.h>
 
+#ifdef USE_HECTOR_TIMING
+  #include <hector_diagnostics/timing.h>
+#endif
+
 namespace hector_pose_estimation {
 
 PoseEstimationNode::PoseEstimationNode(const SystemPtr& system, const StatePtr& state)
@@ -117,6 +121,10 @@ bool PoseEstimationNode::init() {
   poseupdate_subscriber_  = getNodeHandle().subscribe("poseupdate", 10, &PoseEstimationNode::poseupdateCallback, this);
   twistupdate_subscriber_ = getNodeHandle().subscribe("twistupdate", 10, &PoseEstimationNode::twistupdateCallback, this);
   syscommand_subscriber_  = getNodeHandle().subscribe("syscommand", 10, &PoseEstimationNode::syscommandCallback, this);
+
+#ifdef USE_HECTOR_TIMING
+  timing_publisher_ = getPrivateNodeHandle().advertise<hector_diagnostics::TimingAggregator>("timing", 10, false);
+#endif
 
   global_reference_publisher_  = getNodeHandle().advertise<geographic_msgs::GeoPose>("global/reference", 1, true);
   pose_estimation_->globalReference()->addUpdateCallback(boost::bind(&PoseEstimationNode::globalReferenceUpdated, this));
@@ -379,6 +387,10 @@ void PoseEstimationNode::publish() {
 
     getTransformBroadcaster()->sendTransform(transforms_);
   }
+
+#ifdef USE_HECTOR_TIMING
+  timing_publisher_.publish(*hector_diagnostics::TimingAggregator::Instance());
+#endif
 }
 
 tf::TransformBroadcaster *PoseEstimationNode::getTransformBroadcaster() {

@@ -31,6 +31,10 @@
 
 #include <boost/pointer_cast.hpp>
 
+#ifdef USE_HECTOR_TIMING
+  #include <hector_diagnostics/timing.h>
+#endif
+
 namespace hector_pose_estimation {
 namespace filter {
 
@@ -73,8 +77,20 @@ bool EKF::doPredict(const Inputs& inputs, double dt) {
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "A      = [" << std::endl << A << "]");
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "Q      = [" << std::endl << Q << "]");
 
+#ifdef USE_HECTOR_TIMING
+  { hector_diagnostics::TimingSection section("predict.ekf.covariance");
+#endif
   state().P() = A * state().P() * A.transpose() + Q;
+
+#ifdef USE_HECTOR_TIMING
+  }
+  { hector_diagnostics::TimingSection section("predict.ekf.state");
+#endif
   state().update(x_diff);
+
+#ifdef USE_HECTOR_TIMING
+  }
+#endif
 
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "x_pred = [" << state().getVector().transpose() << "]");
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "P_pred = [" << std::endl << state().getCovariance() << "]");

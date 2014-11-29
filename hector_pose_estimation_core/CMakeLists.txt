@@ -10,6 +10,12 @@ find_package(Eigen REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
+# Find hector_timing and use it, if available
+find_package(hector_timing)
+if(hector_timing_FOUND)
+  list(APPEND catkin_INCLUDE_DIRS ${hector_timing_INCLUDE_DIRS})
+  list(APPEND catkin_LIBRARIES ${hector_timing_LIBRARIES})
+endif()
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -60,6 +66,17 @@ catkin_package(
 ###########
 ## Build ##
 ###########
+
+## Explicitly set CMAKE_BUILD_TYPE and overwrite some compiler flags
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+message(STATUS "CMAKE_BUILD_TYPE:               ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_CXX_FLAGS_RELEASE:        ${CMAKE_CXX_FLAGS_RELEASE}")
+message(STATUS "CMAKE_CXX_FLAGS_RELWITHDEBINFO: ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+message(STATUS "CMAKE_CXX_FLAGS_MINSIZEREL:     ${CMAKE_CXX_FLAGS_MINSIZEREL}")
+message(STATUS "CMAKE_CXX_FLAGS_DEBUG:          ${CMAKE_CXX_FLAGS_DEBUG}")
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations

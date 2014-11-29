@@ -111,6 +111,7 @@ protected:
   ros::Subscriber poseupdate_subscriber_, twistupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
   ros::Publisher global_reference_publisher_;
+  ros::Publisher timing_publisher_;
 
   std::vector<tf::StampedTransform> transforms_;
   tf::TransformBroadcaster transform_broadcaster_;
