@@ -87,6 +87,10 @@ PoseEstimation *PoseEstimation::Instance() {
 
 bool PoseEstimation::init()
 {
+#ifdef EIGEN_RUNTIME_NO_MALLOC
+  Eigen::internal::set_is_malloc_allowed(true);
+#endif
+
   // initialize global reference
   globalReference()->reset();
 
@@ -258,6 +262,12 @@ void PoseEstimation::update(double dt)
   } else {
     updateSystemStatus(STATUS_DEGRADED, STATUS_READY);
   }
+
+
+#ifdef EIGEN_RUNTIME_NO_MALLOC
+  // No memory allocations allowed after the first update!
+  Eigen::internal::set_is_malloc_allowed(false);
+#endif
 }
 
 void PoseEstimation::updated() {

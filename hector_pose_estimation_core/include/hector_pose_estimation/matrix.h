@@ -29,10 +29,11 @@
 #ifndef HECTOR_POSE_ESTIMATION_MATRIX_H
 #define HECTOR_POSE_ESTIMATION_MATRIX_H
 
+#include <hector_pose_estimation/matrix_config.h>
+
+#include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <stdexcept>
-
-#include <hector_pose_estimation/matrix_config.h>
 
 namespace hector_pose_estimation {
   using Eigen::Dynamic;

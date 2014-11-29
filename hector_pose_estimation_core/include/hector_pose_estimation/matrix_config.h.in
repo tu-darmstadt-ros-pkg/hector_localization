@@ -35,6 +35,9 @@ namespace hector_pose_estimation {
 #define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION 1e-5
 #define FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
 
+// Define this symbol to enable runtime tests for allocations
+// #define EIGEN_RUNTIME_NO_MALLOC
+
 // We need this to preallocate memory for vectors and matrices:
 enum { MaxMatrixRowsCols = @HECTOR_POSE_ESTIMATION_MAXIMUM_STATE_VARIABLES@ };
 enum { MaxVectorSize = @HECTOR_POSE_ESTIMATION_MAXIMUM_STATE_VARIABLES@ + 1 };

@@ -196,6 +196,10 @@ void State::updateOrientation(const ColumnVector3 &rotation_vector)
 {
   if (!orientation()) return;
 
+//  Eigen::Quaterniond q(orientation()->vector().data());
+//  q = Eigen::Quaterniond(1.0, 0.5 * rotation_vector.x(), 0.5 * rotation_vector.y(), 0.5 * rotation_vector.z()) * q;
+//  orientation()->vector() = q.normalized().coeffs();
+
   const double angle = rotation_vector.norm();
   double sin_angle_2, cos_angle_2;
   sincos(angle / 2., &sin_angle_2, &cos_angle_2);
@@ -207,6 +211,7 @@ void State::updateOrientation(const ColumnVector3 &rotation_vector)
   q = Eigen::Quaterniond(cos_angle_2, sin_angle_norm_2 * rotation_vector.x(), sin_angle_norm_2 * rotation_vector.y(), sin_angle_norm_2 * rotation_vector.z()) * q;
 //  q = q * Eigen::Quaterniond(cos_angle_2, sin_angle_norm_2 * rotation_vector.x(), sin_angle_norm_2 * rotation_vector.y(), sin_angle_norm_2 * rotation_vector.z());
   orientation()->vector() = q.coeffs();
+
   R_valid_ = false;
 }
 
