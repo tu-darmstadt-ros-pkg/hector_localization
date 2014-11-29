@@ -28,6 +28,8 @@
 
 #include <hector_pose_estimation/measurement.h>
 
+#include <ros/console.h>
+
 namespace hector_pose_estimation {
 
 Measurement::Measurement(const std::string& name)

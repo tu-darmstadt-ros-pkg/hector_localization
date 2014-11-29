@@ -29,6 +29,8 @@
 #include <hector_pose_estimation/state.h>
 #include <hector_pose_estimation/substate.h>
 
+#include <ros/console.h>
+
 namespace hector_pose_estimation {
 
 FullState::FullState()

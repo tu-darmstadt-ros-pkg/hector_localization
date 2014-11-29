@@ -84,8 +84,7 @@ void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, b
 double MagneticModel::getMagneticHeading(const State& state, const MeasurementVector &y) const {
   MeasurementVector y_nav;
   y_nav = state.R() * y;
-  double heading_nav = -state.getYaw(); // heading = -yaw
-  return heading_nav + atan2(y_nav.y(), y_nav.x());
+  return atan2(y_nav.y(), y_nav.x()) - state.getYaw();
 }
 
 double MagneticModel::getTrueHeading(const State& state, const MeasurementVector &y) const {

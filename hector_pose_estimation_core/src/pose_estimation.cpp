@@ -452,7 +452,7 @@ void PoseEstimation::getPosition(geometry_msgs::PointStamped& point) {
   getPosition(point.point);
 }
 
-void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, double &altitude) {
+void PoseEstimation::getGlobal(double &latitude, double &longitude, double &altitude) {
   State::ConstPositionType position(state().getPosition());
   double north =  position.x() * globalReference()->heading().cos - position.y() * globalReference()->heading().sin;
   double east  = -position.x() * globalReference()->heading().sin - position.y() * globalReference()->heading().cos;
@@ -461,7 +461,18 @@ void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, doub
   altitude  = globalReference()->position().altitude  + position.z();
 }
 
-void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
+void PoseEstimation::getGlobalPosition(double &latitude, double &longitude, double &altitude) {
+  getGlobal(latitude, longitude, altitude);
+}
+
+void PoseEstimation::getGlobal(geographic_msgs::GeoPoint& global)
+{
+  getGlobalPosition(global.latitude, global.longitude, global.altitude);
+  global.latitude  *= 180.0/M_PI;
+  global.longitude *= 180.0/M_PI;
+}
+
+void PoseEstimation::getGlobal(sensor_msgs::NavSatFix& global)
 {
   getHeader(global.header);
   global.header.frame_id = world_frame_;
@@ -481,6 +492,26 @@ void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
   } else {
     global.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
   }
+}
+
+void PoseEstimation::getGlobalPosition(sensor_msgs::NavSatFix& global)
+{
+  getGlobal(global);
+}
+
+void PoseEstimation::getGlobal(geographic_msgs::GeoPoint& position, geometry_msgs::Quaternion& quaternion)
+{
+  getGlobal(position);
+  Quaternion global_orientation = globalReference()->heading().quaternion() * Quaternion(state().getOrientation());
+  quaternion.w = global_orientation.w();
+  quaternion.x = global_orientation.x();
+  quaternion.y = global_orientation.y();
+  quaternion.z = global_orientation.z();
+}
+
+void PoseEstimation::getGlobal(geographic_msgs::GeoPose& global)
+{
+  getGlobal(global.position, global.orientation);
 }
 
 void PoseEstimation::getOrientation(tf::Quaternion& quaternion) {

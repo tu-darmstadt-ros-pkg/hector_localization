@@ -58,6 +58,7 @@ namespace hector_pose_estimation {
       double cos;
       double sin;
       operator double() const { return value; }
+      Quaternion quaternion() const;
     };
 
     struct Radius {

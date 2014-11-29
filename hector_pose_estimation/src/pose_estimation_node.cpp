@@ -110,7 +110,8 @@ bool PoseEstimationNode::init() {
   pose_publisher_        = getNodeHandle().advertise<geometry_msgs::PoseStamped>("pose", 10, false);
   velocity_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("velocity", 10, false);
   imu_publisher_         = getNodeHandle().advertise<sensor_msgs::Imu>("imu", 10, false);
-  global_publisher_      = getNodeHandle().advertise<sensor_msgs::NavSatFix>("global", 10, false);
+  geopose_publisher_     = getNodeHandle().advertise<geographic_msgs::GeoPose>("geopose", 10, false);
+  global_fix_publisher_  = getNodeHandle().advertise<sensor_msgs::NavSatFix>("global", 10, false);
   euler_publisher_       = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("euler", 10, false);
 
   angular_velocity_bias_publisher_    = getNodeHandle().advertise<geometry_msgs::Vector3Stamped>("angular_velocity_bias", 10, false);
@@ -306,19 +307,19 @@ void PoseEstimationNode::publishWorldNavTransform(const ros::TimerEvent &) {
 }
 
 void PoseEstimationNode::publish() {
-  if (state_publisher_) {
+  if (state_publisher_ && state_publisher_.getNumSubscribers() > 0) {
     nav_msgs::Odometry state;
     pose_estimation_->getState(state, publish_covariances_);
     state_publisher_.publish(state);
   }
 
-  if (pose_publisher_) {
+  if (pose_publisher_ && pose_publisher_.getNumSubscribers() > 0) {
     geometry_msgs::PoseStamped pose_msg;
     pose_estimation_->getPose(pose_msg);
     pose_publisher_.publish(pose_msg);
   }
 
-  if (imu_publisher_) {
+  if (imu_publisher_ && imu_publisher_.getNumSubscribers() > 0) {
     sensor_msgs::Imu imu_msg;
     pose_estimation_->getHeader(imu_msg.header);
     pose_estimation_->getOrientation(imu_msg.orientation);
@@ -326,33 +327,40 @@ void PoseEstimationNode::publish() {
     imu_publisher_.publish(imu_msg);
   }
 
-  if (velocity_publisher_) {
+  if (velocity_publisher_ && velocity_publisher_.getNumSubscribers() > 0) {
     geometry_msgs::Vector3Stamped velocity_msg;
     pose_estimation_->getVelocity(velocity_msg);
     velocity_publisher_.publish(velocity_msg);
   }
 
-  if (global_publisher_) {
-    sensor_msgs::NavSatFix global_msg;
-    pose_estimation_->getGlobalPosition(global_msg);
-    global_publisher_.publish(global_msg);
+  if (geopose_publisher_ && geopose_publisher_.getNumSubscribers() > 0) {
+    geographic_msgs::GeoPose geopose_msg;
+    pose_estimation_->getGlobal(geopose_msg);
+    geopose_publisher_.publish(geopose_msg);
   }
 
-  if (euler_publisher_) {
+  if (global_fix_publisher_ && global_fix_publisher_.getNumSubscribers() > 0) {
+    sensor_msgs::NavSatFix global_msg;
+    pose_estimation_->getGlobal(global_msg);
+    global_fix_publisher_.publish(global_msg);
+  }
+
+  if (euler_publisher_ && euler_publisher_.getNumSubscribers() > 0) {
     geometry_msgs::Vector3Stamped euler_msg;
     pose_estimation_->getHeader(euler_msg.header);
     pose_estimation_->getOrientation(euler_msg.vector.z, euler_msg.vector.y, euler_msg.vector.x);
     euler_publisher_.publish(euler_msg);
   }
 
-  if (angular_velocity_bias_publisher_ || linear_acceleration_bias_publisher_) {
+  if ((angular_velocity_bias_publisher_ && angular_velocity_bias_publisher_.getNumSubscribers() > 0) ||
+      (linear_acceleration_bias_publisher_ && linear_acceleration_bias_publisher_.getNumSubscribers() > 0)) {
     geometry_msgs::Vector3Stamped angular_velocity_msg, linear_acceleration_msg;
     pose_estimation_->getBias(angular_velocity_msg, linear_acceleration_msg);
     if (angular_velocity_bias_publisher_) angular_velocity_bias_publisher_.publish(angular_velocity_msg);
     if (linear_acceleration_bias_publisher_) linear_acceleration_bias_publisher_.publish(linear_acceleration_msg);
   }
 
-  if (sensor_pose_publisher_) {
+  if (sensor_pose_publisher_ && sensor_pose_publisher_.getNumSubscribers() > 0) {
     pose_estimation_->getHeader(sensor_pose_.header);
     tf::Quaternion orientation;
     orientation.setRPY(sensor_pose_roll_, sensor_pose_pitch_, sensor_pose_yaw_);

@@ -31,6 +31,8 @@
 
 #include <hector_pose_estimation/measurement.h>
 
+#include <ros/console.h>
+
 namespace hector_pose_estimation {
 
 template <class ConcreteModel>

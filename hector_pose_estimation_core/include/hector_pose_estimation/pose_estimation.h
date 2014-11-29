@@ -42,6 +42,16 @@
 #include <hector_pose_estimation/measurements/gravity.h>
 #include <hector_pose_estimation/measurements/zerorate.h>
 
+#include <tf/transform_datatypes.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/QuaternionStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
+#include <geographic_msgs/GeoPoint.h>
+#include <geographic_msgs/GeoPose.h>
+
 namespace hector_pose_estimation {
 
 class Filter;
@@ -115,8 +125,13 @@ public:
   virtual void getPosition(tf::Stamped<tf::Point>& point);
   virtual void getPosition(geometry_msgs::Point& pose);
   virtual void getPosition(geometry_msgs::PointStamped& pose);
-  virtual void getGlobalPosition(double& latitude, double& longitude, double& altitude);
+  virtual void getGlobal(double& latitude, double& longitude, double& altitude);
+  virtual void getGlobalPosition(double& latitude, double& longitude, double& altitude); // deprecated
+  virtual void getGlobal(geographic_msgs::GeoPoint& global);
+  virtual void getGlobal(sensor_msgs::NavSatFix& global);
   virtual void getGlobalPosition(sensor_msgs::NavSatFix& global);
+  virtual void getGlobal(geographic_msgs::GeoPoint& position, geometry_msgs::Quaternion& quaternion); // deprecated
+  virtual void getGlobal(geographic_msgs::GeoPose& global);
   virtual void getOrientation(tf::Quaternion& quaternion);
   virtual void getOrientation(tf::Stamped<tf::Quaternion>& quaternion);
   virtual void getOrientation(geometry_msgs::Quaternion& pose);

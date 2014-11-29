@@ -30,6 +30,8 @@
 #include <hector_pose_estimation/state.h>
 #include <cmath>
 
+#include <ros/console.h>
+
 using namespace std;
 
 namespace hector_pose_estimation {
@@ -91,6 +93,13 @@ void GlobalReference::updated(bool intermediate) {
 GlobalReference::Heading::Heading(double heading) : value(heading)
 {
   sincos(heading, &sin, &cos);
+}
+
+Quaternion GlobalReference::Heading::quaternion() const
+{
+  double sin_2, cos_2;
+  sincos(0.5 * value, &sin_2, &cos_2);
+  return Quaternion(cos_2, 0.0, 0.0, -sin_2);
 }
 
 GlobalReference::Radius::Radius(double latitude) {
@@ -216,10 +225,11 @@ GlobalReference& GlobalReference::setCurrentAltitude(const State& state, double 
 
 void GlobalReference::getGeoPose(geographic_msgs::GeoPose& geopose) const
 {
-  geopose.orientation.w =  cos(heading() / 2.);
-  geopose.orientation.x =  0.0;
-  geopose.orientation.y =  0.0;
-  geopose.orientation.z = -sin(heading() / 2.);
+  Quaternion orientation(heading().quaternion());
+  geopose.orientation.w = orientation.w();
+  geopose.orientation.x = orientation.x();
+  geopose.orientation.y = orientation.y();
+  geopose.orientation.z = orientation.z();
   geopose.position.latitude  = position().latitude  * 180.0/M_PI;
   geopose.position.longitude = position().longitude * 180.0/M_PI;
   geopose.position.altitude  = position().altitude;

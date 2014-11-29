@@ -36,13 +36,6 @@
 #include <boost/weak_ptr.hpp>
 
 #include <ros/time.h>
-#include <tf/transform_datatypes.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PointStamped.h>
-#include <geometry_msgs/QuaternionStamped.h>
-#include <geometry_msgs/Vector3Stamped.h>
-#include <nav_msgs/Odometry.h>
-#include <sensor_msgs/NavSatFix.h>
 
 namespace hector_pose_estimation {
 
