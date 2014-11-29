@@ -30,16 +30,18 @@
 #include <hector_pose_estimation/state.h>
 #include <cmath>
 
+#include <ros/console.h>
+
 using namespace std;
 
 namespace hector_pose_estimation {
 
 GlobalReference::GlobalReference()
 {
-  parameters().add("reference_latitude",  position_.latitude);
-  parameters().add("reference_longitude", position_.longitude);
-  parameters().add("reference_altitude",  position_.altitude);
-  parameters().add("reference_heading",   heading_.value);
+  parameters().add("reference_latitude",  reference_latitude_  = std::numeric_limits<double>::quiet_NaN());
+  parameters().add("reference_longitude", reference_longitude_ = std::numeric_limits<double>::quiet_NaN());
+  parameters().add("reference_altitude",  reference_altitude_  = std::numeric_limits<double>::quiet_NaN());
+  parameters().add("reference_heading",   heading_.value       = std::numeric_limits<double>::quiet_NaN());
 
   reset();
 }
@@ -57,6 +59,12 @@ void GlobalReference::reset()
   heading_ = Heading();
   radius_ = Radius();
 
+  // parameters are in degrees
+  position_.latitude  = reference_latitude_ * M_PI/180.0;
+  position_.longitude = reference_longitude_ * M_PI/180.0;
+  position_.altitude  = reference_altitude_;
+  heading_.value      = reference_heading_;
+
   updated();
 }
 
@@ -64,24 +72,46 @@ ParameterList& GlobalReference::parameters() {
   return parameters_;
 }
 
-void GlobalReference::updated() {
-  // WGS84 constants
-  static const double equatorial_radius = 6378137.0;
-  static const double flattening = 1.0/298.257223563;
-  static const double excentrity2 = 2*flattening - flattening*flattening;
-
+void GlobalReference::updated(bool intermediate) {
   // calculate earth radii
   if (hasPosition()) {
-    double temp = 1.0 / (1.0 - excentrity2 * sin(position_.latitude) * sin(position_.latitude));
-    double prime_vertical_radius = equatorial_radius * sqrt(temp);
-    radius_.north = prime_vertical_radius * (1 - excentrity2) * temp;
-    radius_.east  = prime_vertical_radius * cos(position_.latitude);
+    radius_ = Radius(position_.latitude);
   }
 
   // calculate sin and cos of the heading reference
   if (hasHeading()) {
     sincos(heading_.value, &heading_.sin, &heading_.cos);
   }
+
+  // execute update callbacks
+  if (!intermediate) {
+    for(std::list<UpdateCallback>::iterator cb = update_callbacks_.begin(); cb != update_callbacks_.end(); ++cb)
+      (*cb)();
+  }
+}
+
+GlobalReference::Heading::Heading(double heading) : value(heading)
+{
+  sincos(heading, &sin, &cos);
+}
+
+Quaternion GlobalReference::Heading::quaternion() const
+{
+  double sin_2, cos_2;
+  sincos(0.5 * value, &sin_2, &cos_2);
+  return Quaternion(cos_2, 0.0, 0.0, -sin_2);
+}
+
+GlobalReference::Radius::Radius(double latitude) {
+  // WGS84 constants
+  static const double equatorial_radius = 6378137.0;
+  static const double flattening = 1.0/298.257223563;
+  static const double excentrity2 = 2*flattening - flattening*flattening;
+
+  double temp = 1.0 / (1.0 - excentrity2 * sin(latitude) * sin(latitude));
+  double prime_vertical_radius = equatorial_radius * sqrt(temp);
+  north = prime_vertical_radius * (1 - excentrity2) * temp;
+  east  = prime_vertical_radius * cos(latitude);
 }
 
 void GlobalReference::fromWGS84(double latitude, double longitude, double &x, double &y) {
@@ -128,25 +158,25 @@ void GlobalReference::toNorthEast(double x, double y, double &north, double &eas
   east  = x * heading_.sin - y * heading_.cos;
 }
 
-GlobalReference& GlobalReference::setPosition(double latitude, double longitude, bool quiet /* = false */) {
+GlobalReference& GlobalReference::setPosition(double latitude, double longitude, bool intermediate /* = false */) {
   position_.latitude = latitude;
   position_.longitude = longitude;
-  updated();
-  if (!quiet) ROS_INFO("Set new reference position to %f deg N / %f deg E", this->position().latitude * 180.0/M_PI, this->position().longitude * 180.0/M_PI);
+  if (!intermediate) ROS_INFO("Set new reference position to %f deg N / %f deg E", this->position().latitude * 180.0/M_PI, this->position().longitude * 180.0/M_PI);
+  updated(intermediate);
   return *this;
 }
 
-GlobalReference& GlobalReference::setHeading(double heading, bool quiet /* = false */) {
+GlobalReference& GlobalReference::setHeading(double heading, bool intermediate /* = false */) {
   heading_.value = heading;
-  updated();
-  if (!quiet) ROS_INFO("Set new reference heading to %.1f degress", this->heading() * 180.0 / M_PI);
+  if (!intermediate) ROS_INFO("Set new reference heading to %.1f degress", this->heading() * 180.0 / M_PI);
+  updated(intermediate);
   return *this;
 }
 
-GlobalReference& GlobalReference::setAltitude(double altitude, bool quiet /* = false */) {
+GlobalReference& GlobalReference::setAltitude(double altitude, bool intermediate /* = false */) {
   position_.altitude = altitude;
-  updated();
-  if (!quiet) ROS_INFO("Set new reference altitude to %.2f m", this->position().altitude);
+  if (!intermediate) ROS_INFO("Set new reference altitude to %.2f m", this->position().altitude);
+  updated(intermediate);
   return *this;
 }
 
@@ -191,6 +221,54 @@ GlobalReference& GlobalReference::setCurrentAltitude(const State& state, double 
   State::ConstPositionType position = state.getPosition();
   setAltitude(new_altitude - position.z());
   return *this;
+}
+
+void GlobalReference::getGeoPose(geographic_msgs::GeoPose& geopose) const
+{
+  Quaternion orientation(heading().quaternion());
+  geopose.orientation.w = orientation.w();
+  geopose.orientation.x = orientation.x();
+  geopose.orientation.y = orientation.y();
+  geopose.orientation.z = orientation.z();
+  geopose.position.latitude  = position().latitude  * 180.0/M_PI;
+  geopose.position.longitude = position().longitude * 180.0/M_PI;
+  geopose.position.altitude  = position().altitude;
+}
+
+bool GlobalReference::getWorldToNavTransform(geometry_msgs::TransformStamped& transform, const std::string &world_frame, const std::string &nav_frame, const ros::Time& stamp) const
+{
+  // Return transform from world_frame (defined by parameters reference_latitude_, reference_longitude_, reference_altitude_ and reference_heading_)
+  // to the nav_frame (this reference)
+  if (isnan(reference_latitude_) ||
+      isnan(reference_longitude_) ||
+      isnan(reference_altitude_) ||
+      isnan(reference_heading_)) {
+    return false;
+  }
+
+  transform.header.stamp = stamp;
+  transform.header.frame_id = world_frame;
+  transform.child_frame_id = nav_frame;
+
+  Radius reference_radius(reference_latitude_ * M_PI/180.0);
+  double north = reference_radius.north * (position_.latitude  - reference_latitude_ * M_PI/180.0);
+  double east  = reference_radius.east  * (position_.longitude - reference_longitude_ * M_PI/180.0);
+  Heading reference_heading(reference_heading_ * M_PI/180.0);
+  transform.transform.translation.x = north * reference_heading.cos + east * reference_heading.sin;
+  transform.transform.translation.y = north * reference_heading.sin - east * reference_heading.cos;
+  transform.transform.translation.z = position_.altitude - reference_altitude_;
+  double heading_diff = heading().value - reference_heading;
+  transform.transform.rotation.w =  cos(heading_diff / 2.);
+  transform.transform.rotation.x =  0.0;
+  transform.transform.rotation.y =  0.0;
+  transform.transform.rotation.z = -sin(heading_diff / 2.);
+
+  return true;
+}
+
+void GlobalReference::addUpdateCallback(const UpdateCallback &cb)
+{
+  update_callbacks_.push_back(cb);
 }
 
 } // namespace hector_pose_estimation

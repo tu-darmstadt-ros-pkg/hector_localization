@@ -29,9 +29,14 @@
 #include <hector_pose_estimation/filter.h>
 #include <hector_pose_estimation/pose_estimation.h>
 
+#ifdef USE_HECTOR_TIMING
+  #include <hector_diagnostics/timing.h>
+#endif
+
 namespace hector_pose_estimation {
 
-Filter::Filter()
+Filter::Filter(State &state)
+  : state_(state)
 {
 }
 
@@ -53,55 +58,81 @@ void Filter::reset()
   state_.reset();
 }
 
+bool Filter::preparePredict(double)
+{
+  return true;
+}
+
 bool Filter::predict(const Systems& systems, double dt) {
-  SystemStatus system_status = 0;
   bool result = true;
 
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("predict");
+#endif
+
+  if (!preparePredict(dt)) return false;
+
+  // Iterate through system models. For an EKF, this will populate the x_diff vector, A and Q matrices.
   for(Systems::iterator it = systems.begin(); it != systems.end(); it++) {
     const SystemPtr& system = *it;
     result &= predict(system, dt);
-    system_status |= system->getStatusFlags();
   }
 
-  // call the filter's global predict method
+  // Call the filter's global predict method. This will actually calculate the updated state vector and variance.
   result &= doPredict(dt);
 
-  state_.updateSystemStatus(system_status, STATE_MASK);
   return result;
 }
 
 bool Filter::predict(const SystemPtr& system, double dt) {
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("predict." + system->getName());
+#endif
   return system->update(dt);
 }
 
 bool Filter::doPredict(double dt) {
-  state_.updated();
+  // already done in System::update()
+  // state_.updated();
+  return true;
+}
+
+bool Filter::prepareCorrect()
+{
   return true;
 }
 
 bool Filter::correct(const Measurements& measurements) {
-  SystemStatus measurement_status = 0;
   bool result = true;
 
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("correct");
+#endif
+
+  if (!prepareCorrect()) return false;
+
+  // Iterate through measurement models. This will process the correction step directly.
   for(Measurements::iterator it = measurements.begin(); it != measurements.end(); it++) {
     const MeasurementPtr& measurement = *it;
     result &= correct(measurement);
-    measurement_status |= measurement->getStatusFlags();
   }
 
-  // call the filter's global correct method
+  // Call the filter's global correct method. No-op for EKF.
   result &= doCorrect();
 
-  state_.setMeasurementStatus(measurement_status);
   return result;
 }
 
 bool Filter::correct(const MeasurementPtr& measurement) {
+#ifdef USE_HECTOR_TIMING
+  hector_diagnostics::TimingSection section("correct." + measurement->getName());
+#endif
   return measurement->process();
 }
 
 bool Filter::doCorrect() {
-  state_.updated();
+  // already done in Measurement::update()
+  // state_.updated();
   return true;
 }
 

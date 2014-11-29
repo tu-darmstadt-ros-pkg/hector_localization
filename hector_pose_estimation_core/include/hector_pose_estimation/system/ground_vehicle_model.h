@@ -36,18 +36,20 @@ namespace hector_pose_estimation {
 
 class GroundVehicleModel;
 
-namespace traits {
-  template <> struct Input<GroundVehicleModel> {
-    enum { Dimension = ImuInput::Dimension };
-    typedef ImuInput Type;
-    typedef ImuInput::Vector Vector;
-    typedef ImuInput::Variance Variance;
-  };
-} // namespace traits
+//namespace traits {
+//  template <> struct Input<GroundVehicleModel> {
+//    enum { Dimension = ImuInput::Dimension };
+//    typedef ImuInput Type;
+//    typedef ImuInput::Vector Vector;
+//    typedef ImuInput::Variance Variance;
+//  };
+//} // namespace traits
 
 class GroundVehicleModel : public GenericQuaternionSystemModel
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   GroundVehicleModel();
   virtual ~GroundVehicleModel();
 
@@ -57,14 +59,14 @@ public:
   using GenericQuaternionSystemModel::getDerivative;
   virtual void getDerivative(StateVector& x_dot, const State& state);
   using GenericQuaternionSystemModel::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init = true);
 
   virtual bool limitState(State& state);
 
 protected:
   double gain_;
   double base_height_, min_height_, max_height_;
-  Matrix_<3,4> dR3_dq_;
+  Matrix_<3,3> dR3;
 };
 
 extern template class System_<GenericQuaternionSystemModel>;

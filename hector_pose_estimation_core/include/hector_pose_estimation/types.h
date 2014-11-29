@@ -32,10 +32,14 @@
 #include <hector_pose_estimation/matrix.h>
 #include <hector_pose_estimation/collection.h>
 
-// Use system model with angular rates.
-// #define USE_RATE_SYSTEM_MODEL
-
 namespace hector_pose_estimation {
+
+  enum VectorIndex {
+    X = 0,
+    Y = 1,
+    Z = 2,
+    W = 3
+  };
 
   enum {
     STATUS_ALIGNMENT = 0x1,
@@ -94,11 +98,13 @@ namespace hector_pose_estimation {
 
   class PoseEstimation;
   class Filter;
+  typedef boost::shared_ptr<Filter> FilterPtr;
   class State;
+  typedef boost::shared_ptr<State> StatePtr;
 
   class SubState;
-  template <int Dimension> class SubState_;
-  typedef SubState_<0> BaseState;
+  template <int VectorDimension, int CovarianceDimension> class SubState_;
+  class BaseState;
   typedef boost::shared_ptr<SubState> SubStatePtr;
   typedef boost::weak_ptr<SubState> SubStateWPtr;
 

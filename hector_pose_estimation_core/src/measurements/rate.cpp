@@ -35,14 +35,24 @@ template class Measurement_<RateModel>;
 
 RateModel::RateModel()
 {
-  parameters().add("stddev", stddev_, 1.0*M_PI/180.0);
+  parameters().add("stddev", stddev_, 10.0 * M_PI/180.0);
+  parameters().add("use_bias", use_bias_, std::string("gyro_bias"));
 }
 
 RateModel::~RateModel() {}
 
-bool RateModel::init(PoseEstimation &estimator, State &state)
+bool RateModel::init(PoseEstimation &estimator, Measurement &measurement, State &state)
 {
-  gyro_drift_ = state.addSubState<3>(this, "gyro");
+  if (!use_bias_.empty()) {
+    bias_ = state.getSubState<3,3>(use_bias_);
+    if (!bias_) {
+      ROS_ERROR("Could not find bias substate '%s' during initialization of rate measurement '%s'.", use_bias_.c_str(), measurement.getName().c_str());
+      return false;
+    }
+  } else {
+    bias_.reset();
+  }
+
   return true;
 }
 
@@ -55,62 +65,23 @@ void RateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 
 void RateModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-//  const State::OrientationType& q = state.getOrientation();
-//  const State::RateType& rate = state.getRate();
-
-//  y_pred(0) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()) * rate.x() + (2.0*q.x()*q.y()+2.0*q.w()*q.z())                 * rate.y() + (2.0*q.x()*q.z()-2.0*q.w()*q.y())                 * rate.z();
-//  y_pred(1) = (2.0*q.x()*q.y()-2.0*q.w()*q.z())                 * rate.x() + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()) * rate.y() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                 * rate.z();
-//  y_pred(2) = (2.0*q.x()*q.z()+2.0*q.w()*q.y())                 * rate.x() + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                 * rate.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z()) * rate.z();
-
   y_pred = state.getRate();
 
-  if (gyro_drift_) {
-    y_pred += gyro_drift_->getVector();
+  if (bias_) {
+    y_pred += bias_->getVector();
   }
 }
 
-void RateModel::getStateJacobian(MeasurementMatrix &C0, SubMeasurementMatrix &C1, const State &state, bool init)
+void RateModel::getStateJacobian(MeasurementMatrix &C, const State &state, bool init)
 {
-//  const State::OrientationType& q = state.getOrientation();
-//  const State::RateType& rate = state.getRate();
-
-//  if (state.getOrientationIndex() >= 0) {
-//    C(0,State::QUATERNION_W) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-//    C(0,State::QUATERNION_X) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-//    C(0,State::QUATERNION_Y) = -2.0*q.y() * rate.x() + 2.0*q.x() * rate.y() - 2.0*q.w() * rate.z();
-//    C(0,State::QUATERNION_Z) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-//    C(1,State::QUATERNION_W) = -2.0*q.z() * rate.x() + 2.0*q.w() * rate.y() + 2.0*q.x() * rate.z();
-//    C(1,State::QUATERNION_X) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-//    C(1,State::QUATERNION_Y) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-//    C(1,State::QUATERNION_Z) = -2.0*q.w() * rate.x() - 2.0*q.z() * rate.y() + 2.0*q.y() * rate.z();
-//    C(2,State::QUATERNION_W) =  2.0*q.y() * rate.x() - 2.0*q.x() * rate.y() + 2.0*q.w() * rate.z();
-//    C(2,State::QUATERNION_X) =  2.0*q.z() * rate.x() - 2.0*q.w() * rate.y() - 2.0*q.x() * rate.z();
-//    C(2,State::QUATERNION_Y) =  2.0*q.w() * rate.x() + 2.0*q.z() * rate.y() - 2.0*q.y() * rate.z();
-//    C(2,State::QUATERNION_Z) =  2.0*q.x() * rate.x() + 2.0*q.y() * rate.y() + 2.0*q.z() * rate.z();
-//  }
-
-//  if (state.getRateIndex() >= 0) {
-//    C(0,State::RATE_X) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z());
-//    C(0,State::RATE_Y) = (2.0*q.x()*q.y()+2.0*q.w()*q.z());
-//    C(0,State::RATE_Z) = (2.0*q.x()*q.z()-2.0*q.w()*q.y());
-//    C(1,State::RATE_X) = (2.0*q.x()*q.y()-2.0*q.w()*q.z());
-//    C(1,State::RATE_Y) = (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z());
-//    C(1,State::RATE_Z) = (2.0*q.y()*q.z()+2.0*q.w()*q.x());
-//    C(2,State::RATE_X) = (2.0*q.x()*q.z()+2.0*q.w()*q.y());
-//    C(2,State::RATE_Y) = (2.0*q.y()*q.z()-2.0*q.w()*q.x());
-//    C(2,State::RATE_Z) = (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z());
-//  }
-
   if (!init) return;
 
-  if (state.getRateIndex() >= 0) {
-   C0(0,State::RATE_X) = 1.0;
-   C0(1,State::RATE_Y) = 1.0;
-   C0(2,State::RATE_Z) = 1.0;
+  if (state.rate()) {
+   state.rate()->cols(C).setIdentity();
   }
 
-  if (gyro_drift_) {
-    C1.setIdentity();
+  if (bias_) {
+    bias_->cols(C).setIdentity();
   }
 }
 

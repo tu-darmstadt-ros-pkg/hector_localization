@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2013, Johannes Meyer, TU Darmstadt
+// Copyright (c) 2014, Johannes Meyer and Martin Nowara, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,31 +26,22 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
-#define HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
-
-#include <hector_pose_estimation/measurement.h>
-
-#include <ros/console.h>
+#ifndef HECTOR_POSE_ESTIMATION_MATRIX_CONFIG_H
+#define HECTOR_POSE_ESTIMATION_MATRIX_CONFIG_H
 
 namespace hector_pose_estimation {
 
-template <class ConcreteModel>
-bool Measurement_<ConcreteModel>::updateImpl(const MeasurementUpdate &update_)
-{
-  Update const &update = dynamic_cast<Update const &>(update_);
-  if (!prepareUpdate(filter()->state(), update)) return false;
+// #define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
+#define ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION 1e-5
+#define FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC
 
-  ROS_DEBUG("Updating with measurement %s", getName().c_str());
-  const MeasurementVector &y = getVector(update, filter()->state());
-  const NoiseVariance &R = getVariance(update, filter()->state());
+// Define this symbol to enable runtime tests for allocations
+// #define EIGEN_RUNTIME_NO_MALLOC
 
-  this->corrector()->correct(y, R);
-
-  afterUpdate(filter()->state());
-  return true;
-}
+// We need this to preallocate memory for vectors and matrices:
+enum { MaxMatrixRowsCols = @HECTOR_POSE_ESTIMATION_MAXIMUM_STATE_VARIABLES@ };
+enum { MaxVectorSize = @HECTOR_POSE_ESTIMATION_MAXIMUM_STATE_VARIABLES@ + 1 };
 
 } // namespace hector_pose_estimation
 
-#endif // HECTOR_POSE_ESTIMATION_MEASUREMENT_INL
+#endif // HECTOR_POSE_ESTIMATION_MATRIX_CONFIG_H

@@ -32,7 +32,11 @@
 #include <hector_pose_estimation/types.h>
 #include <hector_pose_estimation/parameters.h>
 
+#include <geographic_msgs/GeoPose.h>
+#include <geometry_msgs/TransformStamped.h>
+
 #include <limits>
+#include <boost/function.hpp>
 
 namespace hector_pose_estimation {
 
@@ -49,14 +53,17 @@ namespace hector_pose_estimation {
 
     struct Heading {
       Heading() : value(std::numeric_limits<double>::quiet_NaN()), cos(1.0), sin(0.0) {}
+      Heading(double heading);
       double value;
       double cos;
       double sin;
       operator double() const { return value; }
+      Quaternion quaternion() const;
     };
 
     struct Radius {
       Radius() : north(std::numeric_limits<double>::quiet_NaN()), east(std::numeric_limits<double>::quiet_NaN()) {}
+      Radius(double latitude);
       double north;
       double east;
     };
@@ -65,9 +72,12 @@ namespace hector_pose_estimation {
     const Heading& heading() const { return heading_; }
     const Radius& radius() const { return radius_; }
 
-    GlobalReference& setPosition(double latitude, double longitude, bool quiet = false);
-    GlobalReference& setHeading(double heading, bool quiet = false);
-    GlobalReference& setAltitude(double altitude, bool quiet = false);
+    void getGeoPose(geographic_msgs::GeoPose& geopose) const;
+    bool getWorldToNavTransform(geometry_msgs::TransformStamped& transform, const std::string &world_frame, const std::string &nav_frame, const ros::Time& stamp = ros::Time()) const;
+
+    GlobalReference& setPosition(double latitude, double longitude, bool intermediate = false);
+    GlobalReference& setHeading(double heading, bool intermediate = false);
+    GlobalReference& setAltitude(double altitude, bool intermediate = false);
 
     GlobalReference& setCurrentPosition(const State& state, double latitude, double longitude);
     GlobalReference& setCurrentHeading(const State& state, double heading);
@@ -88,8 +98,11 @@ namespace hector_pose_estimation {
 
     static const GlobalReferencePtr &Instance();
 
-    void updated();
     void reset();
+    void updated(bool intermediate = false);
+
+    typedef boost::function<void()> UpdateCallback;
+    void addUpdateCallback(const UpdateCallback &);
 
   private:
     GlobalReference();
@@ -99,6 +112,12 @@ namespace hector_pose_estimation {
     Radius radius_;
 
     ParameterList parameters_;
+    double reference_latitude_;
+    double reference_longitude_;
+    double reference_altitude_;
+    double reference_heading_;
+
+    std::list<UpdateCallback> update_callbacks_;
   };
 
 } // namespace hector_pose_estimation

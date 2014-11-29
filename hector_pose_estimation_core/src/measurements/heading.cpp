@@ -49,22 +49,13 @@ void HeadingModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init
 
 void HeadingModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  State::ConstOrientationType q(state.getOrientation());
-  y_pred(0) = atan2(2*(q.x()*q.y() + q.w()*q.z()), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
+  y_pred(0) = state.getYaw();
 }
 
 void HeadingModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  State::ConstOrientationType q(state.getOrientation());
-  const double t1 = q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z();
-  const double t2 = 2*(q.x()*q.y() + q.w()*q.z());
-  const double t3 = 1.0 / (t1*t1 + t2*t2);
-
-  if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) = 2.0 * t3 * (q.z() * t1 - q.w() * t2);
-    C(0,State::QUATERNION_X) = 2.0 * t3 * (q.y() * t1 - q.x() * t2);
-    C(0,State::QUATERNION_Y) = 2.0 * t3 * (q.x() * t1 + q.y() * t2);
-    C(0,State::QUATERNION_Z) = 2.0 * t3 * (q.w() * t1 + q.z() * t2);
+  if (state.orientation()) {
+    state.orientation()->cols(C)(0,Z) = 1.0;
   }
 }
 

@@ -28,6 +28,8 @@
 
 #include <hector_pose_estimation/measurement.h>
 
+#include <ros/console.h>
+
 namespace hector_pose_estimation {
 
 Measurement::Measurement(const std::string& name)
@@ -35,7 +37,7 @@ Measurement::Measurement(const std::string& name)
   , status_flags_(0)
   , enabled_(true)
   , min_interval_(0.0)
-  , timeout_(1.0)
+  , timeout_(0.0)
   , timer_(0.0)
 {
   parameters().add("enabled", enabled_);
@@ -50,7 +52,7 @@ Measurement::~Measurement()
 
 bool Measurement::init(PoseEstimation& estimator, State& state)
 {
-  if (getModel() && !getModel()->init(estimator, state)) return false;
+  if (getModel() && !getModel()->init(estimator, *this, state)) return false;
   if (!onInit(estimator)) return false;
   return true;
 }
@@ -65,6 +67,7 @@ void Measurement::reset(State& state)
 {
   queue().clear();
   timer_ = 0;
+  status_flags_ = 0;
 
   if (getModel()) getModel()->reset(state);
   onReset();
@@ -109,6 +112,7 @@ bool Measurement::update(const MeasurementUpdate &update)
   if (!filter() || !active(filter()->state())) return false;
 
   if (!updateImpl(update)) return false;
+  filter()->state().updated();
 
   timer_ = 0.0;
   if (getModel()) status_flags_ = getModel()->getStatusFlags();

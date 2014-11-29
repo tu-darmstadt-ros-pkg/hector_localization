@@ -35,17 +35,29 @@ namespace hector_pose_estimation {
 template class Measurement_<GravityModel>;
 
 GravityModel::GravityModel()
-  : gravity_(0.0)
+  : gravity_(MeasurementVector::Zero())
 {
-  parameters().add("stddev", stddev_, 10.0);
+  parameters().add("stddev", stddev_, 1.0);
+  parameters().add("use_bias", use_bias_, std::string("accelerometer_bias"));
 }
 
 GravityModel::~GravityModel() {}
 
-bool GravityModel::init(PoseEstimation &estimator, State &state) {
+bool GravityModel::init(PoseEstimation &estimator, Measurement &measurement, State &state) {
+  if (!use_bias_.empty()) {
+    bias_ = state.getSubState<3,3>(use_bias_);
+    if (!bias_) {
+      ROS_ERROR("Could not find bias substate '%s' during initialization of gravity measurement '%s'.", use_bias_.c_str(), measurement.getName().c_str());
+      return false;
+    }
+  } else {
+    bias_.reset();
+  }
+
   setGravity(estimator.parameters().getAs<double>("gravity_magnitude"));
   return true;
 }
+
 
 void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
@@ -56,31 +68,41 @@ void GravityModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init
 
 void GravityModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  State::ConstOrientationType q(state.getOrientation());
-
-  // y = q * [0 0 1] * q';
-  y_pred(0) = -gravity_.z() * (2*q.x()*q.z() - 2*q.w()*q.y());
-  y_pred(1) = -gravity_.z() * (2*q.w()*q.x() + 2*q.y()*q.z());
-  y_pred(2) = -gravity_.z() * (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z()*q.z());
+  const State::RotationMatrix &R = state.R();
+  y_pred = -R.row(2).transpose() * gravity_.z();
+  if (bias_) {
+    y_pred += bias_->getVector();
+  }
 }
 
 void GravityModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  State::ConstOrientationType q(state.getOrientation());
+  const State::RotationMatrix &R = state.R();
+  if (state.orientation()) {
+//    C(0,state.getOrientationCovarianceIndex() + W) =  gravity_.z()*2*q.y();
+//    C(0,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.z();
+//    C(0,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.w();
+//    C(0,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.x();
+//    C(1,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.x();
+//    C(1,state.getOrientationCovarianceIndex() + X) = -gravity_.z()*2*q.w();
+//    C(1,state.getOrientationCovarianceIndex() + Y) = -gravity_.z()*2*q.z();
+//    C(1,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.y();
+//    C(2,state.getOrientationCovarianceIndex() + W) = -gravity_.z()*2*q.w();
+//    C(2,state.getOrientationCovarianceIndex() + X) =  gravity_.z()*2*q.x();
+//    C(2,state.getOrientationCovarianceIndex() + Y) =  gravity_.z()*2*q.y();
+//    C(2,state.getOrientationCovarianceIndex() + Z) = -gravity_.z()*2*q.z();
 
-  if (state.getOrientationIndex() >= 0) {
-    C(0,State::QUATERNION_W) =  gravity_.z()*2*q.y();
-    C(0,State::QUATERNION_X) = -gravity_.z()*2*q.z();
-    C(0,State::QUATERNION_Y) =  gravity_.z()*2*q.w();
-    C(0,State::QUATERNION_Z) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_W) = -gravity_.z()*2*q.x();
-    C(1,State::QUATERNION_X) = -gravity_.z()*2*q.w();
-    C(1,State::QUATERNION_Y) = -gravity_.z()*2*q.z();
-    C(1,State::QUATERNION_Z) = -gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_W) = -gravity_.z()*2*q.w();
-    C(2,State::QUATERNION_X) =  gravity_.z()*2*q.x();
-    C(2,State::QUATERNION_Y) =  gravity_.z()*2*q.y();
-    C(2,State::QUATERNION_Z) = -gravity_.z()*2*q.z();
+     state.orientation()->cols(C)(X,X) = -gravity_.z() * R(1,0);
+     state.orientation()->cols(C)(X,Y) =  gravity_.z() * R(0,0);
+     state.orientation()->cols(C)(Y,X) = -gravity_.z() * R(1,1);
+     state.orientation()->cols(C)(Y,Y) =  gravity_.z() * R(0,1);
+     state.orientation()->cols(C)(Z,X) = -gravity_.z() * R(1,2);
+     state.orientation()->cols(C)(Z,Y) =  gravity_.z() * R(0,2);
+  }
+
+//  Only the bias component in direction of the gravity is observable, under the assumption that we do not accelerate vertically.
+  if (bias_) {
+    bias_->cols(C) = R.row(2).transpose() * R.row(2);
   }
 }
 

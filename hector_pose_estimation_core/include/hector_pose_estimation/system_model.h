@@ -39,9 +39,7 @@ class SystemModel : public Model {
 public:
   virtual ~SystemModel() {}
 
-  virtual int getDimension() const = 0;
-  virtual bool isSubSystem() const { return false; }
-  virtual IndexType getStateIndex(const State&) const { return 0; }
+  virtual bool init(PoseEstimation& estimator, System &system, State& state) { return true; }
 
   enum SystemTypeEnum { UNKNOWN_SYSTEM_TYPE, TIME_DISCRETE, TIME_CONTINUOUS };
   virtual SystemTypeEnum getSystemType() const { return UNKNOWN_SYSTEM_TYPE; }
@@ -57,95 +55,72 @@ public:
   virtual bool limitState(State& state) { return true; }
 };
 
-template <int _SubDimension>
-class SubSystemModel_ : public SystemModel {
-public:
-  enum { SubDimension = _SubDimension };
-
-  virtual ~SubSystemModel_() {}
-
-  virtual bool isSubSystem() const { return true; }
-  virtual IndexType getStateIndex(const State& state) const { return state.getSubState<SubDimension>(this)->getIndex(); }
-};
-
-template <>
-class SubSystemModel_<0> : public SystemModel {};
-
 namespace traits {
 
-  template <int _SubDimension>
+  template <class Derived, int _VectorDimension = Derived::VectorDimension, int _CovarianceDimension = _VectorDimension>
   struct SystemModel {
-    typedef SubState_<_SubDimension> StateType;
-    enum { BaseDimension = State::Dimension };
-    enum { SubDimension = _SubDimension };
-    enum { Dimension = StateType::Dimension };
+    enum { VectorDimension = _VectorDimension };
+    enum { CovarianceDimension = _CovarianceDimension };
 
-    typedef typename StateType::Vector StateVector;
-    typedef typename StateType::VectorSegment StateVectorSegment;
-    typedef typename StateType::CovarianceBlock StateCovarianceBlock;
-    typedef typename StateType::ConstVectorSegment ConstStateVectorSegment;
-    typedef typename StateType::ConstCovarianceBlock ConstStateCovarianceBlock;
+    typedef State::Vector StateVector;
+    typedef State::Covariance NoiseVariance;
+    typedef State::SystemMatrix SystemMatrix;
 
-    typedef SymmetricMatrix_<Dimension> NoiseVariance;
-    typedef Block<typename State::Covariance::Base,Dimension,Dimension> NoiseVarianceBlock;
-    typedef Block<const typename State::Covariance::Base,Dimension,Dimension> ConstNoiseVarianceBlock;
+    enum { InputDimension = traits::Input<Derived>::Dimension };
+    typedef typename traits::Input<Derived>::Type   InputType;
+    typedef typename traits::Input<Derived>::Vector InputVector;
+    typedef Matrix_<State::Covariance::RowsAtCompileTime,InputDimension> InputMatrix;
 
-    typedef Matrix_<Dimension,Dimension> SystemMatrix;
-    typedef Block<Matrix,Dimension,Dimension> SystemMatrixBlock;
-    typedef Block<const Matrix,Dimension,Dimension> ConstSystemMatrixBlock;
+    typedef SubState_<VectorDimension,CovarianceDimension> SubState;
+    typedef ColumnVector_<VectorDimension> Vector;
 
-    typedef boost::integral_constant<bool,(_SubDimension > 0)> IsSubSystem;
-    typedef SubState_<SubDimension> SubState;
-    typedef typename SubState::Ptr SubStatePtr;
-    typedef Matrix_<BaseDimension,SubDimension> CrossSystemMatrix;
-    typedef Block<Matrix,BaseDimension,SubDimension> CrossSystemMatrixBlock;
-    typedef Block<const Matrix,BaseDimension,SubDimension> ConstCrossSystemMatrixBlock;
+    typedef typename SubState::VectorSegment VectorSegment;
+    typedef typename SubState::CovarianceBlock CovarianceBlock;
+    typedef typename SubState::CrossVarianceBlock CrossVarianceBlock;
+    typedef Block<SystemMatrix,VectorDimension,SystemMatrix::ColsAtCompileTime> SystemMatrixBlock;
+
+    typedef typename SubState::ConstVectorSegment ConstVectorSegment;
+    typedef typename SubState::ConstCovarianceBlock ConstCovarianceBlock;
+    typedef typename SubState::ConstCrossVarianceBlock ConstCrossVarianceBlock;
+    typedef Block<const SystemMatrix,VectorDimension,SystemMatrix::ColsAtCompileTime> ConstSystemMatrixBlock;
   };
 
-  #define SYSTEM_MODEL_TRAIT(Derived, _SubDimension) \
-    typedef traits::SystemModel<_SubDimension> trait; \
-    typedef typename trait::StateType StateType; \
-    enum { BaseDimension = trait::BaseDimension }; \
-    enum { SubDimension = trait::SubDimension }; \
-    enum { Dimension = trait::Dimension }; \
+  #define SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension) \
+    typedef traits::SystemModel<Derived, _VectorDimension, _CovarianceDimension> trait; \
     \
-    typedef typename trait::StateVector               StateVector; \
-    typedef typename trait::StateVectorSegment        StateVectorSegment; \
-    typedef typename trait::StateCovarianceBlock      StateCovarianceBlock; \
-    typedef typename trait::ConstStateVectorSegment   ConstStateVectorSegment; \
-    typedef typename trait::ConstStateCovarianceBlock ConstStateCovarianceBlock; \
+    enum { VectorDimension = trait::VectorDimension }; \
+    enum { CovarianceDimension = trait::CovarianceDimension }; \
     \
-    typedef typename trait::NoiseVariance           NoiseVariance; \
-    typedef typename trait::NoiseVarianceBlock      NoiseVarianceBlock; \
-    typedef typename trait::ConstNoiseVarianceBlock ConstNoiseVarianceBlock; \
+    typedef typename trait::StateVector   StateVector; \
+    typedef typename trait::NoiseVariance NoiseVariance; \
+    typedef typename trait::SystemMatrix  SystemMatrix; \
     \
-    typedef typename trait::SystemMatrix           SystemMatrix; \
-    typedef typename trait::SystemMatrixBlock      SystemMatrixBlock; \
+    enum { InputDimension = trait::InputDimension }; \
+    typedef typename trait::InputType     InputType; \
+    typedef typename trait::InputVector   InputVector; \
+    typedef typename trait::InputMatrix   InputMatrix; \
+    \
+    typedef typename trait::SubState SubState; \
+    typedef typename trait::Vector Vector; \
+    \
+    typedef typename trait::VectorSegment VectorSegment; \
+    typedef typename trait::CovarianceBlock CovarianceBlock; \
+    typedef typename trait::CrossVarianceBlock CrossVarianceBlock; \
+    typedef typename trait::SystemMatrixBlock SystemMatrixBlock; \
+    \
+    typedef typename trait::ConstVectorSegment ConstVectorSegment; \
+    typedef typename trait::ConstCovarianceBlock ConstCovarianceBlock; \
+    typedef typename trait::ConstCrossVarianceBlock ConstCrossVarianceBlock; \
     typedef typename trait::ConstSystemMatrixBlock ConstSystemMatrixBlock; \
-    \
-    enum { InputDimension = traits::Input<Derived>::Dimension }; \
-    typedef typename traits::Input<Derived>::Type   InputType; \
-    typedef typename traits::Input<Derived>::Vector InputVector; \
-    typedef Matrix_<Dynamic,InputDimension>         InputMatrix; \
-    typedef Block<typename InputMatrix::Base,Dimension,InputDimension>       InputMatrixBlock; \
-    typedef Block<const typename InputMatrix::Base,Dimension,InputDimension> ConstInputMatrixBlock; \
-    \
-    typedef typename trait::IsSubSystem IsSubSystem; \
-    typedef typename trait::SubState                    SubState; \
-    typedef typename trait::SubStatePtr                 SubStatePtr; \
-    typedef typename trait::CrossSystemMatrix           CrossSystemMatrix; \
-    typedef typename trait::CrossSystemMatrixBlock      CrossSystemMatrixBlock; \
-    typedef typename trait::ConstCrossSystemMatrixBlock ConstCrossSystemMatrixBlock; \
 
 } // namespace traits
 
-template <class Derived, int _SubDimension>
-class SystemModel_ : public SubSystemModel_<_SubDimension> {
+template <class Derived, int _VectorDimension = Dynamic, int _CovarianceDimension = _VectorDimension>
+class SystemModel_ : public SystemModel {
 public:
-  SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
+  SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension)
   virtual ~SystemModel_() {}
 
-  int getDimension() const { return trait::Dimension; }
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_DISCRETE; }
 
   virtual void getPrior(State &state);
@@ -153,63 +128,32 @@ public:
   Derived *derived() { return static_cast<Derived *>(this); }
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
-  SubState& sub(State& state) const { return *state.getSubState<SubDimension>(this); }
-  const SubState& sub(const State& state) const { return *state.getSubState<SubDimension>(this); }
-
-  // time discrete models should overwrite the following virtual methods if required:
-  virtual void getExpectedValue(StateVectorSegment& x_pred, const State& state, double dt) { x_pred = this->sub(state).getVector(); }
-  virtual void getStateJacobian(SystemMatrixBlock& A, const State& state, double dt) {}
-  virtual void getInputJacobian(InputMatrixBlock& B, const State& state, double dt) {}
-  virtual void getSystemNoise(NoiseVarianceBlock& Q, const State& state, double dt) {}
-
-  // variants with boolean init argument for time invariant systems
-  virtual void getStateJacobian(SystemMatrixBlock& A, const State& state, double dt, bool init) { getStateJacobian(A, state, dt); }
-  virtual void getInputJacobian(InputMatrixBlock& B, const State& state, double dt, bool init)  { getInputJacobian(B, state, dt); }
-  virtual void getSystemNoise(NoiseVarianceBlock& Q, const State& state, double dt, bool init)  { getSystemNoise(Q, state, dt); }
-
-  // variants for SubSystems
-  virtual void getStateJacobian(SystemMatrixBlock& A1, CrossSystemMatrixBlock& A01, const State& state, double dt) {}
-  virtual void getStateJacobian(SystemMatrixBlock& A1, CrossSystemMatrixBlock& A01, const State& state, double dt, bool init) { getStateJacobian(A1, A01, state, dt); }
+  virtual void getExpectedDiff(StateVector& x_diff, const State& state, double dt);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, double dt, bool init = true);
+  virtual void getInputJacobian(InputMatrix& B, const State& state, double dt, bool init = true);
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, double dt, bool init = true);
 };
 
-template <class Derived, int _SubDimension = 0>
-class TimeDiscreteSystemModel_ : public SystemModel_<Derived, _SubDimension> {
+template <class Derived, int _VectorDimension = Dynamic, int _CovarianceDimension = _VectorDimension>
+class TimeContinuousSystemModel_ : public SystemModel_<Derived, _VectorDimension, _CovarianceDimension> {
 public:
-  SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
-  virtual ~TimeDiscreteSystemModel_() {}
-};
-
-template <class Derived, int _SubDimension = 0>
-class TimeContinuousSystemModel_ : public SystemModel_<Derived, _SubDimension> {
-public:
-  SYSTEM_MODEL_TRAIT(Derived, _SubDimension)
+  SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension)
 
   TimeContinuousSystemModel_();
   virtual ~TimeContinuousSystemModel_();
 
   virtual SystemModel::SystemTypeEnum getSystemType() const { return SystemModel::TIME_CONTINUOUS; }
 
-  // time continuous models should overwrite the following virtual methods if required:
-  virtual void getDerivative(StateVector& x_dot, const State& state) { x_dot.setZero(); }
-  virtual void getStateJacobian(SystemMatrix& A, const State& state) {}
-  virtual void getInputJacobian(InputMatrix& B, const State& state) {}
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state) {}
+  virtual void getDerivative(StateVector& x_dot, const State& state);
+  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init = true);
+  virtual void getInputJacobian(InputMatrix& B, const State& state, bool init = true);
+  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init = true);
 
-  // variants with boolean init argument for time invariant systems
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init) { getStateJacobian(A, state); }
-  virtual void getInputJacobian(InputMatrix& B, const State& state, bool init)  { getInputJacobian(B, state); }
-  virtual void getSystemNoise(NoiseVariance& Q, const State& state, bool init)  { getSystemNoise(Q, state); }
-
-  // variants for SubSystems
-  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state) {}
-  virtual void getStateJacobian(SystemMatrix& A1, CrossSystemMatrix& A01, const State& state, bool init) { getStateJacobian(A1, A01, state); }
-
-  // the time discrete model functions are implemented in system_model.inl
-  void getExpectedValue(StateVectorSegment& x_pred, const State& state, double dt);
-  void getStateJacobian(SystemMatrixBlock& A, const State& state, double dt, bool init);
-  void getStateJacobian(SystemMatrixBlock& A1, CrossSystemMatrixBlock& A01, const State& state, double dt, bool init);
-  void getInputJacobian(InputMatrixBlock& B, const State& state, double dt, bool init);
-  void getSystemNoise(NoiseVarianceBlock& Q, const State& state, double dt, bool init);
+  // the overwritten time discrete model functions are implemented in system_model.inl
+  void getExpectedDiff(StateVector& x_diff, const State& state, double dt);
+  void getStateJacobian(SystemMatrix& A, const State& state, double dt, bool init = true);
+  void getInputJacobian(InputMatrix& B, const State& state, double dt, bool init = true);
+  void getSystemNoise(NoiseVariance& Q, const State& state, double dt, bool init = true);
 
 private:
   struct internal;

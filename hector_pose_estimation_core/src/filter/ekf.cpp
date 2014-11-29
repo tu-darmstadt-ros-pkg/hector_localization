@@ -27,11 +27,19 @@
 //=================================================================================================
 
 #include <hector_pose_estimation/filter/ekf.h>
+#include <hector_pose_estimation/system.h>
+
+#include <boost/pointer_cast.hpp>
+
+#ifdef USE_HECTOR_TIMING
+  #include <hector_diagnostics/timing.h>
+#endif
 
 namespace hector_pose_estimation {
 namespace filter {
 
-EKF::EKF()
+EKF::EKF(State &state)
+  : Filter(state)
 {}
 
 EKF::~EKF()
@@ -39,26 +47,53 @@ EKF::~EKF()
 
 bool EKF::init(PoseEstimation &estimator)
 {
-  x_pred.resize(state_.getDimension());
-  x_pred.setZero();
-  A.resize(state_.getDimension(), state_.getDimension());
-  A.setZero();
-  Q.resize(state_.getDimension());
+  x_diff = State::Vector(state_.getVectorDimension());
+  A = State::SystemMatrix(state_.getCovarianceDimension(), state_.getCovarianceDimension());
+  Q = State::Covariance(state_.getCovarianceDimension());
+  return true;
+}
+
+bool EKF::preparePredict(double dt)
+{
+  x_diff.setZero();
+  A.setIdentity();
   Q.setZero();
+  return Filter::preparePredict(dt);
+}
+
+bool EKF::predict(const SystemPtr& system, double dt)
+{
+  if (!Filter::predict(system, dt)) return false;
+  EKF::Predictor *predictor = boost::dynamic_pointer_cast<EKF::Predictor>(system->predictor());
+  x_diff += predictor->x_diff;
+  A += predictor->A;
+  Q += predictor->Q;
   return true;
 }
 
 bool EKF::doPredict(double dt) {
-  ROS_DEBUG("EKF prediction (dt = %f):", dt);
+  ROS_DEBUG_NAMED("ekf.prediction", "EKF prediction (dt = %f):", dt);
 
-  ROS_DEBUG_STREAM("A      = [" << A << "]");
-  ROS_DEBUG_STREAM("Q      = [" << Q << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "A      = [" << std::endl << A << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "Q      = [" << std::endl << Q << "]");
 
-  state().P() = A * state().P().selfadjointView<Upper>() * A.transpose() + Q;
-  state().x() = x_pred;
+#ifdef USE_HECTOR_TIMING
+  { hector_diagnostics::TimingSection section("predict.ekf.covariance");
+#endif
+  state().P() = A * state().P() * A.transpose() + Q;
 
-  ROS_DEBUG_STREAM("x_pred = [" << state().getVector().transpose() << "]");
-  ROS_DEBUG_STREAM("P_pred = [" << state().getCovariance() << "]");
+#ifdef USE_HECTOR_TIMING
+  }
+  { hector_diagnostics::TimingSection section("predict.ekf.state");
+#endif
+  state().update(x_diff);
+
+#ifdef USE_HECTOR_TIMING
+  }
+#endif
+
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "x_pred = [" << state().getVector().transpose() << "]");
+  ROS_DEBUG_STREAM_NAMED("ekf.prediction", "P_pred = [" << std::endl << state().getCovariance() << "]");
 
   Filter::doPredict(dt);
   return true;

@@ -51,8 +51,8 @@ void BaroModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 
 void BaroModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  if (state.getPositionIndex() >= 0) {
-    C(0,State::POSITION_Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
+  if (state.position()) {
+    state.position()->cols(C)(0,Z) = qnh_ * 5.255 * pow(1.0 - (0.0065 * (state.getPosition().z() + getElevation())) / 288.15, 4.255) * (-0.0065 / 288.15);
   }
 }
 
@@ -79,6 +79,7 @@ void Baro::onReset()
 
 bool Baro::prepareUpdate(State &state, const Update &update) {
   if (update.qnh() != 0) setQnh(update.qnh());
+  // Note: boost::bind is not real-time safe!
   setElevation(resetElevation(state, boost::bind(&BaroModel::getAltitude, getModel(), update)));
   return true;
 }

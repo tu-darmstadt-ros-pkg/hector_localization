@@ -41,10 +41,6 @@ public:
 
   virtual ~Model() {}
 
-  virtual int getDimension() const = 0;
-  virtual bool hasSubsystem() const { return false; }
-
-  virtual bool init(PoseEstimation& estimator, State& state) { return true; }
   virtual void cleanup() { }
   virtual void reset(State& state) { }
 

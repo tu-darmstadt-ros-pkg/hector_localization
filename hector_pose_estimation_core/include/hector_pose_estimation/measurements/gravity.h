@@ -35,18 +35,20 @@ namespace hector_pose_estimation {
 
 class GravityModel : public MeasurementModel_<GravityModel,3> {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using MeasurementModel_<GravityModel,3>::MeasurementVector;
   using MeasurementModel_<GravityModel,3>::NoiseVariance;
 
   GravityModel();
   virtual ~GravityModel();
 
-  virtual bool init(PoseEstimation &estimator, State &state);
+  virtual bool init(PoseEstimation &estimator, Measurement &measurement, State &state);
 
   virtual void setGravity(double gravity) { gravity_.z() = gravity; }
   virtual double getGravity() const { return gravity_.z(); }
 
-  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_ROLLPITCH); }
+  virtual bool active(const State &state) { return true; } // always update, even during alignment
   virtual SystemStatus getStatusFlags() { return STATE_PSEUDO_ROLLPITCH; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
@@ -55,7 +57,9 @@ public:
 
 protected:
   double stddev_;
+  std::string use_bias_;
   MeasurementVector gravity_;
+  SubState_<3>::Ptr bias_;
 };
 
 typedef Measurement_<GravityModel> Gravity;

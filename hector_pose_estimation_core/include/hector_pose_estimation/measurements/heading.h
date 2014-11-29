@@ -38,7 +38,6 @@ public:
   HeadingModel();
   virtual ~HeadingModel();
 
-  virtual bool active(const State &state) { return !(state.getSystemStatus() & STATE_YAW); }
   virtual SystemStatus getStatusFlags() { return STATE_YAW; }
 
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);

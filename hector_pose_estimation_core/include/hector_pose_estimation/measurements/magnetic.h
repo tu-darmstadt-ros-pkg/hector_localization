@@ -36,10 +36,12 @@ namespace hector_pose_estimation {
 
 class MagneticModel : public MeasurementModel_<MagneticModel,3> {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   MagneticModel();
   virtual ~MagneticModel();
 
-  virtual bool init(PoseEstimation &estimator, State &state);
+  virtual bool init(PoseEstimation &estimator, Measurement &measurement, State &state);
 
   virtual SystemStatus getStatusFlags() { return STATE_YAW; }
 
@@ -60,7 +62,6 @@ protected:
 
   MeasurementVector magnetic_field_north_;
   MeasurementVector magnetic_field_reference_;
-//  mutable Matrix C_full_;
 };
 
 extern template class Measurement_<MagneticModel>;
@@ -68,13 +69,22 @@ extern template class Measurement_<MagneticModel>;
 class Magnetic : public Measurement_<MagneticModel>
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  using Measurement_<MagneticModel>::Model;
+  using Measurement_<MagneticModel>::Update;
+
+  enum { MeasurementDimension = Measurement_<MagneticModel>::MeasurementDimension };
+  using Measurement_<MagneticModel>::MeasurementVector;
+  using Measurement_<MagneticModel>::NoiseVariance;
+
   Magnetic(const std::string& name = "height");
   virtual ~Magnetic() {}
 
   virtual void onReset();
 
   virtual MeasurementVector const& getVector(const Update &update, const State&);
-  virtual NoiseVariance const& getVariance(const Update &update, const State&);
+//  virtual NoiseVariance const& getVariance(const Update &update, const State&);
 
   virtual bool prepareUpdate(State &state, const Update &update);
 

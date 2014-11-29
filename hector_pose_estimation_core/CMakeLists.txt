@@ -4,17 +4,29 @@ project(hector_pose_estimation_core)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs tf cmake_modules)
+find_package(catkin REQUIRED COMPONENTS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs geographic_msgs tf cmake_modules)
 
 find_package(Eigen REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
+# Find hector_timing and use it, if available
+find_package(hector_timing)
+if(hector_timing_FOUND)
+  list(APPEND catkin_INCLUDE_DIRS ${hector_timing_INCLUDE_DIRS})
+  list(APPEND catkin_LIBRARIES ${hector_timing_LIBRARIES})
+endif()
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 # catkin_python_setup()
+
+###########################
+## Package configuration ##
+###########################
+set(HECTOR_POSE_ESTIMATION_MAXIMUM_STATE_VARIABLES 18 CACHE STRING "Maximum number of state variables supported by hector_pose_estimation. Used to preallocate memory for matrices and vectors. hector_pose_estimation_core itself uses a maximum of 18 variables.")
+configure_file(include/hector_pose_estimation/matrix_config.h.in ${CATKIN_DEVEL_PREFIX}/include/hector_pose_estimation/matrix_config.h @ONLY)
 
 #######################################
 ## Declare ROS messages and services ##
@@ -45,9 +57,9 @@ add_definitions(${EIGEN_DEFINITIONS})
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-    INCLUDE_DIRS include
+    INCLUDE_DIRS include ${CATKIN_DEVEL_PREFIX}/include
     LIBRARIES hector_pose_estimation
-    CATKIN_DEPENDS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs tf
+    CATKIN_DEPENDS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs geographic_msgs tf
     DEPENDS Eigen
 )
 
@@ -55,10 +67,22 @@ catkin_package(
 ## Build ##
 ###########
 
+## Explicitly set CMAKE_BUILD_TYPE and overwrite some compiler flags
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+message(STATUS "CMAKE_BUILD_TYPE:               ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_CXX_FLAGS_RELEASE:        ${CMAKE_CXX_FLAGS_RELEASE}")
+message(STATUS "CMAKE_CXX_FLAGS_RELWITHDEBINFO: ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+message(STATUS "CMAKE_CXX_FLAGS_MINSIZEREL:     ${CMAKE_CXX_FLAGS_MINSIZEREL}")
+message(STATUS "CMAKE_CXX_FLAGS_DEBUG:          ${CMAKE_CXX_FLAGS_DEBUG}")
+
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(include)
 include_directories(${catkin_INCLUDE_DIRS})
+include_directories(${CATKIN_DEVEL_PREFIX}/include)
 
 add_library(hector_pose_estimation
   src/global_reference.cpp
@@ -111,7 +135,7 @@ install(TARGETS hector_pose_estimation
 )
 
 ## Mark cpp header files for installation
-install(DIRECTORY include/hector_pose_estimation
+install(DIRECTORY include/hector_pose_estimation ${CATKIN_DEVEL_PREFIX}/include/hector_pose_estimation
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h" PATTERN "*.inl"
   PATTERN ".svn" EXCLUDE

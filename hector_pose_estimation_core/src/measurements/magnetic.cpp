@@ -37,19 +37,16 @@ template class Measurement_<MagneticModel>;
 
 MagneticModel::MagneticModel()
   : declination_(0.0), inclination_(60.0 * M_PI/180.0), magnitude_(0.0)
-//  , C_full_(3,StateDimension)
 {
   parameters().add("stddev", stddev_, 1.0);
   parameters().add("declination", declination_);
   parameters().add("inclination", inclination_);
   parameters().add("magnitude", magnitude_);
-
-//  C_full_.setZero();
 }
 
 MagneticModel::~MagneticModel() {}
 
-bool MagneticModel::init(PoseEstimation &estimator, State &state)
+bool MagneticModel::init(PoseEstimation &estimator, Measurement &measurement, State &state)
 {
   updateMagneticField();
   return true;
@@ -70,93 +67,24 @@ void MagneticModel::getMeasurementNoise(NoiseVariance& R, const State&, bool ini
 
 void MagneticModel::getExpectedValue(MeasurementVector& y_pred, const State& state)
 {
-  State::ConstOrientationType q(state.getOrientation());
-
-  y_pred(0) = (q.w()*q.w()+q.x()*q.x()-q.y()*q.y()-q.z()*q.z()) * magnetic_field_reference_(0) + (2.0*q.x()*q.y()+2.0*q.w()*q.z())                 * magnetic_field_reference_.y() + (2.0*q.x()*q.z()-2.0*q.w()*q.y())                 * magnetic_field_reference_.z();
-  y_pred(1) = (2.0*q.x()*q.y()-2.0*q.w()*q.z())                 * magnetic_field_reference_(0) + (q.w()*q.w()-q.x()*q.x()+q.y()*q.y()-q.z()*q.z()) * magnetic_field_reference_.y() + (2.0*q.y()*q.z()+2.0*q.w()*q.x())                 * magnetic_field_reference_.z();
-  y_pred(2) = (2.0*q.x()*q.z()+2.0*q.w()*q.y())                 * magnetic_field_reference_(0) + (2.0*q.y()*q.z()-2.0*q.w()*q.x())                 * magnetic_field_reference_.y() + (q.w()*q.w()-q.x()*q.x()-q.y()*q.y()+q.z()*q.z()) * magnetic_field_reference_.z();
+  const State::RotationMatrix &R = state.R();
+  y_pred = R.transpose() * magnetic_field_reference_;
 }
 
 void MagneticModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  State::ConstOrientationType q(state.getOrientation());
-
-  if (state.getOrientationIndex() >= 0) {
-    const double& m1 = magnetic_field_reference_.x();
-    const double& m2 = magnetic_field_reference_.y();
-//    const double& m3 = magnetic_field_reference_.y();
-
-//    C_full_(0,State::QUATERNION_W) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
-//    C_full_(0,State::QUATERNION_X) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
-//    C_full_(0,State::QUATERNION_Y) = -2.0*q.y() * magnetic_field_reference_.x() + 2.0*q.x() * magnetic_field_reference_.y() - 2.0*q.w() * magnetic_field_reference_.z();
-//    C_full_(0,State::QUATERNION_Z) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_W) = -2.0*q.z() * magnetic_field_reference_.x() + 2.0*q.w() * magnetic_field_reference_.y() + 2.0*q.x() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_X) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_Y) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
-//    C_full_(1,State::QUATERNION_Z) = -2.0*q.w() * magnetic_field_reference_.x() - 2.0*q.z() * magnetic_field_reference_.y() + 2.0*q.y() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_W) =  2.0*q.y() * magnetic_field_reference_.x() - 2.0*q.x() * magnetic_field_reference_.y() + 2.0*q.w() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_X) =  2.0*q.z() * magnetic_field_reference_.x() - 2.0*q.w() * magnetic_field_reference_.y() - 2.0*q.x() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_Y) =  2.0*q.w() * magnetic_field_reference_.x() + 2.0*q.z() * magnetic_field_reference_.y() - 2.0*q.y() * magnetic_field_reference_.z();
-//    C_full_(2,State::QUATERNION_Z) =  2.0*q.x() * magnetic_field_reference_.x() + 2.0*q.y() * magnetic_field_reference_.y() + 2.0*q.z() * magnetic_field_reference_.z();
-
-    // return C_full_;
-
-    // q = [qw qx qy qz]';
-    // dq/dyaw * dyaw*dq = 1/2 * [-qz -qy qx qw]' * 2 * [-qz; -qy; qx; qw] =
-    //  [ qz*qz  qz*qy -qz*qx -qz*qw ;
-    //    qy*qz  qy*qy -qy*qx -qy*qw ;
-    //   -qx*qz -qx*qy  qx*qx  qx*qw ;
-    //   -qw*qz -qw*qy  qw*qx  qw*qw ]
-
-//    for(int i = 0; i <= 2; ++i) {
-//      C(i,State::QUATERNION_W) =  C_full_(i,State::QUATERNION_W) * q.z()*q.z() + C_full_(i,State::QUATERNION_X) * q.y()*q.z() - C_full_(i,State::QUATERNION_Y) * q.x()*q.z() - C_full_(i,State::QUATERNION_Z) * q.w()*q.z();
-//      C(i,State::QUATERNION_X) =  C_full_(i,State::QUATERNION_W) * q.z()*q.y() + C_full_(i,State::QUATERNION_X) * q.y()*q.y() - C_full_(i,State::QUATERNION_Y) * q.x()*q.y() - C_full_(i,State::QUATERNION_Z) * q.w()*q.y();
-//      C(i,State::QUATERNION_Y) = -C_full_(i,State::QUATERNION_W) * q.z()*q.x() - C_full_(i,State::QUATERNION_X) * q.y()*q.x() + C_full_(i,State::QUATERNION_Y) * q.x()*q.x() + C_full_(i,State::QUATERNION_Z) * q.w()*q.x();
-//      C(i,State::QUATERNION_Z) = -C_full_(i,State::QUATERNION_W) * q.z()*q.w() - C_full_(i,State::QUATERNION_X) * q.y()*q.w() + C_full_(i,State::QUATERNION_Y) * q.x()*q.w() + C_full_(i,State::QUATERNION_Z) * q.w()*q.w();
-//    }
-
-//
-// Simplified with symbolic Matlab toolbox:
-//
-// C = [  2*qz*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
-//        2*qy*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
-//       -2*qx*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz),
-//       -2*qw*(- m2*qx^2 + 2*m1*qx*qy + m2*qz*qx + m2*qy^2 + m2*qw*qy + 2*m1*qw*qz);
-//        2*qz*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
-//        2*qy*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
-//       -2*qx*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2),
-//       -2*qw*(m1*qw^2 + 2*m2*qw*qz - m1*qx^2 - 2*m2*qx*qy + m1*qy^2 - m1*qz^2);
-//       -4*qz*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
-//       -4*qy*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
-//        4*qx*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz),
-//        4*qw*(m1*qw*qx + m2*qw*qy + m2*qx*qz - m1*qy*qz) ]
-
-  double temp1 = -m2*q.x()*q.x() + 2*m1*q.x()*q.y() + m2*q.z()*q.x() + m2*q.y()*q.y()   + m2*q.w()*q.y() + 2*m1*q.w()*q.z();
-  double temp2 =  m1*q.w()*q.w() + 2*m2*q.w()*q.z() - m1*q.x()*q.x() - 2*m2*q.x()*q.y() + m1*q.y()*q.y() - m1*q.z()*q.z();
-  double temp3 =  m1*q.w()*q.x() +   m2*q.w()*q.y() + m2*q.x()*q.z() -   m1*q.y()*q.z();
-  C(0,State::QUATERNION_W) =  2*q.z()*temp1;
-  C(0,State::QUATERNION_X) =  2*q.y()*temp1;
-  C(0,State::QUATERNION_Y) = -2*q.x()*temp1;
-  C(0,State::QUATERNION_Z) = -2*q.w()*temp1;
-  C(1,State::QUATERNION_W) =  2*q.z()*temp2;
-  C(1,State::QUATERNION_X) =  2*q.y()*temp2;
-  C(1,State::QUATERNION_Y) = -2*q.x()*temp2;
-  C(1,State::QUATERNION_Z) = -2*q.w()*temp2;
-  C(2,State::QUATERNION_W) = -4*q.z()*temp3;
-  C(2,State::QUATERNION_X) = -4*q.y()*temp3;
-  C(2,State::QUATERNION_Y) =  4*q.x()*temp3;
-  C(2,State::QUATERNION_Z) =  4*q.w()*temp3;
+  if (state.orientation()) {
+    const State::RotationMatrix &R = state.R();
+    state.orientation()->cols(C)(X,Z) = R(0,0) * magnetic_field_reference_.y() - R(1,0) * magnetic_field_reference_.x();
+    state.orientation()->cols(C)(Y,Z) = R(0,1) * magnetic_field_reference_.y() - R(1,1) * magnetic_field_reference_.x();
+    state.orientation()->cols(C)(Z,Z) = R(0,2) * magnetic_field_reference_.y() - R(1,2) * magnetic_field_reference_.x();
   }
 }
 
 double MagneticModel::getMagneticHeading(const State& state, const MeasurementVector &y) const {
   MeasurementVector y_nav;
-  State::ConstOrientationType q(state.getOrientation());
-  y_nav(0) = y(0) * (q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z()) + y(1) * (2*q.x()*q.y() - 2*q.w()*q.z())                         + y(2) * (2*q.w()*q.y() + 2*q.x()*q.z());
-  y_nav(1) = y(0) * (2*q.w()*q.z() + 2*q.x()*q.y())                         + y(1) * (q.w()*q.w() - q.x()*q.x() + q.y()*q.y() - q.z()*q.z()) + y(2) * (2*q.y()*q.z() - 2*q.w()*q.x());
-  double heading_nav = -atan2(2*q.x()*q.y() + 2*q.w()*q.z(), q.w()*q.w() + q.x()*q.x() - q.y()*q.y() - q.z()*q.z());
-
-  return heading_nav - (-atan2(y_nav(1), y_nav(0)));
+  y_nav = state.R() * y;
+  return atan2(y_nav.y(), y_nav.x()) - state.getYaw();
 }
 
 double MagneticModel::getTrueHeading(const State& state, const MeasurementVector &y) const {
@@ -175,9 +103,9 @@ void MagneticModel::updateMagneticField()
   double magnitude = magnitude_;
   if (magnitude == 0.0) magnitude = 1.0;
 
-  magnetic_field_north_.x() = magnitude * (cos_inclination * cos_declination);
-  magnetic_field_north_.y() = magnitude * (-sin_declination);
-  magnetic_field_north_.z() = magnitude * (-sin_inclination * cos_declination);
+  magnetic_field_north_.x() = magnitude * (cos_inclination *   cos_declination);
+  magnetic_field_north_.y() = magnitude * (cos_inclination * (-sin_declination));
+  magnetic_field_north_.z() = magnitude * (-sin_inclination);
 }
 
 Magnetic::Magnetic(const std::string &name)
@@ -198,27 +126,27 @@ const MagneticModel::MeasurementVector& Magnetic::getVector(const Magnetic::Upda
   y_ = Measurement_<MagneticModel>::getVector(update, state) + deviation_;
   if (getModel()->hasMagnitude()) return y_;
 
-  double c = 1.0 / y_.norm();
-  if (isinf(c)) {
-    y_ = MeasurementVector(0.0);
+  double norm = y_.norm();
+  if (norm < 1e-5) {
+    y_.setZero();
   } else {
-    y_ = y_ * c;
+    y_ = y_ / norm;
   }
   return y_;
 }
 
-const MagneticModel::NoiseVariance& Magnetic::getVariance(const Magnetic::Update& update, const State& state) {
-  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getVariance(update, state);
+//const MagneticModel::NoiseVariance& Magnetic::getVariance(const Magnetic::Update& update, const State& state) {
+//  if (getModel()->hasMagnitude()) return Measurement_<MagneticModel>::getVariance(update, state);
 
-  R_ = Measurement_<MagneticModel>::getVariance(update, state);
-  double c = 1.0 / Measurement_<MagneticModel>::getVector(update, state).norm();
-  if (isinf(c)) {
-    R_ = NoiseVariance(1.0);
-  } else {
-    R_ =  R_ * (c*c);
-  }
-  return R_;
-}
+//  R_ = Measurement_<MagneticModel>::getVariance(update, state);
+//  double norm = Measurement_<MagneticModel>::getVector(update, state).norm();
+//  if (norm < 1e-5) {
+//    R_ = NoiseVariance(1.0, 1.0, 1.0);
+//  } else {
+//    R_ =  R_ / (norm*norm);
+//  }
+//  return R_;
+//}
 
 bool Magnetic::prepareUpdate(State &state, const Update &update) {
   // reset reference position if Magnetic has not been updated for a while

@@ -69,7 +69,7 @@ public:
 
   bool enabled() const { return enabled_; }
   void enable() { enabled_ = true; }
-  void disable() { enabled_ = false; }
+  void disable() { enabled_ = false; status_flags_ = 0; }
 
   virtual bool active(const State& state);
   virtual SystemStatus getStatusFlags() const { return status_flags_; }
@@ -139,6 +139,18 @@ public:
   virtual const boost::shared_ptr< Filter::Corrector_<Model> >& corrector() const { return corrector_; }
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
+  virtual bool init(PoseEstimation& estimator, State& state) {
+    if (!Measurement::init(estimator, state)) return false;
+    model_->getMeasurementNoise(R_, state, true);
+    return true;
+  }
+
+  virtual void reset(State& state) {
+    model_->getMeasurementNoise(R_, state, true);
+    Measurement::reset(state);
+    if (corrector()) corrector()->reset();
+  }
+
   virtual MeasurementVector const& getVector(const Update &update, const State &state) {
     const MeasurementVector *fixed = getModel()->getFixedMeasurementVector();
     if (fixed) return *fixed;
@@ -147,23 +159,13 @@ public:
 
   virtual NoiseVariance const& getVariance(const Update &update, const State &state) {
     if (update.hasVariance()) return traits::UpdateInspector<ConcreteModel>(update).getVariance(state);
-
-    bool init = false;
-    if (!R_) {
-      R_.reset(new NoiseVariance);
-      init = true;
-    }
-    model_->getMeasurementNoise(*R_, state, init);
-    return *R_;
+    model_->getMeasurementNoise(R_, state, false);
+    return R_;
   }
 
   virtual void setNoiseVariance(NoiseVariance const& R) {
-    if (!R_) R_.reset(new NoiseVariance);
-    *R_ = R;
-  }
-
-  virtual void clearNoiseVariance() {
-    R_.reset();
+//    if (!R_) R_.reset(new NoiseVariance);
+    R_ = R;
   }
 
 protected:
@@ -173,7 +175,7 @@ protected:
 
 protected:
   boost::shared_ptr<Model> model_;
-  boost::shared_ptr<NoiseVariance> R_;
+  NoiseVariance R_;
 
   Queue_<Update> queue_;
   virtual Queue& queue() { return queue_; }

@@ -47,7 +47,7 @@ void System::getPrior(State &state) const
 
 bool System::init(PoseEstimation& estimator, State& state)
 {
-  if (!getModel() || !getModel()->init(estimator, state)) return false;
+  if (!getModel() || !getModel()->init(estimator, *this, state)) return false;
   return true;
 }
 
@@ -59,6 +59,7 @@ void System::cleanup()
 void System::reset(State& state)
 {
   if (getModel()) getModel()->reset(state);
+  status_flags_ = 0;
 }
 
 bool System::active(const State& state) {
@@ -72,6 +73,7 @@ bool System::update(double dt) {
 
   if (getModel()) status_flags_ = getModel()->getStatusFlags(filter()->state());
   if (!this->updateImpl(dt)) return false;
+  filter()->state().updated();
 
   updated();
   return true;

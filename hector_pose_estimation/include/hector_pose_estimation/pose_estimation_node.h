@@ -58,7 +58,7 @@ namespace hector_pose_estimation {
 
 class PoseEstimationNode {
 public:
-  PoseEstimationNode(const SystemPtr& system = SystemPtr());
+  PoseEstimationNode(const SystemPtr& system = SystemPtr(), const StatePtr& state = StatePtr());
   virtual ~PoseEstimationNode();
 
   virtual bool init();
@@ -69,6 +69,8 @@ public:
 
 protected:
   void imuCallback(const sensor_msgs::ImuConstPtr& imu);
+  void ahrsCallback(const sensor_msgs::ImuConstPtr& ahrs);
+  void rollpitchCallback(const sensor_msgs::ImuConstPtr& attitude);
 
 #if defined(USE_MAV_MSGS)
   void heightCallback(const mav_msgs::HeightConstPtr& height);
@@ -84,6 +86,10 @@ protected:
   void twistupdateCallback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& twist);
   void syscommandCallback(const std_msgs::StringConstPtr& syscommand);
 
+  void globalReferenceUpdated();
+
+  void publishWorldNavTransform(const ros::TimerEvent & = ros::TimerEvent());
+
   virtual ros::NodeHandle& getNodeHandle() { return nh_; }
   virtual ros::NodeHandle& getPrivateNodeHandle() { return private_nh_; }
 
@@ -96,14 +102,16 @@ protected:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
 
-  ros::Subscriber imu_subscriber_, height_subscriber_, magnetic_subscriber_;
+  ros::Subscriber imu_subscriber_, height_subscriber_, magnetic_subscriber_, ahrs_subscriber_, rollpitch_subscriber_;
   message_filters::Subscriber<sensor_msgs::NavSatFix> gps_subscriber_;
   message_filters::Subscriber<geometry_msgs::Vector3Stamped> gps_velocity_subscriber_;
   message_filters::TimeSynchronizer<sensor_msgs::NavSatFix,geometry_msgs::Vector3Stamped> *gps_synchronizer_;
-  ros::Publisher state_publisher_, pose_publisher_, velocity_publisher_, imu_publisher_, global_publisher_, euler_publisher_;
-  ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_, gps_pose_publisher_;
+  ros::Publisher state_publisher_, pose_publisher_, velocity_publisher_, imu_publisher_, geopose_publisher_, global_fix_publisher_, euler_publisher_;
+  ros::Publisher angular_velocity_bias_publisher_, linear_acceleration_bias_publisher_, gps_pose_publisher_, sensor_pose_publisher_;
   ros::Subscriber poseupdate_subscriber_, twistupdate_subscriber_;
   ros::Subscriber syscommand_subscriber_;
+  ros::Publisher global_reference_publisher_;
+  ros::Publisher timing_publisher_;
 
   std::vector<tf::StampedTransform> transforms_;
   tf::TransformBroadcaster transform_broadcaster_;
@@ -113,6 +121,15 @@ protected:
   bool publish_covariances_;
   bool publish_world_other_transform_;
   std::string other_frame_;
+
+  bool publish_world_nav_transform_;
+  geometry_msgs::TransformStamped world_nav_transform_;
+  ros::Timer publish_world_nav_transform_timer_;
+  ros::Duration publish_world_nav_transform_period_;
+  bool world_nav_transform_updated_, world_nav_transform_valid_;
+
+  geometry_msgs::PoseStamped sensor_pose_;
+  double sensor_pose_roll_, sensor_pose_pitch_, sensor_pose_yaw_;
 };
 
 } // namespace hector_pose_estimation

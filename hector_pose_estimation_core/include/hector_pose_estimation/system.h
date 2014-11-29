@@ -53,10 +53,10 @@ public:
   virtual void setName(const std::string& name) { name_ = name; }
 
   virtual SystemModel *getModel() const { return 0; }
-  virtual int getDimension() const = 0;
 
-  virtual Filter *filter() const { return filter_; }
-  virtual void setFilter(Filter *filter) { filter_ = filter; }
+  virtual Filter *filter() const = 0;
+  virtual Filter::Predictor *predictor() const = 0;
+  virtual void setFilter(Filter *filter) = 0;
 
   virtual bool init(PoseEstimation& estimator, State& state);
   virtual void cleanup();
@@ -84,8 +84,6 @@ protected:
   std::string name_;
   ParameterList parameters_;
   SystemStatus status_flags_;
-
-  Filter *filter_;
 };
 
 template <class ConcreteModel>
@@ -112,11 +110,15 @@ public:
 
   virtual ~System_() {}
 
+  virtual void reset(State& state) {
+    System::reset(state);
+    if (predictor()) predictor()->reset();
+  }
+
   virtual Model *getModel() const { return model_.get(); }
-  virtual int getDimension() const { return model_->getDimension(); }
 
   virtual Filter *filter() const { return predictor_ ? predictor_->base() : 0; }
-  virtual const boost::shared_ptr< Filter::Predictor_<Model> >& predictor() const { return predictor_; }
+  virtual Filter::Predictor_<Model> *predictor() const { return predictor_.get(); }
   virtual void setFilter(Filter *filter = 0); // implemented in filter/set_filter.h
 
 protected:

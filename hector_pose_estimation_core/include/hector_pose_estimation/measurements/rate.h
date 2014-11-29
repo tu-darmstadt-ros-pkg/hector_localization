@@ -33,25 +33,23 @@
 
 namespace hector_pose_estimation {
 
-class RateModel : public MeasurementModel_<RateModel,3,3> {
+class RateModel : public MeasurementModel_<RateModel,3> {
 public:
   RateModel();
   virtual ~RateModel();
 
-  virtual bool init(PoseEstimation &estimator, State &state);
+  virtual bool init(PoseEstimation &estimator, Measurement &measurement, State &state);
 
   virtual SystemStatus getStatusFlags() { return STATE_RATE_XY | STATE_RATE_Z; }
 
-  SubState& sub(State& state) const { return *gyro_drift_; }
-  const SubState& sub(const State& state) const { return *gyro_drift_; }
-
   virtual void getMeasurementNoise(NoiseVariance& R, const State&, bool init);
   virtual void getExpectedValue(MeasurementVector& y_pred, const State& state);
-  virtual void getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool init);
+  virtual void getStateJacobian(MeasurementMatrix& C, const State& state, bool init);
 
 protected:
   double stddev_;
-  SubStatePtr gyro_drift_;
+  std::string use_bias_;
+  SubState_<3>::Ptr bias_;
 };
 
 typedef Measurement_<RateModel> Rate;

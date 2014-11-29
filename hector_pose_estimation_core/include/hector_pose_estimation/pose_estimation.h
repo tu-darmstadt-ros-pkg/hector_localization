@@ -42,6 +42,16 @@
 #include <hector_pose_estimation/measurements/gravity.h>
 #include <hector_pose_estimation/measurements/zerorate.h>
 
+#include <tf/transform_datatypes.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/QuaternionStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
+#include <geographic_msgs/GeoPoint.h>
+#include <geographic_msgs/GeoPose.h>
+
 namespace hector_pose_estimation {
 
 class Filter;
@@ -50,8 +60,8 @@ class GlobalReference;
 class PoseEstimation
 {
 public:
-  PoseEstimation(const SystemPtr& system = SystemPtr());
-  template <typename ConcreteSystemModel> PoseEstimation(ConcreteSystemModel *system_model);
+  PoseEstimation(const SystemPtr& system = SystemPtr(), const StatePtr& state = StatePtr());
+  template <typename ConcreteSystemModel> PoseEstimation(ConcreteSystemModel *system_model, State *state = 0);
   virtual ~PoseEstimation();
 
   static PoseEstimation *Instance();
@@ -68,36 +78,26 @@ public:
   template <typename ConcreteSystemModel> const SystemPtr& addSystem(ConcreteSystemModel *model, const std::string& name = "system");
 //  SystemPtr getSystem(std::size_t index = 0) const { return systems_.get(index); }
   SystemPtr getSystem(const std::string& name) const { return systems_.get(name); }
-
-//  const SystemModel *getSystemModel(std::size_t index) const {
-//    SystemPtr system = systems_.get(index);
-//    if (!system) return 0;
-//    return system->getModel();
-//  }
-
-  const SystemModel *getSystemModel(const std::string& name) const {
-    SystemPtr system = systems_.get(name);
-    if (!system) return 0;
-    return system->getModel();
-  }
+  template <typename SystemType> boost::shared_ptr<SystemType> getSystem_(const std::string& name) const;
 
   const MeasurementPtr& addMeasurement(const MeasurementPtr& measurement, const std::string& name = std::string());
   const MeasurementPtr& addMeasurement(Measurement *measurement) { return addMeasurement(MeasurementPtr(measurement)); }
   template <class ConcreteMeasurementModel> const MeasurementPtr& addMeasurement(ConcreteMeasurementModel *model, const std::string& name);
 //  MeasurementPtr getMeasurement(std::size_t index) const { return measurements_.get(index); }
   MeasurementPtr getMeasurement(const std::string &name) const { return measurements_.get(name); }
+  template <typename MeasurementType> boost::shared_ptr<MeasurementType> getMeasurement_(const std::string& name) const;
 
-  template <class InputType> boost::shared_ptr<InputType> registerInput(const std::string& name = std::string());
   template <class InputType> boost::shared_ptr<InputType> getInputType(const std::string& name) const { return inputs_.getType<InputType>(name); }
 
+  template <class InputType> boost::shared_ptr<InputType> addInput(const std::string& name = std::string());
   InputPtr addInput(const InputPtr& input, const std::string& name = std::string());
-  InputPtr addInput(Input *input) { return addInput(InputPtr(input)); }
+  InputPtr addInput(Input *input, const std::string& name = std::string()) { return addInput(InputPtr(input), name); }
   InputPtr setInput(const Input& input, std::string name = std::string());
 //  InputPtr getInput(std::size_t index) const { return inputs_.get(index); }
   InputPtr getInput(const std::string& name) const { return inputs_.get(name); }
 
-  virtual const State& state() const { return filter_->state(); }
-  virtual State& state() { return filter_->state(); }
+  virtual const State& state() const { return *state_; }
+  virtual State& state() { return *state_; }
 
   virtual const State::Vector& getStateVector();
   virtual const State::Covariance& getCovariance();
@@ -125,8 +125,13 @@ public:
   virtual void getPosition(tf::Stamped<tf::Point>& point);
   virtual void getPosition(geometry_msgs::Point& pose);
   virtual void getPosition(geometry_msgs::PointStamped& pose);
-  virtual void getGlobalPosition(double& latitude, double& longitude, double& altitude);
+  virtual void getGlobal(double& latitude, double& longitude, double& altitude);
+  virtual void getGlobalPosition(double& latitude, double& longitude, double& altitude); // deprecated
+  virtual void getGlobal(geographic_msgs::GeoPoint& global);
+  virtual void getGlobal(sensor_msgs::NavSatFix& global);
   virtual void getGlobalPosition(sensor_msgs::NavSatFix& global);
+  virtual void getGlobal(geographic_msgs::GeoPoint& position, geometry_msgs::Quaternion& quaternion); // deprecated
+  virtual void getGlobal(geographic_msgs::GeoPose& global);
   virtual void getOrientation(tf::Quaternion& quaternion);
   virtual void getOrientation(tf::Stamped<tf::Quaternion>& quaternion);
   virtual void getOrientation(geometry_msgs::Quaternion& pose);
@@ -147,6 +152,7 @@ public:
   virtual void getBias(geometry_msgs::Vector3Stamped& angular_velocity, geometry_msgs::Vector3Stamped& linear_acceleration);
   virtual void getTransforms(std::vector<tf::StampedTransform>& transforms);
   virtual void updateWorldToOtherTransform(tf::StampedTransform& world_to_other_transform);
+  virtual bool getWorldToNavTransform(geometry_msgs::TransformStamped& transform);
 
   virtual ParameterList& parameters() { return parameters_; }
   virtual const ParameterList& parameters() const { return parameters_; }
@@ -162,7 +168,8 @@ protected:
   Inputs inputs_;
 
 private:
-  boost::shared_ptr<Filter> filter_;
+  StatePtr state_;
+  FilterPtr filter_;
 
   ParameterList parameters_;
 
@@ -182,12 +189,11 @@ private:
   boost::shared_ptr<Rate> rate_update_;
   boost::shared_ptr<Gravity> gravity_update_;
   boost::shared_ptr<ZeroRate> zerorate_update_;
-//  boost::shared_ptr<Heading> heading_update_;
 };
 
 template <typename ConcreteSystemModel>
-PoseEstimation::PoseEstimation(ConcreteSystemModel *system_model) {
-  *this = PoseEstimation(System::create(system_model));
+PoseEstimation::PoseEstimation(ConcreteSystemModel *system_model, State *state) {
+  *this = PoseEstimation(System::create(system_model), StatePtr(state));
 }
 
 template <typename ConcreteSystemModel>
@@ -196,13 +202,25 @@ const SystemPtr& PoseEstimation::addSystem(ConcreteSystemModel *model, const std
   return addSystem(System::create(model, name));
 }
 
+template <typename SystemType>
+boost::shared_ptr<SystemType> PoseEstimation::getSystem_(const std::string& name) const
+{
+  return boost::static_pointer_cast<SystemType>(getSystem(name));
+}
+
 template <class ConcreteMeasurementModel>
 const MeasurementPtr& PoseEstimation::addMeasurement(ConcreteMeasurementModel *model, const std::string& name) {
   return addMeasurement(Measurement::create(model, name));
 }
 
+template <typename MeasurementType>
+boost::shared_ptr<MeasurementType> PoseEstimation::getMeasurement_(const std::string& name) const
+{
+  return boost::static_pointer_cast<MeasurementType>(getMeasurement(name));
+}
+
 template <class InputType>
-boost::shared_ptr<InputType> PoseEstimation::registerInput(const std::string& name) {
+boost::shared_ptr<InputType> PoseEstimation::addInput(const std::string& name) {
   boost::shared_ptr<InputType> input = getInputType<InputType>(name);
   if (input) return input;
 

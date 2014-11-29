@@ -37,16 +37,25 @@ template class Measurement_<ZeroRateModel>;
 ZeroRateModel::ZeroRateModel()
 {
   parameters().add("stddev", stddev_, 90.0*M_PI/180.0);
+  parameters().add("use_bias", use_bias_, std::string("gyro_bias"));
 }
 
 ZeroRateModel::~ZeroRateModel() {}
 
-bool ZeroRateModel::init(PoseEstimation &estimator, State &state)
+bool ZeroRateModel::init(PoseEstimation &estimator, Measurement &measurement, State &state)
 {
-  gyro_drift_ = state.addSubState<3>(this, "gyro");
+  if (!use_bias_.empty()) {
+    bias_ = state.getSubState<3,3>(use_bias_);
+    if (!bias_) {
+      ROS_ERROR("Could not find bias substate '%s' during initialization of zero rate pseudo measurement '%s'.", use_bias_.c_str(), measurement.getName().c_str());
+      return false;
+    }
+  } else {
+    bias_.reset();
+  }
 
-  if (!gyro_drift_ && state.getRateIndex() < 0) {
-    ROS_WARN_NAMED("zerorate", "Updating with zero rate is a no-op, as the state does not contain rates and gyro drift estimation is disabled.");
+  if (!bias_ && !state.rate()) {
+    ROS_WARN("Pseudo updating with zero rate is a no-op, as the state does not contain rates nor biases.");
     // return false;
   }
 
@@ -56,7 +65,7 @@ bool ZeroRateModel::init(PoseEstimation &estimator, State &state)
 void ZeroRateModel::getMeasurementNoise(NoiseVariance& R, const State&, bool init)
 {
   if (init) {
-    R = pow(stddev_, 2);
+    R(0,0) = pow(stddev_, 2);
   }
 }
 
@@ -64,23 +73,23 @@ void ZeroRateModel::getExpectedValue(MeasurementVector& y_pred, const State& sta
 {
   y_pred(0) = state.getRate().z();
 
-  if (state.getRateIndex() < 0 && gyro_drift_) {
-    y_pred(0) += gyro_drift_->getVector().z();
+  if (!state.rate() && bias_) {
+    y_pred(0) += bias_->getVector().z();
   }
 }
 
-void ZeroRateModel::getStateJacobian(MeasurementMatrix& C0, SubMeasurementMatrix& C1, const State& state, bool)
+void ZeroRateModel::getStateJacobian(MeasurementMatrix& C, const State& state, bool)
 {
-  if (state.getRateIndex() >= 0) {
-    C0(0, State::RATE_Z) = 1.0;
-  } else if (gyro_drift_) {
-    C1(0, GyroModel::BIAS_GYRO_Z) = 1.0;
+  if (state.rate()) {
+    state.rate()->cols(C)(0,Z) = 1.0;
+  } else if (bias_) {
+    bias_->cols(C)(0,Z) = 1.0;
   }
 }
 
-const ZeroRateModel::MeasurementVector* ZeroRateModel::getFixedMeasurementVector()
+const ZeroRateModel::MeasurementVector* ZeroRateModel::getFixedMeasurementVector() const
 {
-  static MeasurementVector zero = 0.0;
+  static MeasurementVector zero(MeasurementVector::Zero());
   return &zero;
 }
 

@@ -40,13 +40,27 @@ std::string getSystemStatusString(const SystemStatus& status, const SystemStatus
     "POSITION_XY", "POSITION_Z", "PSEUDO_POSITION_XY", "PSEUDO_POSITION_Z",
   };
 
+  if (asterisk_status) {
+      for(unsigned int i = 0; i < sizeof(str)/sizeof(*str); ++i) {
+      if (asterisk_status & (1 << i)) {
+        result += "*" + std::string(str[i]) + " ";
+      }
+    }
+
+    if (asterisk_status != status) result += "(";
+  }
+
   for(unsigned int i = 0; i < sizeof(str)/sizeof(*str); ++i) {
     if (status & (1 << i)) {
-      if (asterisk_status & (1 << i)) result += "*";
+      if (asterisk_status & (1 << i)) continue;
       result += std::string(str[i]) + " ";
     }
   }
   if (result.size() > 0) result.resize(result.size() - 1);
+
+  if (asterisk_status && (asterisk_status != status)) {
+    result += ")";
+  }
 
   return result;
 }
