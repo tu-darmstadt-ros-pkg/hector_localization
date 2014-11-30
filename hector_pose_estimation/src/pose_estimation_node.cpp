@@ -199,47 +199,54 @@ void PoseEstimationNode::rollpitchCallback(const sensor_msgs::ImuConstPtr& attit
 
 #if defined(USE_HECTOR_UAV_MSGS)
 void PoseEstimationNode::baroCallback(const hector_uav_msgs::AltimeterConstPtr& altimeter) {
-  pose_estimation_->getMeasurement("baro")->add(Baro::Update(altimeter->pressure, altimeter->qnh));
+  boost::shared_ptr<Baro> m = boost::static_pointer_cast<Baro>(pose_estimation_->getMeasurement("baro"));
+  m->add(Baro::Update(altimeter->pressure, altimeter->qnh));
 }
 
 #else
 void PoseEstimationNode::heightCallback(const geometry_msgs::PointStampedConstPtr& height) {
+  boost::shared_ptr<Height> m = boost::static_pointer_cast<Height>(pose_estimation_->getMeasurement("height"));
+
   Height::MeasurementVector update;
   update(0) = height->point.z;
-  pose_estimation_->getMeasurement("height")->add(Height::Update(update));
+  m->add(Height::Update(update));
 
   if (sensor_pose_publisher_) {
-    boost::shared_ptr<Height> m = boost::static_pointer_cast<Height>(pose_estimation_->getMeasurement("height"));
     sensor_pose_.pose.position.z = height->point.z - m->getElevation();
   }
 }
 #endif
 
 void PoseEstimationNode::magneticCallback(const geometry_msgs::Vector3StampedConstPtr& magnetic) {
+  boost::shared_ptr<Magnetic> m = boost::static_pointer_cast<Magnetic>(pose_estimation_->getMeasurement("magnetic"));
+
   Magnetic::MeasurementVector update;
   update.x() = magnetic->vector.x;
   update.y() = magnetic->vector.y;
   update.z() = magnetic->vector.z;
-  pose_estimation_->getMeasurement("magnetic")->add(Magnetic::Update(update));
+  m->add(Magnetic::Update(update));
 
   if (sensor_pose_publisher_) {
-    boost::shared_ptr<Magnetic> m = boost::static_pointer_cast<Magnetic>(pose_estimation_->getMeasurement("magnetic"));
     sensor_pose_yaw_ = -(m->getModel()->getTrueHeading(pose_estimation_->state(), update) - pose_estimation_->globalReference()->heading());
   }
 }
 
 void PoseEstimationNode::gpsCallback(const sensor_msgs::NavSatFixConstPtr& gps, const geometry_msgs::Vector3StampedConstPtr& gps_velocity) {
-  if (gps->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) return;
+  boost::shared_ptr<GPS> m = boost::static_pointer_cast<GPS>(pose_estimation_->getMeasurement("gps"));
+
+  if (gps->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
+    if (m->getStatusFlags() > 0) m->reset(pose_estimation_->state());
+    return;
+  }
+
   GPS::Update update;
   update.latitude = gps->latitude * M_PI/180.0;
   update.longitude = gps->longitude * M_PI/180.0;
   update.velocity_north =  gps_velocity->vector.x;
   update.velocity_east  = -gps_velocity->vector.y;
-  pose_estimation_->getMeasurement("gps")->add(update);
+  m->add(update);
 
   if (gps_pose_publisher_ || sensor_pose_publisher_) {
-    boost::shared_ptr<GPS> m = boost::static_pointer_cast<GPS>(pose_estimation_->getMeasurement("gps"));
-
     geometry_msgs::PoseStamped gps_pose;
     pose_estimation_->getHeader(gps_pose.header);
     gps_pose.header.stamp = gps->header.stamp;
