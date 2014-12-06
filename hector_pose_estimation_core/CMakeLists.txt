@@ -11,7 +11,7 @@ include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
 # Find hector_timing and use it, if available
-find_package(hector_timing)
+find_package(hector_timing QUIET)
 if(hector_timing_FOUND)
   list(APPEND catkin_INCLUDE_DIRS ${hector_timing_INCLUDE_DIRS})
   list(APPEND catkin_LIBRARIES ${hector_timing_LIBRARIES})
