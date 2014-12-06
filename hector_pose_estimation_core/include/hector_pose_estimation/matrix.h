@@ -30,6 +30,7 @@
 #define HECTOR_POSE_ESTIMATION_MATRIX_H
 
 #include <hector_pose_estimation/matrix_config.h>
+#include <hector_pose_estimation/Eigen/QuaternionBaseAddons.h>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
