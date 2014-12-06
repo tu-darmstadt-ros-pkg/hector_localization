@@ -108,6 +108,9 @@ private:
 
   double fixed_alpha_, fixed_beta_;
   bool interpret_covariance_as_information_matrix_;
+  double max_time_difference_;
+  bool predict_pose_;
+  bool jump_on_max_error_;
 
   double fixed_position_xy_stddev_;
   double fixed_position_z_stddev_;
@@ -118,7 +121,6 @@ private:
   double fixed_angular_rate_xy_stddev_;
   double fixed_angular_rate_z_stddev_;
 
-  double max_time_difference_;
   double max_position_xy_error_;
   double max_position_z_error_;
   double max_yaw_error_;
@@ -127,8 +129,6 @@ private:
   double max_velocity_z_error_;
   double max_angular_rate_xy_error_;
   double max_angular_rate_z_error_;
-
-  bool jump_on_max_error_;
 
   typedef boost::function<void(State &state, const ColumnVector &diff)> JumpFunction;
   double calculateOmega(const SymmetricMatrix &Ix, const SymmetricMatrix &Iy);

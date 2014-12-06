@@ -42,6 +42,11 @@ PoseUpdate::PoseUpdate(const std::string& name)
   fixed_beta_  = 0.0;
   interpret_covariance_as_information_matrix_ = true;
 
+  max_time_difference_ = 1.0;
+  predict_pose_ = true;
+
+  jump_on_max_error_ = true;
+
   fixed_position_xy_stddev_ = 0.0;
   fixed_position_z_stddev_ = 0.0;
   fixed_yaw_stddev_ = 0.0;
@@ -51,7 +56,6 @@ PoseUpdate::PoseUpdate(const std::string& name)
   fixed_angular_rate_xy_stddev_ = 0.0;
   fixed_angular_rate_z_stddev_ = 0.0;
 
-  max_time_difference_ = 1.0;
   max_position_xy_error_ = 3.0; // 3 sigma
   max_position_z_error_ = 3.0; // 3 sigma
   max_yaw_error_ = 3.0; // 3 sigma
@@ -61,11 +65,12 @@ PoseUpdate::PoseUpdate(const std::string& name)
   max_angular_rate_xy_error_ = 3.0; // 3 sigma
   max_angular_rate_z_error_ = 3.0; // 3 sigma
 
-  jump_on_max_error_ = true;
-
   parameters().add("fixed_alpha", fixed_alpha_);
   parameters().add("fixed_beta", fixed_beta_);
   parameters().add("interpret_covariance_as_information_matrix", interpret_covariance_as_information_matrix_);
+  parameters().add("max_time_difference", max_time_difference_);
+  parameters().add("predict_pose", predict_pose_);
+  parameters().add("jump_on_max_error", jump_on_max_error_);
 
   parameters().add("fixed_position_xy_stddev", fixed_position_xy_stddev_);
   parameters().add("fixed_position_z_stddev", fixed_position_z_stddev_);
@@ -74,7 +79,6 @@ PoseUpdate::PoseUpdate(const std::string& name)
   parameters().add("fixed_velocity_z_stddev", fixed_velocity_z_stddev_);
   parameters().add("fixed_angular_rate_xy_stddev", fixed_angular_rate_xy_stddev_);
   parameters().add("fixed_angular_rate_z_stddev", fixed_angular_rate_z_stddev_);
-  parameters().add("max_time_difference", max_time_difference_);
   parameters().add("max_position_xy_error", max_position_xy_error_ );
   parameters().add("max_position_z_error", max_position_z_error_);
   parameters().add("max_yaw_error", max_yaw_error_);
@@ -82,7 +86,6 @@ PoseUpdate::PoseUpdate(const std::string& name)
   parameters().add("max_velocity_z_error", max_velocity_z_error_);
   parameters().add("max_angular_rate_xy_error", max_angular_rate_xy_error_ );
   parameters().add("max_angular_rate_z_error", max_angular_rate_z_error_);
-  parameters().add("jump_on_max_error", jump_on_max_error_);
 }
 
 PoseUpdate::~PoseUpdate()
@@ -125,12 +128,13 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
           information = information / (1.0 - dt/max_time_difference_);
       }
 
-      State::ConstVelocityType state_velocity(filter()->state().getVelocity());
-      update_pose = update_pose + dt * state_velocity;
+      if (predict_pose_) {
+        State::ConstVelocityType state_velocity(filter()->state().getVelocity());
+        update_pose = update_pose + state_velocity * dt;
 
-      State::ConstRateType state_rate(filter()->state().getRate());
-      Eigen::AngleAxisd state_angle_offset(state_rate.norm() * dt, state_rate.normalized());
-      update_orientation = state_angle_offset * update_orientation;
+        State::ConstRateType state_rate(filter()->state().getRate());
+        update_orientation = update_orientation * Eigen::Quaterniond().fromRotationVector(state_rate * dt);
+      }
     }
 
     // Calculate euler angles
