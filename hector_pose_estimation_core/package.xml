@@ -41,6 +41,6 @@
   <run_depend>eigen</run_depend>
 
   <!-- Dependencies needed only for running tests. -->
-  <test_depend>hector_timing</test_depend>
+  <!-- <test_depend>hector_timing</test_depend> -->
 
 </package>
