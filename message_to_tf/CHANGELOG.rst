@@ -2,6 +2,9 @@
 Changelog for package message_to_tf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.0 (2015-02-22)
+------------------
+
 0.1.5 (2014-10-02)
 ------------------
 * get subscribed topic from the command line

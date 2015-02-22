@@ -2,6 +2,36 @@
 Changelog for package hector_pose_estimation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.0 (2015-02-22)
+------------------
+* added QUIET flag when finding optional hector_timing
+* immediately reset the gps measurement when fix is lost
+* disabled publish_world_nav_transform parameter by default and added deprecation warnings for publish_world_map_transform and map_frame
+* fixed sensor_pose correction if reference heading != 0
+* added new publisher /geopose with type geographic_msgs/GeoPose
+* instrumented code for timing measurements using hector_diagnostics
+  See https://github.com/tu-darmstadt-ros-pkg/hector_diagnostics/tree/master/hector_timing.
+* added raw, unfiltered sensor pose publisher
+  This is for debugging purposes only. The raw sensor pose combines the information from
+  IMU acceleration/gravity, magnetic, GPS and height/barometric pressure sensors.
+* added world to nav transform broadcaster and global/reference (geographic_msgs/GeoPose) publisher
+* Added missing orientation-orientation derivative in GenericQuaternionSystemModel
+* Readded dimension paramters to SystemModel templates
+* Readded class BaseState and State::base() accessors (currently unused)
+* Added typed getters PoseEstimation::getSystem_<T>(name) and PoseEstimation::getMeasurement_<T>(name)
+* IMU-based prediction is now in the GenericQuaternionSystemModel class again.
+  The accelerometer and gyro models are added automatically if GenericQuaternionSystemModel::init() found an IMU input.
+  GenericQuaternionSystemModel calls methods on the IMU model classes to get the errors, derivatives and noise.
+  The IMU models themselves do not add
+* Added class SkewSymmetricMatrix
+* Avoid calling SymmetricMatrix::symmetric() as, surprisingly, this method seems to be quite expensive. Symmetry is only
+  enforced if assigned from a matrix which is not a SymmetricMatrix.
+* Added Eigen optimizations (avoid copies and added alignment macros)
+* Moved system and measurement status management from class Filter to PoseEstimation
+* first functional version with multiplicative EKF
+* added support for dynamic states (full, orientation only, position/velocity only, ...)
+* Contributors: Johannes Meyer
+
 0.1.5 (2014-10-02)
 ------------------
 * hector_pose_estimation: make private variables protected to allow access from specialized pose_estimation classes
