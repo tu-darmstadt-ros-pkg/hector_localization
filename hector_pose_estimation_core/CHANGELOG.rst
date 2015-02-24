@@ -2,6 +2,10 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.0-1 (2015-02-24)
+--------------------
+* fixed compilation error in Ubuntu Quantual with libeigen3-dev version 3.1.0~beta1-1ubuntu1
+
 0.2.0 (2015-02-22)
 ------------------
 * removed test_depend on hector_timing in package.xml

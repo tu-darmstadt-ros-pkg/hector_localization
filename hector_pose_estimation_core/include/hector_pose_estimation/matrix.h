@@ -214,7 +214,7 @@ namespace Eigen {
 // Those have been added to Eigen 3.1.0.
 // See https://bitbucket.org/eigen/eigen/commits/e03061319d0297c34e3128dcc5a780824b4fdb78.
 // Copied from https://bitbucket.org/eigen/eigen/src/167ce78594dc4e7a4b9ca27fc745e674300e85ff/Eigen/src/Core/DenseStorage.h.
-#if !EIGEN_VERSION_AT_LEAST(3,1,0)
+#if !EIGEN_VERSION_AT_LEAST(3,0,91)
   // more specializations for null matrices; these are necessary to resolve ambiguities
   template<typename T, int _Options> class DenseStorage<T, 0, Dynamic, Dynamic, _Options>
   : public DenseStorage<T, 0, 0, 0, _Options> { };
