@@ -5,6 +5,7 @@ Changelog for package hector_pose_estimation_core
 0.2.1 (2015-11-08)
 ------------------
 * hector_pose_estimation_core: use FindEigen3.cmake provided by Eigen
+* hector_pose_estimation_core: removed REQUIRED option for Eigen3 to enable fallback to Eigen
 * Contributors: Johannes Meyer
 
 0.2.0 (2015-02-24)
