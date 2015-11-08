@@ -2,6 +2,9 @@
 Changelog for package hector_pose_estimation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.1 (2015-11-08)
+------------------
+
 0.2.0 (2015-02-22)
 ------------------
 * added QUIET flag when finding optional hector_timing

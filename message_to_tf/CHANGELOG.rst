@@ -2,6 +2,12 @@
 Changelog for package message_to_tf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.1 (2015-11-08)
+------------------
+* Update error message
+* Add TransformStamped as an input type
+* Contributors: Paul Bovbel
+
 0.2.0 (2015-02-22)
 ------------------
 

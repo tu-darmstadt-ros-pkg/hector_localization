@@ -2,11 +2,12 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.0-1 (2015-02-24)
---------------------
-* fixed compilation error in Ubuntu Quantual with libeigen3-dev version 3.1.0~beta1-1ubuntu1
+0.2.1 (2015-11-08)
+------------------
+* hector_pose_estimation_core: use FindEigen3.cmake provided by Eigen
+* Contributors: Johannes Meyer
 
-0.2.0 (2015-02-22)
+0.2.0 (2015-02-24)
 ------------------
 * removed test_depend on hector_timing in package.xml
   It causes rosdep errors if hector_timing is not installed.
@@ -101,6 +102,7 @@ Changelog for package hector_pose_estimation_core
 * use average values to symmetrize matrices and disabled symmetry assertion
 * fixed DenseBase compiler errors with Eigen 3.2.1 and clang (fix #4)
 * added support for dynamic states (full, orientation only, position/velocity only, ...)
+* fixed compilation error in Ubuntu Quantual with libeigen3-dev version 3.1.0~beta1-1ubuntu1
 * Contributors: Johannes Meyer
 
 0.1.5 (2014-10-02)
