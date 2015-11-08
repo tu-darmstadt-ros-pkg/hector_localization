@@ -4,11 +4,21 @@ project(hector_pose_estimation_core)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs geographic_msgs tf cmake_modules)
+find_package(catkin REQUIRED COMPONENTS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs geographic_msgs tf)
 
-find_package(Eigen REQUIRED)
-include_directories(${EIGEN_INCLUDE_DIRS})
-add_definitions(${EIGEN_DEFINITIONS})
+# Find Eigen3 headers
+# see http://wiki.ros.org/jade/Migration#Eigen_CMake_Module_in_cmake_modules
+# and https://github.com/ros/cmake_modules/issues/35
+find_package(Eigen3 REQUIRED)
+if(NOT EIGEN3_FOUND)
+  # Fallback to cmake_modules
+  find_package(cmake_modules REQUIRED)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_FOUND ${EIGEN_FOUND})
+  set(EIGEN3_INCLUDE_DIR ${EIGEN_INCLUDE_DIRS})
+  # set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})
+  # Possibly map additional variables to the EIGEN3_ prefix.
+endif()
 
 # Find hector_timing and use it, if available
 find_package(hector_timing QUIET)
@@ -57,10 +67,9 @@ configure_file(include/hector_pose_estimation/matrix_config.h.in ${CATKIN_DEVEL_
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-    INCLUDE_DIRS include ${CATKIN_DEVEL_PREFIX}/include
-    LIBRARIES hector_pose_estimation
-    CATKIN_DEPENDS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs geographic_msgs tf
-    DEPENDS Eigen
+  INCLUDE_DIRS include ${CATKIN_DEVEL_PREFIX}/include ${EIGEN3_INCLUDE_DIR}
+  LIBRARIES hector_pose_estimation
+  CATKIN_DEPENDS rostime rosconsole roscpp sensor_msgs geometry_msgs nav_msgs geographic_msgs tf
 )
 
 ###########
@@ -80,9 +89,12 @@ message(STATUS "CMAKE_CXX_FLAGS_DEBUG:          ${CMAKE_CXX_FLAGS_DEBUG}")
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include)
-include_directories(${catkin_INCLUDE_DIRS})
-include_directories(${CATKIN_DEVEL_PREFIX}/include)
+include_directories(
+  include
+  ${CATKIN_DEVEL_PREFIX}/include
+  ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
+)
 
 add_library(hector_pose_estimation
   src/global_reference.cpp
