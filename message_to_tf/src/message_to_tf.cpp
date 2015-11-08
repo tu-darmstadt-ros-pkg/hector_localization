@@ -2,6 +2,7 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h> // for tf::getPrefixParam()
@@ -34,7 +35,7 @@ ros::Publisher g_euler_publisher;
 
 void addTransform(std::vector<geometry_msgs::TransformStamped>& transforms, const tf::StampedTransform& tf)
 {
-  transforms.resize(transforms.size()+1);
+  transforms.push_back(geometry_msgs::TransformStamped());
   tf::transformStampedTFToMsg(tf, transforms.back());
 }
 
@@ -128,6 +129,16 @@ void poseCallback(geometry_msgs::PoseStamped const &pose) {
   sendTransform(pose.pose, pose.header);
 }
 
+void tfCallback(geometry_msgs::TransformStamped const &tf) {
+  geometry_msgs::Pose pose;
+  pose.position.x = tf.transform.translation.x;
+  pose.position.y = tf.transform.translation.y;
+  pose.position.z = tf.transform.translation.z;
+  pose.orientation = tf.transform.rotation;
+
+  sendTransform(pose, tf.header);
+}
+
 void imuCallback(sensor_msgs::Imu const &imu) {
   std::vector<geometry_msgs::TransformStamped> transforms;
   std::string child_frame_id;
@@ -184,7 +195,13 @@ void multiCallback(topic_tools::ShapeShifter const &input) {
     return;
   }
 
-  ROS_ERROR_THROTTLE(1.0, "message_to_tf received a %s message. Supported message types: nav_msgs/Odometry geometry_msgs/PoseStamped sensor_msgs/Imu", input.getDataType().c_str());
+  if (input.getDataType() == "geometry_msgs/TransformStamped") {
+    geometry_msgs::TransformStamped::ConstPtr tf = input.instantiate<geometry_msgs::TransformStamped>();
+    tfCallback(*tf);
+    return;
+  }
+
+  ROS_ERROR_THROTTLE(1.0, "message_to_tf received a %s message. Supported message types: nav_msgs/Odometry geometry_msgs/PoseStamped geometry_msgs/TransformStamped sensor_msgs/Imu", input.getDataType().c_str());
 }
 
 int main(int argc, char** argv) {
