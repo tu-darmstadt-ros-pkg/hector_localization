@@ -1,0 +1,8 @@
+<launch>
+	<node pkg="hector_pose_estimation" type="pose_estimation" name="hector_pose_estimation" />
+	<remap from="/fix" to="/fix" />
+	<remap from="/fix_velocity" to="fix_velocity" />
+	<remap from="raw_imu" to="/raw_imu" />
+	<remap from="/pressure_height" to="/pressure_height" />
+	<remap from="/magnetic" to="/magnetic" />
+</launch>
