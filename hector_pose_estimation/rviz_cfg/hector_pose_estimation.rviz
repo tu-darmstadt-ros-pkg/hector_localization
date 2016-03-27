@@ -7,8 +7,8 @@ Panels:
         - /Global Options1
         - /Status1
         - /Pose1
-        - /Pose1/Status1
         - /Grid1
+        - /Pose2
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -72,6 +72,20 @@ Visualization Manager:
       Plane Cell Count: 30
       Reference Frame: <Fixed Frame>
       Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.1
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.3
+      Head Radius: 0.1
+      Name: Pose
+      Shaft Length: 1
+      Shaft Radius: 0.05
+      Shape: Axes
+      Topic: /pose
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -96,7 +110,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 23.0089
+      Distance: 18.6516
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -108,10 +122,10 @@ Visualization Manager:
         Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.855204
+      Pitch: 0.125204
       Target Frame: <Fixed Frame>
       Value: ThirdPersonFollower (rviz)
-      Yaw: 1.8704
+      Yaw: 2.8104
     Saved: ~
 Window Geometry:
   Displays:

@@ -7,6 +7,6 @@
 		<remap from="/magnetic" to="/magnetic" />
 	</node>
 
-	<!-- <node pkg="rviz" type="rviz" name="hector_pose_estimatio_rviz" args="-d $(find hector_pose_estimation)/rviz_cfg/hector_pose_estimation.rviz" /> -->
+	<node pkg="rviz" type="rviz" name="hector_pose_estimatio_rviz" args="-d $(find hector_pose_estimation)/rviz_cfg/hector_pose_estimation.rviz" />
 
 </launch>
