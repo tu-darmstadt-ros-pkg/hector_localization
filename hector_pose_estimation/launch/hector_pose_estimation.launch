@@ -1,8 +1,12 @@
 <launch>
-	<node pkg="hector_pose_estimation" type="pose_estimation" name="hector_pose_estimation" />
-	<remap from="/fix" to="/fix" />
-	<remap from="/fix_velocity" to="fix_velocity" />
-	<remap from="raw_imu" to="/raw_imu" />
-	<remap from="/pressure_height" to="/pressure_height" />
-	<remap from="/magnetic" to="/magnetic" />
+	<node pkg="hector_pose_estimation" type="pose_estimation" name="hector_pose_estimation" >
+		<remap from="/fix" to="/fix" />
+		<remap from="/fix_velocity" to="fix_velocity" />
+		<remap from="raw_imu" to="/raw_imu" />
+		<remap from="/pressure_height" to="/pressure_height" />
+		<remap from="/magnetic" to="/magnetic" />
+	</node>
+
+	<!-- <node pkg="rviz" type="rviz" name="hector_pose_estimatio_rviz" args="-d $(find hector_pose_estimation)/rviz_cfg/hector_pose_estimation.rviz" /> -->
+
 </launch>
