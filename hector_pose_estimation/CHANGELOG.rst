@@ -2,6 +2,14 @@
 Changelog for package hector_pose_estimation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.2 (2016-06-24)
+------------------
+* hector_pose_estimation: cleaned up example launch file and add install rule for launch/ and rviz_cfg/
+* update rviz file
+* add .rviz config file for hector pose estimation
+* add launch file for hector_pose_estimation
+* Contributors: Johannes Meyer, libing64
+
 0.2.1 (2015-11-08)
 ------------------
 

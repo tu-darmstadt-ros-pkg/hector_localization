@@ -2,6 +2,9 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.2 (2016-06-24)
+------------------
+
 0.2.1 (2015-11-08)
 ------------------
 * hector_pose_estimation_core: use FindEigen3.cmake provided by Eigen
