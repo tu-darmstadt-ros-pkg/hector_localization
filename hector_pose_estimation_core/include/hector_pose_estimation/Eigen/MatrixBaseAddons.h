@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2013, Johannes Meyer and contributors, Technische Universitat Darmstadt
+// Copyright (c) 2014, Johannes Meyer and contributors, Technische Universitat Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -26,51 +26,45 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
+#ifndef HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
+#define HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
 
-#ifndef HECTOR_POSE_ESTIMATION_GROUND_VEHICLE_MODEL_H
-#define HECTOR_POSE_ESTIMATION_GROUND_VEHICLE_MODEL_H
+  #ifndef EIGEN_MATRIXBASE_PLUGIN
+    #define EIGEN_MATRIXBASE_PLUGIN <hector_pose_estimation/Eigen/MatrixBaseAddons.h>
+  #endif
 
-#include <hector_pose_estimation/system/generic_quaternion_system_model.h>
+#else
 
-namespace hector_pose_estimation {
+  Derived& setSymmetric() {
+    EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                        (RowsAtCompileTime == Dynamic) ||
+                        (ColsAtCompileTime == Dynamic),
+                        THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+    *this = (*this + this->transpose()) / Scalar(2);
+    return derived();
+  }
 
-class GroundVehicleModel;
+  Derived& assertSymmetric() {
+    EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                        (RowsAtCompileTime == Dynamic) ||
+                        (ColsAtCompileTime == Dynamic),
+                        THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+#if defined(ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
+    eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
+#endif
+#if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
+    return setSymmetric();
+#else
+    return derived();
+#endif
+  }
 
-//namespace traits {
-//  template <> struct Input<GroundVehicleModel> {
-//    enum { Dimension = ImuInput::Dimension };
-//    typedef ImuInput Type;
-//    typedef ImuInput::Vector Vector;
-//    typedef ImuInput::Variance Variance;
-//  };
-//} // namespace traits
+  Derived symmetric() const {
+    EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                        (RowsAtCompileTime == Dynamic) ||
+                        (ColsAtCompileTime == Dynamic),
+                        THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+    return (*this + this->transpose()) / Scalar(2);
+  }
 
-class GroundVehicleModel : public GenericQuaternionSystemModel
-{
-public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  GroundVehicleModel();
-  virtual ~GroundVehicleModel();
-
-  virtual void getPrior(State &state);
-  virtual SystemStatus getStatusFlags(const State& state);
-
-  using GenericQuaternionSystemModel::getDerivative;
-  virtual void getDerivative(StateVector& x_dot, const State& state);
-  using GenericQuaternionSystemModel::getStateJacobian;
-  virtual void getStateJacobian(SystemMatrix& A, const State& state, bool init = true);
-
-  virtual bool limitState(State& state);
-
-protected:
-  double gain_;
-  double base_height_, min_height_, max_height_;
-  typename Matrix_<3,3>::type dR3;
-};
-
-extern template class System_<GenericQuaternionSystemModel>;
-
-} // namespace hector_pose_estimation
-
-#endif // HECTOR_POSE_ESTIMATION_GROUND_VEHICLE_MODEL_H
+#endif // HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN

@@ -57,8 +57,8 @@ public:
     Predictor(EKF *filter)
       : filter_(filter)
       , x_diff(filter->state().getVectorDimension())
-      , A(filter->state().getCovarianceDimension(),filter->state().getCovarianceDimension())
-      , Q(filter->state().getCovarianceDimension())
+      , A(filter->state().getCovarianceDimension(), filter->state().getCovarianceDimension())
+      , Q(filter->state().getCovarianceDimension(), filter->state().getCovarianceDimension())
     {}
     virtual ~Predictor() {}
     virtual bool predict(double dt) = 0;
@@ -116,7 +116,7 @@ public:
       , error(model->getDimension())
       , C(model->getDimension(), filter->state().getCovarianceDimension())
       , CP(model->getDimension(), filter->state().getCovarianceDimension())
-      , S(model->getDimension())
+      , S(model->getDimension(), model->getDimension())
       , K(filter->state().getCovarianceDimension(), model->getDimension())
       , update(filter->state().getCovarianceDimension())
     {}
@@ -129,7 +129,7 @@ public:
     typename Model::MeasurementVector y_pred;
     typename Model::MeasurementVector error;
     typename Model::MeasurementMatrix C;
-    Matrix_<ConcreteModel::MeasurementDimension, Dynamic> CP;
+    typename Matrix_<ConcreteModel::MeasurementDimension, Dynamic>::type CP;
     typename Model::NoiseVariance S;
     typename Model::GainMatrix K;
     typename Model::UpdateVector update;

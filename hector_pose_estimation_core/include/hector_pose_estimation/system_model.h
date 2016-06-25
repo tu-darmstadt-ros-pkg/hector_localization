@@ -59,20 +59,20 @@ namespace traits {
 
   template <class Derived, int _VectorDimension = Derived::VectorDimension, int _CovarianceDimension = _VectorDimension>
   struct SystemModel {
-    enum { VectorDimension = _VectorDimension };
-    enum { CovarianceDimension = _CovarianceDimension };
+    static const int VectorDimension = _VectorDimension;
+    static const int CovarianceDimension = _CovarianceDimension;
 
     typedef State::Vector StateVector;
     typedef State::Covariance NoiseVariance;
     typedef State::SystemMatrix SystemMatrix;
 
-    enum { InputDimension = traits::Input<Derived>::Dimension };
+    static const int InputDimension = traits::Input<Derived>::Dimension;
     typedef typename traits::Input<Derived>::Type   InputType;
     typedef typename traits::Input<Derived>::Vector InputVector;
-    typedef Matrix_<State::Covariance::RowsAtCompileTime,InputDimension> InputMatrix;
+    typedef typename Matrix_<State::Covariance::RowsAtCompileTime,InputDimension>::type InputMatrix;
 
     typedef SubState_<VectorDimension,CovarianceDimension> SubState;
-    typedef ColumnVector_<VectorDimension> Vector;
+    typedef typename ColumnVector_<VectorDimension>::type Vector;
 
     typedef typename SubState::VectorSegment VectorSegment;
     typedef typename SubState::CovarianceBlock CovarianceBlock;
@@ -88,14 +88,14 @@ namespace traits {
   #define SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension) \
     typedef traits::SystemModel<Derived, _VectorDimension, _CovarianceDimension> trait; \
     \
-    enum { VectorDimension = trait::VectorDimension }; \
-    enum { CovarianceDimension = trait::CovarianceDimension }; \
+    static const int VectorDimension = trait::VectorDimension; \
+    static const int CovarianceDimension = trait::CovarianceDimension; \
     \
     typedef typename trait::StateVector   StateVector; \
     typedef typename trait::NoiseVariance NoiseVariance; \
     typedef typename trait::SystemMatrix  SystemMatrix; \
     \
-    enum { InputDimension = trait::InputDimension }; \
+    static const int InputDimension = trait::InputDimension; \
     typedef typename trait::InputType     InputType; \
     typedef typename trait::InputVector   InputVector; \
     typedef typename trait::InputMatrix   InputMatrix; \

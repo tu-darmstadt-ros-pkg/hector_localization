@@ -61,7 +61,7 @@ public:
     assert(index_ + VectorDimension <= MaxVectorSize);
     state.x().conservativeResize(index_ + VectorDimension);
     assert(covariance_index_ + CovarianceDimension <= MaxMatrixRowsCols);
-    state.P().conservativeResize(covariance_index_ + CovarianceDimension);
+    state.P().conservativeResize(covariance_index_ + CovarianceDimension, covariance_index_ + CovarianceDimension);
   }
 protected:
   const IndexType index_;

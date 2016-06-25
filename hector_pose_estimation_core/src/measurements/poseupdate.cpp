@@ -104,7 +104,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
 
     // information is the information matrix if interpret_covariance_as_information_matrix_ is true and a covariance matrix otherwise
     // zero elements are counted as zero information in any case
-    SymmetricMatrix_<6> information(SymmetricMatrix_<6>::ConstMap(update.pose->pose.covariance.data()));
+    SymmetricMatrix6 information(Eigen::Map<const SymmetricMatrix6>(update.pose->pose.covariance.data()));
 
     ROS_DEBUG_STREAM_NAMED("poseupdate", "PoseUpdate: x = [ " << filter()->state().getVector().transpose() << " ], P = [ " << filter()->state().getCovariance() << " ]" << std::endl
                                       << "update: pose = [ " << update_pose.transpose() << " ], rpy = [ " << update_euler.transpose() << " ], information = [ " << information << " ]");
@@ -248,7 +248,7 @@ bool PoseUpdate::updateImpl(const MeasurementUpdate &update_)
 
     // information is the information matrix if interpret_covariance_as_information_matrix_ is true and a covariance matrix otherwise
     // zero elements are counted as zero information in any case
-    SymmetricMatrix_<6> information(SymmetricMatrix_<6>::ConstMap(update.twist->twist.covariance.data()));
+    SymmetricMatrix6 information(Eigen::Map<const SymmetricMatrix6>(update.twist->twist.covariance.data()));
 
     ROS_DEBUG_STREAM_NAMED("poseupdate", "TwistUpdate:  state = [ " << filter()->state().getVector().transpose() << " ], P = [ " << filter()->state().getCovariance() << " ]" << std::endl
                                       << "     update: linear = [ " << update_linear.transpose() << " ], angular = [ " << update_angular.transpose() << " ], information = [ " << information << " ]");
@@ -401,11 +401,12 @@ double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const M
 
   // S_1 is equivalent to S^(-1) = (H*P*H^T + R)^(-1) in the standard Kalman gain
   NoiseVariance S_1(Ix - Ix * (Ix * alpha + Iy * beta).inverse() * Ix);
-  Matrix_<State::Covariance::ColsAtCompileTime, MeasurementMatrix::RowsAtCompileTime> P_HT((H * state.P()).transpose());
+  typename Matrix_<State::Covariance::ColsAtCompileTime, MeasurementMatrix::RowsAtCompileTime>::type P_HT((H * state.P()).transpose());
   ROS_DEBUG_STREAM_NAMED("poseupdate", "P*HT = [" << (P_HT) << "]");
 
   double innovation = S_1.determinant();
   state.P() = state.P() - P_HT * S_1 * P_HT.transpose(); // may invalidate Px if &Pxy == &Px
+  state.P().assertSymmetric();
   state.update(P_HT * Iy * beta * error);
   // state.x() = state.x() + P_HT * Iy * beta * error;
 

@@ -55,8 +55,8 @@ class Input_ : public Input {
 public:
   enum { Dimension = _Dimension };
   typedef Input_<Dimension> Type;
-  typedef ColumnVector_<Dimension> Vector;
-  typedef SymmetricMatrix_<Dimension> Variance;
+  typedef typename ColumnVector_<Dimension>::type Vector;
+  typedef typename SymmetricMatrix_<Dimension>::type Variance;
 
   typedef boost::shared_ptr< Input_<_Dimension> > Ptr;
 
@@ -109,7 +109,7 @@ protected:
 
 namespace traits {
   template <class Model> struct Input {
-    enum { Dimension = 0 };
+    static const int Dimension = 0;
     typedef Input_<Dimension> Type;
     typedef ColumnVector_<0> Vector;
     typedef SymmetricMatrix_<0> Variance;
