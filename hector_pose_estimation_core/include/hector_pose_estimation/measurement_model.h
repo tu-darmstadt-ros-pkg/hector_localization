@@ -55,30 +55,30 @@ namespace traits {
 
   template <class Derived, int _Dimension = Derived::MeasurementDimension>
   struct MeasurementModel {
-    enum { MeasurementDimension = _Dimension };
-    typedef ColumnVector_<MeasurementDimension> MeasurementVector;
-    typedef SymmetricMatrix_<MeasurementDimension> NoiseVariance;
-    typedef Matrix_<MeasurementDimension,Dynamic> MeasurementMatrix;
-    typedef Matrix_<State::Covariance::RowsAtCompileTime,MeasurementDimension> GainMatrix;
-    typedef ColumnVector_<State::Covariance::RowsAtCompileTime> UpdateVector;
+    static const int MeasurementDimension = _Dimension;
+    typedef typename ColumnVector_<MeasurementDimension>::type MeasurementVector;
+    typedef typename SymmetricMatrix_<MeasurementDimension>::type NoiseVariance;
+    typedef typename Matrix_<MeasurementDimension,Dynamic>::type MeasurementMatrix;
+    typedef typename Matrix_<State::Covariance::RowsAtCompileTime,MeasurementDimension>::type GainMatrix;
+    typedef typename ColumnVector_<State::Covariance::RowsAtCompileTime>::type UpdateVector;
 
-    enum { InputDimension = traits::Input<Derived>::Dimension };
+    static const int InputDimension = traits::Input<Derived>::Dimension;
     typedef typename traits::Input<Derived>::Type InputType;
     typedef typename traits::Input<Derived>::Vector InputVector;
-    typedef Matrix_<MeasurementDimension,InputDimension> InputMatrix;
+    typedef typename Matrix_<MeasurementDimension,InputDimension>::type InputMatrix;
   };
 
   #define MEASUREMENT_MODEL_TRAIT(Derived, _Dimension) \
     typedef typename traits::MeasurementModel<Derived, _Dimension> trait; \
     \
-    enum { MeasurementDimension = _Dimension }; \
+    static const int MeasurementDimension = _Dimension; \
     typedef typename trait::MeasurementVector MeasurementVector; \
     typedef typename trait::NoiseVariance NoiseVariance; \
     typedef typename trait::MeasurementMatrix MeasurementMatrix; \
     typedef typename trait::GainMatrix GainMatrix; \
     typedef typename trait::UpdateVector UpdateVector; \
     \
-    enum { InputDimension = trait::InputDimension }; \
+    static const int InputDimension = trait::InputDimension; \
     typedef typename trait::InputType InputType; \
     typedef typename trait::InputVector InputVector; \
     typedef typename trait::InputMatrix InputMatrix; \

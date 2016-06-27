@@ -48,6 +48,7 @@ bool EKF::Predictor_<ConcreteModel, Enabled>::predict(double dt) {
   ROS_DEBUG_STREAM_NAMED("ekf.prediction", "dt * A    = [" << std::endl << A << "]");
 
 //  state().P0() = A * state().P() * A.transpose() + Q;
+//  state().P0().assertSymmetric();
 //  state().x0() = x_pred;
 
   this->init_ = false;
@@ -71,6 +72,7 @@ bool EKF::Corrector_<ConcreteModel, Enabled>::correct(const typename ConcreteMod
   S.noalias()  = CP * C.transpose() + R;
   K.noalias() = CP.transpose() * S.inverse();
   state().P().noalias() -= K * CP;
+  state().P().assertSymmetric();
 
   error.noalias() = y - y_pred;
   this->model_->limitError(error);

@@ -66,7 +66,7 @@ public:
 protected:
   double gain_;
   double base_height_, min_height_, max_height_;
-  Matrix_<3,3> dR3;
+  typename Matrix_<3,3>::type dR3;
 };
 
 extern template class System_<GenericQuaternionSystemModel>;

@@ -26,40 +26,45 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
-#define HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
+#ifndef HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
+#define HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
 
-#ifndef EIGEN_QUATERNIONBASE_PLUGIN
-  #define EIGEN_QUATERNIONBASE_PLUGIN <hector_pose_estimation/Eigen/QuaternionBaseAddons.h>
+#ifndef EIGEN_MATRIXBASE_PLUGIN
+  #define EIGEN_MATRIXBASE_PLUGIN <hector_pose_estimation/Eigen/MatrixBaseAddons.h>
 #endif
 
-#else  // HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
+#else  // HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
 
-template <typename OtherDerived>
-Derived &fromRotationVector(const MatrixBase<OtherDerived> &rotation_vector)
-{
-  eigen_assert(rotation_vector.size() == 3);
-
-  const double angle = rotation_vector.norm();
-  double sin_angle_2, cos_angle_2;
-  ::sincos(angle / 2., &sin_angle_2, &cos_angle_2);
-  double sin_angle_norm_2 = 0.5;
-  if (angle > NumTraits<double>::dummy_precision()) sin_angle_norm_2 = sin_angle_2 / angle;
-
-  w() = cos_angle_2;
-  vec() = rotation_vector * sin_angle_norm_2;
-
+Derived& setSymmetric() {
+  EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                      (RowsAtCompileTime == Dynamic) ||
+                      (ColsAtCompileTime == Dynamic),
+                      THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+  *this = (*this + this->transpose()) / Scalar(2);
   return derived();
 }
 
-Vector3 toRotationVector() const
-{
-  eigen_assert(squaredNorm() == 1.0);
-  Scalar vector_norm = vec().norm();
-  if (vector_norm <= NumTraits<Scalar>::dummy_precision())
-    return vec() * Scalar(2.);
-  else
-    return vec() / vector_norm * ::acos(w()) * Scalar(2.);
+Derived& assertSymmetric() {
+  EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                      (RowsAtCompileTime == Dynamic) ||
+                      (ColsAtCompileTime == Dynamic),
+                      THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+#if defined(ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
+  eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
+#endif
+#if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
+  return setSymmetric();
+#else
+  return derived();
+#endif
 }
 
-#endif // HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
+Derived symmetric() const {
+  EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                      (RowsAtCompileTime == Dynamic) ||
+                      (ColsAtCompileTime == Dynamic),
+                      THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+  return (*this + this->transpose()) / Scalar(2);
+}
+
+#endif // HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN

@@ -49,7 +49,7 @@ bool EKF::init(PoseEstimation &estimator)
 {
   x_diff = State::Vector(state_.getVectorDimension());
   A = State::SystemMatrix(state_.getCovarianceDimension(), state_.getCovarianceDimension());
-  Q = State::Covariance(state_.getCovarianceDimension());
+  Q = State::Covariance(state_.getCovarianceDimension(), state_.getCovarianceDimension());
   return true;
 }
 
@@ -81,6 +81,7 @@ bool EKF::doPredict(double dt) {
   { hector_diagnostics::TimingSection section("predict.ekf.covariance");
 #endif
   state().P() = A * state().P() * A.transpose() + Q;
+  state().P().assertSymmetric();
 
 #ifdef USE_HECTOR_TIMING
   }

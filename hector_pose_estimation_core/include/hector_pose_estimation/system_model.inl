@@ -101,7 +101,7 @@ struct TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDi
     : x_diff(state.getVectorDimension())
     , A(state.getCovarianceDimension(), state.getCovarianceDimension())
     , B(state.getCovarianceDimension(), InputDimension)
-    , Q(state.getCovarianceDimension())
+    , Q(state.getCovarianceDimension(), state.getCovarianceDimension())
   {}
 };
 
@@ -145,9 +145,8 @@ void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDime
   if (!internal_) internal_ = new internal(state);
   //if (init) internal_->Q = NoiseVariance::Zero(Q.rows(), Q.cols());
   getSystemNoise(internal_->Q, state, init);
-  // Q = dt * internal_->Q;
-  Q = internal_->Q; // use SymmetricMatrix assignment operator
-  Q *= dt;
+  Q = dt * internal_->Q;
+  Q.symmetric();
 }
 
 } // namespace hector_pose_estimation

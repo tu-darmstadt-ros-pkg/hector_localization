@@ -68,7 +68,7 @@ public:
 
   typedef std::vector<SubStatePtr> SubStates;
 
-  typedef Matrix_<3,3> RotationMatrix;
+  typedef typename Matrix_<3,3>::type RotationMatrix;
 
 public:
   virtual ~State();
