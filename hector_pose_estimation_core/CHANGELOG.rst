@@ -2,6 +2,19 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.0 (2016-06-27)
+------------------
+* hector_pose_estimation_core: cleanup of Eigen MatrixBase and QuaternionBase plugins
+* hector_pose_estimation_core: refactored vector and matrix classes
+  Instead of inheriting from Eigen::Matrix<> types, hector_pose_estimation now simply defines
+  typedefs for all kind of use cases. The former SymmetricMatrix\_<> and SkewSymmetricMatrix classes
+  have been replaced by Eigen::MatrixBase extension (https://eigen.tuxfamily.org/dox-devel/TopicCustomizingEigen.html)
+  and by a free function that returns a skew-symmetric matrix.
+  The refactoring was required for the release in Ubuntu Xenial and Eigen 3.3. The previous code was
+  too fragile in case of Eigen upgrades and did not compile in Xenial due to changes in the Eigen::internal::traits<T>
+  interface.
+* Contributors: Johannes Meyer
+
 0.2.2 (2016-06-24)
 ------------------
 

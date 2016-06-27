@@ -2,6 +2,11 @@
 Changelog for package hector_pose_estimation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.0 (2016-06-27)
+------------------
+* hector_pose_estimation: removed trailing / in directory install rule
+* Contributors: Johannes Meyer
+
 0.2.2 (2016-06-24)
 ------------------
 * hector_pose_estimation: cleaned up example launch file and add install rule for launch/ and rviz_cfg/
