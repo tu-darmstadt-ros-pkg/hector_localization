@@ -29,42 +29,42 @@
 #ifndef HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
 #define HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
 
-  #ifndef EIGEN_MATRIXBASE_PLUGIN
-    #define EIGEN_MATRIXBASE_PLUGIN <hector_pose_estimation/Eigen/MatrixBaseAddons.h>
-  #endif
+#ifndef EIGEN_MATRIXBASE_PLUGIN
+  #define EIGEN_MATRIXBASE_PLUGIN <hector_pose_estimation/Eigen/MatrixBaseAddons.h>
+#endif
 
-#else
+#else  // HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN
 
-  Derived& setSymmetric() {
-    EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
-                        (RowsAtCompileTime == Dynamic) ||
-                        (ColsAtCompileTime == Dynamic),
-                        THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
-    *this = (*this + this->transpose()) / Scalar(2);
-    return derived();
-  }
+Derived& setSymmetric() {
+  EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                      (RowsAtCompileTime == Dynamic) ||
+                      (ColsAtCompileTime == Dynamic),
+                      THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+  *this = (*this + this->transpose()) / Scalar(2);
+  return derived();
+}
 
-  Derived& assertSymmetric() {
-    EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
-                        (RowsAtCompileTime == Dynamic) ||
-                        (ColsAtCompileTime == Dynamic),
-                        THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+Derived& assertSymmetric() {
+  EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                      (RowsAtCompileTime == Dynamic) ||
+                      (ColsAtCompileTime == Dynamic),
+                      THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
 #if defined(ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
-    eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
+  eigen_assert(this->isApprox(this->transpose(), ASSERT_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC_PRECISION));
 #endif
 #if defined(FORCE_SYMMETRIC_MATRIX_TO_BE_SYMMETRIC)
-    return setSymmetric();
+  return setSymmetric();
 #else
-    return derived();
+  return derived();
 #endif
-  }
+}
 
-  Derived symmetric() const {
-    EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
-                        (RowsAtCompileTime == Dynamic) ||
-                        (ColsAtCompileTime == Dynamic),
-                        THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
-    return (*this + this->transpose()) / Scalar(2);
-  }
+Derived symmetric() const {
+  EIGEN_STATIC_ASSERT((RowsAtCompileTime == ColsAtCompileTime) ||
+                      (RowsAtCompileTime == Dynamic) ||
+                      (ColsAtCompileTime == Dynamic),
+                      THIS_METHOD_IS_ONLY_FOR_MATRICES_OF_A_SPECIFIC_SIZE);
+  return (*this + this->transpose()) / Scalar(2);
+}
 
 #endif // HECTOR_POSE_ESTIMATION_EIGEN_MATRIXBASE_PLUGIN

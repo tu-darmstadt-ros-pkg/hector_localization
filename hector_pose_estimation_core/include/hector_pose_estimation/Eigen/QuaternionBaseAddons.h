@@ -26,11 +26,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef EIGEN_QUATERNIONBASE_PLUGIN
-  #include <Eigen/Core>
-  #define EIGEN_QUATERNIONBASE_PLUGIN <hector_pose_estimation/Eigen/QuaternionBaseAddons.h>
+#ifndef HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
+#define HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
 
-#else
+#ifndef EIGEN_QUATERNIONBASE_PLUGIN
+  #define EIGEN_QUATERNIONBASE_PLUGIN <hector_pose_estimation/Eigen/QuaternionBaseAddons.h>
+#endif
+
+#else  // HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
 
 template <typename OtherDerived>
 Derived &fromRotationVector(const MatrixBase<OtherDerived> &rotation_vector)
@@ -59,4 +62,4 @@ Vector3 toRotationVector() const
     return vec() / vector_norm * ::acos(w()) * Scalar(2.);
 }
 
-#endif // EIGEN_QUATERNIONBASE_PLUGIN
+#endif // HECTOR_POSE_ESTIMATION_EIGEN_QUATERNIONBASE_PLUGIN
