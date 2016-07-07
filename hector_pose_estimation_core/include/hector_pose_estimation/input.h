@@ -109,7 +109,7 @@ protected:
 
 namespace traits {
   template <class Model> struct Input {
-    static const int Dimension = 0;
+    enum { Dimension = 0 };
     typedef Input_<Dimension> Type;
     typedef ColumnVector_<0> Vector;
     typedef SymmetricMatrix_<0> Variance;

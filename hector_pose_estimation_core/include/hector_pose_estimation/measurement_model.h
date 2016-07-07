@@ -55,14 +55,14 @@ namespace traits {
 
   template <class Derived, int _Dimension = Derived::MeasurementDimension>
   struct MeasurementModel {
-    static const int MeasurementDimension = _Dimension;
+    enum { MeasurementDimension = _Dimension };
     typedef typename ColumnVector_<MeasurementDimension>::type MeasurementVector;
     typedef typename SymmetricMatrix_<MeasurementDimension>::type NoiseVariance;
     typedef typename Matrix_<MeasurementDimension,Dynamic>::type MeasurementMatrix;
     typedef typename Matrix_<State::Covariance::RowsAtCompileTime,MeasurementDimension>::type GainMatrix;
     typedef typename ColumnVector_<State::Covariance::RowsAtCompileTime>::type UpdateVector;
 
-    static const int InputDimension = traits::Input<Derived>::Dimension;
+    enum { InputDimension = traits::Input<Derived>::Dimension };
     typedef typename traits::Input<Derived>::Type InputType;
     typedef typename traits::Input<Derived>::Vector InputVector;
     typedef typename Matrix_<MeasurementDimension,InputDimension>::type InputMatrix;
@@ -71,14 +71,14 @@ namespace traits {
   #define MEASUREMENT_MODEL_TRAIT(Derived, _Dimension) \
     typedef typename traits::MeasurementModel<Derived, _Dimension> trait; \
     \
-    static const int MeasurementDimension = _Dimension; \
+    enum { MeasurementDimension = _Dimension }; \
     typedef typename trait::MeasurementVector MeasurementVector; \
     typedef typename trait::NoiseVariance NoiseVariance; \
     typedef typename trait::MeasurementMatrix MeasurementMatrix; \
     typedef typename trait::GainMatrix GainMatrix; \
     typedef typename trait::UpdateVector UpdateVector; \
     \
-    static const int InputDimension = trait::InputDimension; \
+    enum { InputDimension = trait::InputDimension }; \
     typedef typename trait::InputType InputType; \
     typedef typename trait::InputVector InputVector; \
     typedef typename trait::InputMatrix InputMatrix; \

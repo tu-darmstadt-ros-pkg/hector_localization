@@ -100,7 +100,7 @@ struct TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDi
   internal(const State &state)
     : x_diff(state.getVectorDimension())
     , A(state.getCovarianceDimension(), state.getCovarianceDimension())
-    , B(state.getCovarianceDimension(), InputDimension)
+    , B(state.getCovarianceDimension(), IndexType(InputDimension))
     , Q(state.getCovarianceDimension(), state.getCovarianceDimension())
   {}
 };

@@ -59,14 +59,14 @@ namespace traits {
 
   template <class Derived, int _VectorDimension = Derived::VectorDimension, int _CovarianceDimension = _VectorDimension>
   struct SystemModel {
-    static const int VectorDimension = _VectorDimension;
-    static const int CovarianceDimension = _CovarianceDimension;
+    enum { VectorDimension = _VectorDimension };
+    enum { CovarianceDimension = _CovarianceDimension };
 
     typedef State::Vector StateVector;
     typedef State::Covariance NoiseVariance;
     typedef State::SystemMatrix SystemMatrix;
 
-    static const int InputDimension = traits::Input<Derived>::Dimension;
+    enum { InputDimension = traits::Input<Derived>::Dimension };
     typedef typename traits::Input<Derived>::Type   InputType;
     typedef typename traits::Input<Derived>::Vector InputVector;
     typedef typename Matrix_<State::Covariance::RowsAtCompileTime,InputDimension>::type InputMatrix;
@@ -88,14 +88,14 @@ namespace traits {
   #define SYSTEM_MODEL_TRAIT(Derived, _VectorDimension, _CovarianceDimension) \
     typedef traits::SystemModel<Derived, _VectorDimension, _CovarianceDimension> trait; \
     \
-    static const int VectorDimension = trait::VectorDimension; \
-    static const int CovarianceDimension = trait::CovarianceDimension; \
+    enum { VectorDimension = trait::VectorDimension }; \
+    enum { CovarianceDimension = trait::CovarianceDimension }; \
     \
     typedef typename trait::StateVector   StateVector; \
     typedef typename trait::NoiseVariance NoiseVariance; \
     typedef typename trait::SystemMatrix  SystemMatrix; \
     \
-    static const int InputDimension = trait::InputDimension; \
+    enum { InputDimension = trait::InputDimension }; \
     typedef typename trait::InputType     InputType; \
     typedef typename trait::InputVector   InputVector; \
     typedef typename trait::InputMatrix   InputMatrix; \
