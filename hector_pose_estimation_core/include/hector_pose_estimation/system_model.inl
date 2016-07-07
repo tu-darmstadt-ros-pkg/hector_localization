@@ -146,7 +146,7 @@ void TimeContinuousSystemModel_<ConcreteModel, _VectorDimension, _CovarianceDime
   //if (init) internal_->Q = NoiseVariance::Zero(Q.rows(), Q.cols());
   getSystemNoise(internal_->Q, state, init);
   Q = dt * internal_->Q;
-  Q.symmetric();
+  Q.assertSymmetric();
 }
 
 } // namespace hector_pose_estimation
