@@ -59,7 +59,11 @@ public:
       , x_diff(filter->state().getVectorDimension())
       , A(filter->state().getCovarianceDimension(), filter->state().getCovarianceDimension())
       , Q(filter->state().getCovarianceDimension(), filter->state().getCovarianceDimension())
-    {}
+    {
+      x_diff.setZero();
+      A.setZero();
+      Q.setZero();
+    }
     virtual ~Predictor() {}
     virtual bool predict(double dt) = 0;
 
@@ -119,7 +123,15 @@ public:
       , S(model->getDimension(), model->getDimension())
       , K(filter->state().getCovarianceDimension(), model->getDimension())
       , update(filter->state().getCovarianceDimension())
-    {}
+    {
+      y_pred.setZero();
+      error.setZero();
+      C.setZero();
+      CP.setZero();
+      S.setZero();
+      K.setZero();
+      update.setZero();
+    }
     virtual ~Corrector_() {}
 
     virtual bool correct(const typename ConcreteModel::MeasurementVector& y, const typename ConcreteModel::NoiseVariance& R);
