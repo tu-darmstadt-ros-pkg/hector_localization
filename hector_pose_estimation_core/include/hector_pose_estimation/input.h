@@ -79,7 +79,7 @@ public:
     return *variance_;
   }
 
-  virtual bool hasVariance() const { return variance_; }
+  virtual bool hasVariance() const { return (variance_ != nullptr); }
   virtual Variance const &getVariance() { if (!variance_) variance_.reset(new Variance); return *variance_; }
   virtual Variance const &getVariance() const { return *variance_; }
   virtual Variance& variance() { if (!variance_) variance_.reset(new Variance); return *variance_; }
