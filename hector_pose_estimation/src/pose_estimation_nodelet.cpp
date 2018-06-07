@@ -55,4 +55,4 @@ private:
 } // namespace hector_pose_estimation
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_DECLARE_CLASS(hector_pose_estimation, PoseEstimation, hector_pose_estimation::PoseEstimationNodelet, nodelet::Nodelet)
+PLUGINLIB_EXPORT_CLASS(hector_pose_estimation::PoseEstimationNodelet, nodelet::Nodelet)
