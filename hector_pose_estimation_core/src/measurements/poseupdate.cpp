@@ -382,7 +382,7 @@ double PoseUpdate::updateInternal(State &state, const NoiseVariance &Iy, const M
   ROS_DEBUG_STREAM_NAMED("poseupdate", "alpha = " << alpha << ", beta = " << beta);
 
   if (max_error > 0.0) {
-    double error2 = error.transpose() * Ix * (Ix + Iy).inverse() * Iy * error;
+    double error2 = (error.transpose() * Ix * (Ix + Iy).inverse() * Iy * error)(0);
     if (error2 > max_error * max_error) {
       if (!jump_on_max_error_ || !jump_function) {
         ROS_WARN_STREAM_NAMED("poseupdate", "Ignoring poseupdate for " << text << " as the error [ " << error.transpose() << " ], |error| = " << sqrt(error2) << " sigma exceeds max_error!");
