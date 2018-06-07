@@ -51,7 +51,7 @@ GyroModel::~GyroModel()
 bool GyroModel::init(PoseEstimation& estimator, System &system, State& state)
 {
   bias_ = state.addSubState<3,3>(this, system.getName() + "_bias");
-  return bias_;
+  return (bias_.get() != 0);
 }
 
 void GyroModel::getPrior(State &state)
@@ -113,7 +113,7 @@ AccelerometerModel::~AccelerometerModel()
 bool AccelerometerModel::init(PoseEstimation& estimator, System &system, State& state)
 {
   bias_ = state.addSubState<3,3>(this, system.getName() + "_bias");
-  return bias_;
+  return (bias_.get() != 0);
 }
 
 void AccelerometerModel::getPrior(State &state)
