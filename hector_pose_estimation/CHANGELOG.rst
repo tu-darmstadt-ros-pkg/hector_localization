@@ -2,6 +2,18 @@
 Changelog for package hector_pose_estimation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.0 (2021-02-16)
+------------------
+* Update maintainer email address
+* Increase minimum CMake version to 3.0.2 to avoid the CMP0048 warning
+  See
+  http://wiki.ros.org/noetic/Migration#Increase_required_CMake_version_to_avoid_author_warning
+  for details.
+* Merge pull request `#12 <https://github.com/tu-darmstadt-ros-pkg/hector_localization/issues/12>`_ from mikaelarguedas/patch-1
+  update to use non deprecated pluginlib macro
+* update to use non deprecated pluginlib macro
+* Contributors: Johannes Meyer, Mikael Arguedas
+
 0.3.0 (2016-06-27)
 ------------------
 * hector_pose_estimation: removed trailing / in directory install rule

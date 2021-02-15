@@ -2,6 +2,15 @@
 Changelog for package message_to_tf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.0 (2021-02-16)
+------------------
+* Update maintainer email address
+* Increase minimum CMake version to 3.0.2 to avoid the CMP0048 warning
+  See
+  http://wiki.ros.org/noetic/Migration#Increase_required_CMake_version_to_avoid_author_warning
+  for details.
+* Contributors: Johannes Meyer
+
 0.3.0 (2016-06-27)
 ------------------
 

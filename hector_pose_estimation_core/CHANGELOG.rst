@@ -2,6 +2,39 @@
 Changelog for package hector_pose_estimation_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.0 (2021-02-16)
+------------------
+* Update maintainer email address
+* Increase minimum CMake version to 3.0.2 to avoid the CMP0048 warning
+  See
+  http://wiki.ros.org/noetic/Migration#Increase_required_CMake_version_to_avoid_author_warning
+  for details.
+* hector_pose_estimation_core: fix build error in Ubuntu Bionic
+  The result of the expression is an Eigen type that cannot be converted to double directly in
+  Eigen 3.3.4:
+  /opt/hector/melodic/src/hector_localization/hector_pose_estimation_core/src/measurements/poseupdate.cpp: In instantiation of ‘double hector_pose_estimation::PoseUpdate::updateInternal(hector_pose_estimation::State&, const NoiseVariance&, const MeasurementVector&, const MeasurementMatrix&, const string&, double, hector_pose_estimation::PoseUpdate::JumpFunction) [with MeasurementVector = Eigen::CwiseBinaryOp<Eigen::internal::scalar_difference_op<double, double>, const Eigen::Matrix<double, 1, 1, 0, 1, 1>, const Eigen::Matrix<double, 1, 1, 0, 1, 1> >; MeasurementMatrix = Eigen::Matrix<double, 1, -1, 1, 1, 18>; NoiseVariance = Eigen::Matrix<double, 1, 1, 0, 1, 1>; std::__cxx11::string = std::__cxx11::basic_string<char>; hector_pose_estimation::PoseUpdate::JumpFunction = boost::function<void(hector_pose_estimation::State&, const Eigen::Matrix<double, -1, 1, 0, 19, 1>&)>]’:
+  /opt/hector/melodic/src/hector_localization/hector_pose_estimation_core/src/measurements/poseupdate.cpp:201:181:   required from here
+  /opt/hector/melodic/src/hector_localization/hector_pose_estimation_core/src/measurements/poseupdate.cpp:385:12: error: cannot convert ‘Eigen::internal::enable_if<true, const Eigen::CwiseBinaryOp<Eigen::internal::scalar_product_op<double, double>, const Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, const Eigen::Matrix<double, 1, 1, 0, 1, 1> >, const Eigen::CwiseBinaryOp<Eigen::internal::scalar_difference_op<double, double>, const Eigen::Matrix<double, 1, 1, 0, 1, 1>, const Eigen::Matrix<double, 1, 1, 0, 1, 1> > > >::type {aka const Eigen::CwiseBinaryOp<Eigen::internal::scalar_product_op<double, double>, const Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, const Eigen::Matrix<double, 1, 1, 0, 1, 1> >, const Eigen::CwiseBinaryOp<Eigen::internal::scalar_difference_op<double, double>, const Eigen::Matrix<double, 1, 1, 0, 1, 1>, const Eigen::Matrix<double, 1, 1, 0, 1, 1> > >}’ to ‘double’ in initialization
+  double error2 = error.transpose() * Ix * (Ix + Iy).inverse() * Iy * error;
+  ^~~~~~
+  /opt/hector/melodic/src/hector_localization/hector_pose_estimation_core/src/measurements/poseupdate.cpp: In instantiation of ‘double hector_pose_estimation::PoseUpdate::updateInternal(hector_pose_estimation::State&, const NoiseVariance&, const MeasurementVector&, const MeasurementMatrix&, const string&, double, hector_pose_estimation::PoseUpdate::JumpFunction) [with MeasurementVector = Eigen::Matrix<double, 1, 1, 0, 1, 1>; MeasurementMatrix = Eigen::Matrix<double, 1, -1, 1, 1, 18>; NoiseVariance = Eigen::Matrix<double, 1, 1, 0, 1, 1>; std::__cxx11::string = std::__cxx11::basic_string<char>; hector_pose_estimation::PoseUpdate::JumpFunction = boost::function<void(hector_pose_estimation::State&, const Eigen::Matrix<double, -1, 1, 0, 19, 1>&)>]’:
+  /opt/hector/melodic/src/hector_localization/hector_pose_estimation_core/src/measurements/poseupdate.cpp:234:154:   required from here
+  /opt/hector/melodic/src/hector_localization/hector_pose_estimation_core/src/measurements/poseupdate.cpp:385:12: error: cannot convert ‘Eigen::internal::enable_if<true, const Eigen::CwiseBinaryOp<Eigen::internal::scalar_product_op<double, double>, const Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, const Eigen::Matrix<double, 1, 1, 0, 1, 1> >, const Eigen::Matrix<double, 1, 1, 0, 1, 1> > >::type {aka const Eigen::CwiseBinaryOp<Eigen::internal::scalar_product_op<double, double>, const Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, const Eigen::Matrix<double, 1, 1, 0, 1, 1> >, const Eigen::Matrix<double, 1, 1, 0, 1, 1> >}’ to ‘double’ in initialization
+* Merge pull request `#16 <https://github.com/tu-darmstadt-ros-pkg/hector_localization/issues/16>`_ from nolanholden/catkin
+  remove implicit operator bool on boost::shared_ptr<>
+* hector_pose_estimation_core: replace nullptr by pre-C++11 expression
+  The `nullptr` literal was only introduced in C++11:
+  https://en.cppreference.com/w/cpp/language/nullptr
+  but hector_localization does not (yet) require a C++11-enabled compiler.
+* remove implicit operator bool on boost::shared_ptr<>
+  See compilation error here:
+  https://github.com/tu-darmstadt-ros-pkg/hector_quadrotor/issues/82
+* hector_pose_estimation_core: initialize matrices in EKF predictor and corrector instances to zero
+* hector_pose_estimation_core: fixed symmetric matrix assertion in method TimeContinuousSystemModel\_<>::getSystemNoise()
+* hector_pose_estimation_core: reverted integer constants in SystemModel and MeasurementModel classes to enum to avoid linker problems
+  This fixes a regression from 81b976da6a54197357c2fa083d9c4e20e9121019.
+* Contributors: Johannes Meyer, Nolan Holden
+
 0.3.0 (2016-06-27)
 ------------------
 * hector_pose_estimation_core: cleanup of Eigen MatrixBase and QuaternionBase plugins
