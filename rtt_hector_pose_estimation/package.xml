@@ -4,14 +4,14 @@
   <description>
     An RTT TaskContext that runs hector_pose_estimation_core.
   </description>
-  <maintainer email="meyer@fsr.tu-darmstadt.de">Johannes Meyer</maintainer>
+  <maintainer email="joh@nnes-meyer.de">Johannes Meyer</maintainer>
 
   <license>BSD</license>
 
   <url type="website">http://ros.org/wiki/hector_pose_estimation_rtt</url>
   <!-- <url type="bugtracker"></url> -->
 
-  <author email="meyer@fsr.tu-darmstadt.de">Johannes Meyer</author>
+  <author email="joh@nnes-meyer.de">Johannes Meyer</author>
 
   <!-- Dependencies which this package needs to build itself. -->
   <buildtool_depend>catkin</buildtool_depend>
